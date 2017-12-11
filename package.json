@@ -1,0 +1,33 @@
+{
+  "name": "prerender-service",
+  "version": "0.1.0-dev",
+  "description": "prerender service",
+  "main": "index.js",
+  "dependencies": {
+    "amqplib": "0.5.2",
+    "koa": "2.4.1",
+    "koa-router": "7.3.0",
+    "pm2": "2.8.0"
+  },
+  "devDependencies": {
+    "eslint": "4.13.0",
+    "eslint-config-enough": "0.2.9"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fenivana/prerender-service.git"
+  },
+  "keywords": [
+    "prerender",
+    "seo"
+  ],
+  "author": "Jiang Fengming",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fenivana/prerender-service/issues"
+  },
+  "homepage": "https://github.com/fenivana/prerender-service#readme"
+}
