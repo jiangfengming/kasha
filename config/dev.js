@@ -1,6 +1,8 @@
 module.exports = {
   amqp: {
-    url: 'amqb://localhost',
+    url: 'amqp://localhost',
     prefetch: 5
-  }
+  },
+
+  port: 3000
 }

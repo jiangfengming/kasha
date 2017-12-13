@@ -11,10 +11,20 @@
   },
   "devDependencies": {
     "eslint": "4.13.0",
-    "eslint-config-enough": "0.2.9"
+    "eslint-config-enough": "0.3.0"
+  },
+  "eslintConfig": {
+    "extends": "enough",
+    "env": {
+      "node": true
+    },
+    "globals": {
+      "mq": false
+    }
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "server": "node server",
+    "worker": "node worker"
   },
   "repository": {
     "type": "git",
