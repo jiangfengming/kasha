@@ -1,10 +1,13 @@
 (async() => {
+  global.CustomError = require('../shared/CustomError')
+
+  const argv = require('yargs').argv
   const Koa = require('koa')
   const Router = require('koa-router')
   const amqp = require('amqplib')
-  const CustomError = require('../shared/errors/CustomError')
+  const { MongoClient } = require('mongodb')
 
-  const configFile = process.env.npm_config_config || 'default'
+  const configFile = argv.config || process.env.npm_config_config || 'default'
   console.log('load config file:', configFile) // eslint-disable-line
   const config = require('../config/' + configFile)
 
@@ -12,6 +15,8 @@
   mq.connection = await amqp.connect(config.amqp.url)
   mq.channel = await mq.connection.createConfirmChannel()
   mq.queue = await mq.channel.assertQueue('', { exclusive: true })
+
+  global.db = await MongoClient.connect(config.mongodb.url)
 
   const app = new Koa()
   const router = new Router()

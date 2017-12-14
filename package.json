@@ -7,6 +7,7 @@
     "amqplib": "0.5.2",
     "koa": "2.4.1",
     "koa-router": "7.3.0",
+    "mongodb": "3.0.0-rc0",
     "pm2": "2.8.0"
   },
   "devDependencies": {
@@ -19,7 +20,9 @@
       "node": true
     },
     "globals": {
-      "mq": false
+      "mq": false,
+      "db": false,
+      "CustomError": false
     }
   },
   "scripts": {

@@ -1,8 +1,12 @@
 module.exports = {
+  port: 3000,
+
   amqp: {
     url: 'amqp://localhost',
     prefetch: 5
   },
 
-  port: 3000
+  mongodb: {
+    url: 'mongodb://localhost:27017/render-service'
+  }
 }

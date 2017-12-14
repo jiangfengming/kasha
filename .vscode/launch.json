@@ -7,8 +7,16 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch Program",
-      "program": "${workspaceFolder}/server/index.js"
+      "name": "Launch Server",
+      "program": "${workspaceFolder}/server/index.js",
+      "args": ["--config=dev"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch Worker",
+      "program": "${workspaceFolder}/worker/index.js",
+      "args": ["--config=dev"]
     }
   ]
 }

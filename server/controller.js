@@ -1,4 +1,4 @@
-const { SERVER_BUSY } = require('../shared/errors')
+const { URL } = require('url')
 const crypto = require('crypto')
 
 function genUid() {
@@ -17,7 +17,18 @@ async function render(ctx) {
     callbackUrl: ctx.query.callbackUrl
   }
 
+  try {
+    new URL(ctx.query.url)
+  } catch (e) {
+    throw new CustomError('CLIENT_INVALID_URL')
+  }
+
   if (msg.callbackUrl) {
+    try {
+      new URL(msg.callbackUrl)
+    } catch (e) {
+      throw new CustomError('CLIENT_INVALID_CALLBACK_URL')
+    }
     msgOpts = {}
   } else {
     msgOpts = {
@@ -33,10 +44,12 @@ async function render(ctx) {
   })
 
   if (!sended) {
-    throw SERVER_BUSY
+    throw new CustomError('SERVER_BUSY')
   } else {
     if (msg.callbackUrl) {
       ctx.body = {}
+    } else {
+      // todo
     }
   }
 }
