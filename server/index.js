@@ -16,7 +16,8 @@
   mq.channel = await mq.connection.createConfirmChannel()
   mq.queue = await mq.channel.assertQueue('', { exclusive: true })
 
-  global.db = await MongoClient.connect(config.mongodb.url)
+  global.mongoClient = await MongoClient.connect(config.mongodb.url)
+  global.db = mongoClient.db(config.mongodb.database)
 
   const app = new Koa()
   const router = new Router()

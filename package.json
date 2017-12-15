@@ -21,6 +21,7 @@
     },
     "globals": {
       "mq": false,
+      "mongoClient": false,
       "db": false,
       "CustomError": false
     }

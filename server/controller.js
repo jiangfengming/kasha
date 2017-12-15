@@ -1,5 +1,6 @@
 const { URL } = require('url')
 const crypto = require('crypto')
+const assert = require('assert')
 
 function genUid() {
   return new Promise((resolve, reject) => {
@@ -11,45 +12,57 @@ function genUid() {
 }
 
 async function render(ctx) {
-  let msgOpts
-  const msg = {
-    url: ctx.query.url,
-    callbackUrl: ctx.query.callbackUrl
-  }
+  const { url, deviceType = 'desktop', callbackUrl, state = '' } = ctx.query
 
   try {
-    new URL(ctx.query.url)
+    assert(['http:', 'https:'].includes(new URL(url).protocol))
   } catch (e) {
     throw new CustomError('CLIENT_INVALID_URL')
   }
 
-  if (msg.callbackUrl) {
+  if (!['mobile', 'desktop'].includes(deviceType)) {
+    throw new CustomError('CLIENT_INVALID_DEVICE_TYPE')
+  }
+
+  if (callbackUrl) {
     try {
-      new URL(msg.callbackUrl)
+      assert(['http:', 'https:'].includes(new URL(callbackUrl).protocol))
     } catch (e) {
       throw new CustomError('CLIENT_INVALID_CALLBACK_URL')
     }
-    msgOpts = {}
-  } else {
-    msgOpts = {
-      correlationId: await genUid(),
-      replyTo: mq.queue.queue,
-      persistent: true
-    }
   }
 
-  const sended = mq.channel.sendToQueue('renderWorker', Buffer.from(JSON.stringify(msg)), {
-    ...msgOpts,
-    contentType: 'application/json'
-  })
-
-  if (!sended) {
-    throw new CustomError('SERVER_BUSY')
+  const cache = await db.collection('cache').findOne({ url, deviceType })
+  if (cache) {
+    // todo
   } else {
-    if (msg.callbackUrl) {
-      ctx.body = {}
+    const msg = Buffer.from(JSON.stringify({ url, deviceType, callbackUrl, state }))
+
+    let queue, msgOpts
+    if (callbackUrl) {
+      queue = 'renderWorker'
+      msgOpts = {}
     } else {
-      // todo
+      queue = 'renderWorkerRPC'
+      msgOpts = {
+        correlationId: await genUid(),
+        replyTo: mq.queue.queue
+      }
+    }
+
+    msgOpts.persistent = true
+    msgOpts.contentType = 'application/json'
+
+    const sended = mq.channel.sendToQueue(queue, msg, msgOpts)
+
+    if (!sended) {
+      throw new CustomError('SERVER_BUSY')
+    } else {
+      if (callbackUrl) {
+        ctx.body = {} // end
+      } else {
+        // todo
+      }
     }
   }
 }

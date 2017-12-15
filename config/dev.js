@@ -7,6 +7,7 @@ module.exports = {
   },
 
   mongodb: {
-    url: 'mongodb://localhost:27017/render-service'
+    url: 'mongodb://localhost:27017/renderService',
+    database: 'renderService'
   }
 }
