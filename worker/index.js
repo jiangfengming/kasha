@@ -1,6 +1,7 @@
 (async function() {
   const argv = require('yargs').argv
   const amqp = require('amqplib')
+  const { MongoClient } = require('mongodb')
   const prerender = require('puppeteer-prerender')
   const userAgents = require('../shared/userAgents')
 
@@ -16,6 +17,9 @@
   mq.queue = await mq.channel.assertQueue(queueName, { durable: true })
   mq.channel.prefetch(config.amqp.prefetch)
 
+  global.mongoClient = await MongoClient.connect(config.mongodb.url)
+  global.db = mongoClient.db(config.mongodb.database)
+
   mq.channel.consume(queueName, async msg => {
     const { url, deviceType, callbackUrl, state } = msg
 
@@ -23,6 +27,9 @@
       const { title, content } = await prerender(url, {
         userAgent: userAgents[deviceType]
       })
+
+
+      db.collection('cache').insertOne()
 
       if (msg.properties.replyTo) {
         mq.channel.sendToQueue(msg.properties.replyTo, )
