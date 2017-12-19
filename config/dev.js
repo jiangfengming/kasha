@@ -9,5 +9,9 @@ module.exports = {
   mongodb: {
     url: 'mongodb://localhost:27017/renderService',
     database: 'renderService'
+  },
+
+  cache: {
+    duration: 60 * 24 // 1 day
   }
 }

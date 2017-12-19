@@ -1,4 +1,6 @@
-async function main() {
+console.log(require('yargs').argv)
+
+/* async function main() {
   const { MongoClient } = require('mongodb')
   const client = await MongoClient.connect('mongodb://localhost:27017/renderService')
   const db = client.db('renderService')
@@ -7,3 +9,4 @@ async function main() {
 }
 
 main()
+ */
