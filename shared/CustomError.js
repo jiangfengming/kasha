@@ -1,8 +1,9 @@
 const errors = require('./errors')
+const { format } = require('util')
 
 class CustomError extends Error {
-  constructor(code, message = errors[code]) {
-    super(message)
+  constructor(code, ...args) {
+    super(format(errors[code], ...args))
     this.code = code
   }
 }

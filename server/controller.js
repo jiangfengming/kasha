@@ -53,16 +53,16 @@ async function render(ctx) {
     msgOpts.persistent = true
     msgOpts.contentType = 'application/json'
 
-    const sended = mq.channel.sendToQueue(queue, msg, msgOpts)
+    const isFull = mq.channel.sendToQueue(queue, msg, msgOpts)
 
-    if (!sended) {
-      throw new CustomError('SERVER_BUSY')
+    if (isFull) {
+      console.warn("Message channel's buffer is full") // eslint-disable-line
+    }
+
+    if (callbackUrl) {
+      ctx.body = {} // end
     } else {
-      if (callbackUrl) {
-        ctx.body = {} // end
-      } else {
-        // todo
-      }
+      // todo
     }
   }
 }

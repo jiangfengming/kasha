@@ -4,6 +4,8 @@
   const { MongoClient } = require('mongodb')
   const prerender = require('puppeteer-prerender')
   const userAgents = require('../shared/userAgents')
+  const callback = require('../shared/callback')
+  const CustomError = require('../shared/CustomError')
 
   const rpcMode = Boolean(argv.rpc)
   const queueName = rpcMode ? 'renderWorkerRPC' : 'renderWorker'
@@ -23,20 +25,49 @@
   mq.channel.consume(queueName, async msg => {
     const { url, deviceType, callbackUrl, state } = msg
 
+    function handleError(e) {
+      if (callbackUrl) {
+
+      } else {
+
+      }
+    }
+
+    let title, content
     try {
-      const { title, content } = await prerender(url, {
+      ({ title, content }) = await prerender(url, {
         userAgent: userAgents[deviceType]
       })
-
-
-      db.collection('cache').insertOne()
-
-      if (msg.properties.replyTo) {
-        mq.channel.sendToQueue(msg.properties.replyTo, )
-      }
-
     } catch (e) {
-
+      return handleError(new CustomError('SERVER_RENDER_ERROR', e.message))
     }
+
+    const doc = {
+      url,
+      deviceType,
+      title,
+      content,
+      date: new Date()
+    }
+
+    try {
+      db.collection('cache').updateOne({ url, deviceType }, doc, { upsert: true })
+    } catch (e) {
+      console.error(e, ) // eslint-disable-line
+      return handleError(new CustomError('SERVER_INTERNAL_ERROR', ))
+    }
+
+
+
+    if (callbackUrl) {
+      await callback(callbackUrl, doc)
+    } else {
+      const isFull = mq.channel.sendToQueue(msg.properties.replyTo, Buffer.from(JSON.stringify(doc)), { correlationId: msg.properties.correlationId })
+      if (isFull) {
+        console.warn("Message channel's buffer is full") // eslint-disable-line
+      }
+    }
+
+    mq.channel.ack(msg)
   })
 }())
