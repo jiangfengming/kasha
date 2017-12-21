@@ -5,11 +5,13 @@
   "main": "index.js",
   "dependencies": {
     "amqplib": "0.5.2",
+    "colors": "1.1.2",
     "koa": "2.4.1",
     "koa-router": "7.3.0",
     "mongodb": "3.0.0-rc0",
     "pm2": "2.8.0",
     "puppeteer-prerender": "0.1.1",
+    "raven": "2.3.0",
     "yargs": "10.0.3"
   },
   "devDependencies": {
@@ -25,7 +27,8 @@
       "mq": false,
       "mongoClient": false,
       "db": false,
-      "CustomError": false
+      "CustomError": false,
+      "logger": false
     }
   },
   "scripts": {

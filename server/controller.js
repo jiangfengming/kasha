@@ -1,15 +1,6 @@
 const { URL } = require('url')
-const crypto = require('crypto')
 const assert = require('assert')
-
-function genUid() {
-  return new Promise((resolve, reject) => {
-    crypto.randomBytes(16, (err, buf) => {
-      if (err) reject(err)
-      else resolve(buf.toString('base64'))
-    })
-  })
-}
+const uid = require('../shared/uid')
 
 async function render(ctx) {
   const { url, deviceType = 'desktop', callbackUrl, state = '' } = ctx.query
@@ -45,7 +36,7 @@ async function render(ctx) {
     } else {
       queue = 'renderWorkerRPC'
       msgOpts = {
-        correlationId: await genUid(),
+        correlationId: uid(),
         replyTo: mq.queue.queue
       }
     }

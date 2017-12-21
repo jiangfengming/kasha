@@ -6,10 +6,13 @@
   const Router = require('koa-router')
   const amqp = require('amqplib')
   const { MongoClient } = require('mongodb')
+  const Logger = require('../shared/Logger')
 
   const configFile = argv.config || process.env.npm_config_config || 'default'
   console.log('load config file:', configFile) // eslint-disable-line
   const config = require('../config/' + configFile)
+
+  global.logger = new Logger({ sentry: config.sentry })
 
   global.mq = {}
   mq.connection = await amqp.connect(config.amqp.url)

@@ -1,3 +1,0 @@
-function log(level, data) {
-
-}

@@ -3,15 +3,14 @@
   const amqp = require('amqplib')
   const { MongoClient } = require('mongodb')
   const prerender = require('puppeteer-prerender')
+
+  const config = require('../shared/config')
   const userAgents = require('../shared/userAgents')
   const callback = require('../shared/callback')
   const CustomError = require('../shared/CustomError')
 
   const rpcMode = Boolean(argv.rpc)
   const queueName = rpcMode ? 'renderWorkerRPC' : 'renderWorker'
-  const configFile = argv.config || process.env.npm_config_config || 'default'
-  console.log('load config file:', configFile) // eslint-disable-line
-  const config = require('../config/' + configFile)
 
   global.mq = {}
   mq.connection = await amqp.connect(config.amqp.url)
