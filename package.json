@@ -12,6 +12,7 @@
     "pm2": "2.8.0",
     "puppeteer-prerender": "0.1.1",
     "raven": "2.3.0",
+    "raven-logger": "0.1.0",
     "yargs": "10.0.3"
   },
   "devDependencies": {
