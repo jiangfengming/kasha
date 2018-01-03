@@ -34,9 +34,9 @@
 
     let title, content
     try {
-      ({ title, content }) = await prerender(url, {
+      ({ title, content } = await prerender(url, {
         userAgent: userAgents[deviceType]
-      })
+      }))
     } catch (e) {
       return handleError(new CustomError('SERVER_RENDER_ERROR', e.message))
     }
@@ -50,20 +50,17 @@
     }
 
     try {
-      db.collection('cache').updateOne({ url, deviceType }, doc, { upsert: true })
+      await db.collection('cache').updateOne({ url, deviceType }, doc, { upsert: true })
     } catch (e) {
-      console.error(e, ) // eslint-disable-line
-      return handleError(new CustomError('SERVER_INTERNAL_ERROR', ))
+      logger.error(e)
     }
 
-
-
     if (callbackUrl) {
-      await callback(callbackUrl, doc)
+      await callback(callbackUrl, state, doc)
     } else {
       const isFull = mq.channel.sendToQueue(msg.properties.replyTo, Buffer.from(JSON.stringify(doc)), { correlationId: msg.properties.correlationId })
       if (isFull) {
-        console.warn("Message channel's buffer is full") // eslint-disable-line
+        logger.warn('Message channel\'s buffer is full')
       }
     }
 

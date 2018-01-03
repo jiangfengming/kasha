@@ -1,4 +1,5 @@
-// console.log(require('yargs').argv)
+console.log(require('yargs').argv)
+
 /*
 async function main() {
   const { MongoClient } = require('mongodb')
@@ -17,9 +18,11 @@ console.error(e)
 console.error({ bar: 222 })
  */
 
+/*
 const logger = require('./shared/logger')
 console.log(logger.fatal(new Error('fatal')))
 console.log(logger.error(new Error('error')))
 console.log(logger.warn('warn'))
 console.log(logger.info('hello'))
 console.log(logger.debug('debug'))
+ */
