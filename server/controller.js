@@ -58,4 +58,13 @@ async function render(ctx) {
   }
 }
 
-module.exports = { render }
+async function cache(ctx) {
+}
+
+async function proxy(ctx) {
+  console.log(ctx)
+  const url = ctx.url.slice(1)
+  ctx.body = url
+}
+
+module.exports = { render, cache, proxy }

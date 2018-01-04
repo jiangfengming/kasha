@@ -1,15 +1,17 @@
 (async() => {
-  // global error class
-  global.CustomError = require('../shared/CustomError')
-
   const Koa = require('koa')
   const Router = require('koa-router')
   const amqp = require('amqplib')
   const { MongoClient } = require('mongodb')
-  const config = require('./shared/config')
+
+  // global error class
+  global.CustomError = require('../shared/CustomError')
+
+  // load config
+  const config = require('../shared/config')
 
   // global logger
-  global.logger = require('./shared/logger')
+  global.logger = require('../shared/logger')
 
   // global RabbitMQ instance
   global.mq = {}
@@ -24,9 +26,12 @@
   // server
   const app = new Koa()
   const router = new Router()
-  const { render } = require('./controller')
+  const controller = require('./controller')
 
-  router.get('/render', render)
+  // routes
+  router.get('/render', controller.render)
+  router.get('/cache', controller.cache)
+  router.get('/(http.+)', controller.proxy)
 
   app.use(async(ctx, next) => {
     try {
