@@ -23,8 +23,8 @@ async function render(ctx) {
     }
   }
 
-  const cache = await db.collection('cache').findOne({ url, deviceType })
-  if (cache) {
+  const snapshot = await db.collection('snapshots').findOne({ url, deviceType })
+  if (snapshot) {
     // todo
   } else {
     const msg = Buffer.from(JSON.stringify({ url, deviceType, callbackUrl, state }))

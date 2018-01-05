@@ -1,16 +1,17 @@
-console.log(require('yargs').argv)
+// console.log(require('yargs').argv)
 
-/*
+
 async function main() {
   const { MongoClient } = require('mongodb')
   const client = await MongoClient.connect('mongodb://localhost:27017/test')
   const db = client.db('test')
-  const result = await db.collection('test').findOne()
-  console.log(JSON.stringify(result)
+  const result = await db.collection('test').findOne({ foo: 1 })
+  console.log(result)
 }
 
 main()
- */
+
+
 /*
 const e = new Error('aaaa')
 e.foo = 111
@@ -25,4 +26,9 @@ console.log(logger.error(new Error('error')))
 console.log(logger.warn('warn'))
 console.log(logger.info('hello'))
 console.log(logger.debug('debug'))
+ */
+
+
+/* const fetchRobots = require('./shared/fetchRobots')
+fetchRobots('https://jianshiapp.com/robots.txt')
  */
