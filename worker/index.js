@@ -50,7 +50,7 @@
     }
 
     try {
-      await db.collection('cache').updateOne({ url, deviceType }, doc, { upsert: true })
+      await db.collection('cache').updateOne({ url, deviceType }, { $set: doc }, { upsert: true })
     } catch (e) {
       logger.error(e)
     }

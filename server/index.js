@@ -45,11 +45,11 @@
         }
       } else {
         const { timestamp, eventId } = logger.error(e)
-
-        ctx.status = 500
+        const err = new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
+        ctx.status = err.status
         ctx.body = {
-          code: 'SERVER_UNEXPECTED_ERROR',
-          message: `Unexpected error happened (EVENT_ID: ${timestamp}-${eventId}).`
+          code: err.code,
+          message: err.message
         }
       }
     }
