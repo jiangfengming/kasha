@@ -1,4 +1,10 @@
+const { URL } = require('url')
 const fetch = require('node-fetch')
+const through = require('through')
+const parse = require('robots-txt-parse')
+const guard = require('robots-txt-guard')
+
+const EXPIRE = 24 * 60 * 60 * 1000 // cache one day
 
 async function fetchRobotsTxt(site) {
   const url = site + '/robots.txt'
@@ -30,7 +36,7 @@ async function fetchRobotsTxt(site) {
   let maxAge
   const cacheControl = res.headers.get('Cache-Control')
   if (cacheControl) maxAge = cacheControl.match(/(?:^|,)\s*max-age=(\d+)/)
-  const expire = new Date(Date.now() + maxAge ? maxAge[1] * 1000 : 24 * 60 * 60 * 1000)
+  const expire = new Date(Date.now() + maxAge ? maxAge[1] * 1000 : EXPIRE)
 
   if (res.ok) {
     const content = await res.text()
@@ -58,8 +64,15 @@ async function fetchRobotsTxt(site) {
   }
 }
 
-function isAllowed() {
-
+async function isAllowed(url) {
+  url = new URL(url)
+  const robotsTxt = await fetchRobotsTxt(url.origin)
+  if (robotsTxt.fullAllow) return true
+  if (robotsTxt.fullDisallow) return false
+  const content = through()
+  content.write(robotsTxt.content)
+  const rules = await parse(content)
+  return guard(rules).isAllowed('*', url.pathname)
 }
 
-module.exports = fetchRobotsTxt
+module.exports = { fetch: fetchRobotsTxt, isAllowed }
