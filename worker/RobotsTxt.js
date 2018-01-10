@@ -70,7 +70,7 @@ async function isAllowed(url) {
   if (robotsTxt.fullAllow) return true
   if (robotsTxt.fullDisallow) return false
   const content = through()
-  content.write(robotsTxt.content)
+  content.end(robotsTxt.content)
   const rules = await parse(content)
   return guard(rules).isAllowed('*', url.pathname)
 }
