@@ -1,7 +1,20 @@
+async function main() {
+  const config = require('./shared/config')
+  const { MongoClient } = require('mongodb')
+  global.mongoClient = await MongoClient.connect(config.mongodb.url)
+  global.db = mongoClient.db(config.mongodb.database)
+
+  const { isAllowed } = require('./worker/robotsTxt')
+  const result = await isAllowed('https://wallstreetcn.com/')
+  console.log(result)
+}
+
+main()
+
 // console.log(require('yargs').argv)
 
 
-async function main() {
+/* async function main() {
   const { MongoClient } = require('mongodb')
   const client = await MongoClient.connect('mongodb://localhost:27017/test')
   const db = client.db('test')
@@ -9,7 +22,7 @@ async function main() {
   console.log(result)
 }
 
-main()
+main() */
 
 
 /*

@@ -12,13 +12,13 @@ async function fetchRobotsTxt(site) {
 
   let cache
   try {
-    cache = collection.findOne({ site })
+    cache = await collection.findOne({ site })
   } catch (e) {
     const { timestamp, eventId } = logger.error(e)
     throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
   }
 
-  if (cache && cache.expire < Date.now()) {
+  if (cache && cache.expire > Date.now()) {
     if (cache.status >= 200 && cache.status <= 299 || cache.status >= 400 && cache.status <= 499) {
       return { content: cache.content, fullAllow: cache.fullAllow, fullDisallow: cache.fullDisallow }
     } else if (cache.retry >= 3) {
@@ -36,7 +36,8 @@ async function fetchRobotsTxt(site) {
   let maxAge
   const cacheControl = res.headers.get('Cache-Control')
   if (cacheControl) maxAge = cacheControl.match(/(?:^|,)\s*max-age=(\d+)/)
-  const expire = new Date(Date.now() + maxAge ? maxAge[1] * 1000 : EXPIRE)
+  maxAge = maxAge ? maxAge[1] * 1000 : EXPIRE
+  const expire = new Date(Date.now() + maxAge)
 
   if (res.ok) {
     const content = await res.text()
@@ -48,15 +49,22 @@ async function fetchRobotsTxt(site) {
       throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
     }
   } else {
+    const content = ''
     let update
+    let fullAllow = false
+    let fullDisallow = false
+
     if (res.status >= 400 && res.status <= 499) {
-      update = { $set: { status: res.status, content: '', expire, fullAllow: true, fullDisallow: false, retry: 0 } }
+      fullAllow = true
+      update = { $set: { status: res.status, content, expire, fullAllow, fullDisallow, retry: 0 } }
     } else {
-      update = { $set: { status: res.status, content: '', expire: new Date(Date.now() + 60 * 1000), fullAllow: false, fullDisallow: true }, $inc: { retry: 1 } }
+      fullDisallow = true
+      update = { $set: { status: res.status, content, expire: new Date(Date.now() + 60 * 1000), fullAllow, fullDisallow }, $inc: { retry: 1 } }
     }
 
     try {
       collection.updateOne({ site }, update, { upsert: true })
+      return { content, fullAllow, fullDisallow }
     } catch (e) {
       const { timestamp, eventId } = logger.error(e)
       throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
