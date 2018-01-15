@@ -26,32 +26,33 @@
   // server
   const app = new Koa()
   const router = new Router()
-  const controller = require('./controller')
+  const render = require('./render')
 
   // routes
-  router.get('/render', controller.render)
-  router.get('/cache', controller.cache)
-  router.get('/(http.+)', controller.proxy)
+  router.get('/render', render)
+
+  router.get('/cache', (ctx, next) => {
+    ctx.query.noWait = true
+    return next()
+  }, render)
+
+  router.get('/(http.+)', (ctx, next) => {
+    ctx.query.url = ctx.url.slice(1)
+    return next()
+  }, render)
 
   app.use(async(ctx, next) => {
     try {
       await next()
     } catch (e) {
-      if (e instanceof CustomError) {
-        ctx.status = e.status
-        ctx.body = {
-          code: e.code,
-          message: e.message
-        }
-      } else {
+      let err = e
+      if (!(e instanceof CustomError)) {
         const { timestamp, eventId } = logger.error(e)
-        const err = new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
-        ctx.status = err.status
-        ctx.body = {
-          code: err.code,
-          message: err.message
-        }
+        err = new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
       }
+
+      ctx.status = err.status
+      ctx.body = err.toJSON()
     }
   })
 

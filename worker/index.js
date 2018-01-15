@@ -8,6 +8,7 @@
   const userAgents = require('../shared/userAgents')
   const callback = require('../shared/callback')
   const CustomError = require('../shared/CustomError')
+  const { isAllowed } = require('./robotsTxt')
 
   const rpcMode = Boolean(argv.rpc)
   const queueName = rpcMode ? 'renderWorkerRPC' : 'renderWorker'
@@ -22,23 +23,41 @@
   global.db = mongoClient.db(config.mongodb.database)
 
   mq.channel.consume(queueName, async msg => {
-    const { url, deviceType, callbackUrl, state } = msg
+    const { url, deviceType, callbackUrl, state } = JSON.parse(msg.content.toString())
 
-    function handleError(e) {
+    function handleResult(result) {
       if (callbackUrl) {
+        callback(callbackUrl, url, state, result)
+      } else if (msg.properties.replyTo) {
+        const isFull = mq.channel.sendToQueue(
+          msg.properties.replyTo,
+          Buffer.from(JSON.stringify(result)),
+          {
+            correlationId: msg.properties.correlationId,
+            headers: {
+              status: result instanceof CustomError ? result.status : 200
+            }
+          }
+        )
 
-      } else {
-
+        if (isFull) logger.warn('Message channel\'s buffer is full')
       }
+
+      mq.channel.ack(msg)
     }
 
+    if (!await isAllowed(url)) {
+      return handleResult(new CustomError('SERVER_ROBOTS_DISALLOW'))
+    }
+
+    const date = new Date()
     let title, content
     try {
       ({ title, content } = await prerender(url, {
         userAgent: userAgents[deviceType]
       }))
     } catch (e) {
-      return handleError(new CustomError('SERVER_RENDER_ERROR', e.message))
+      return handleResult(new CustomError('SERVER_RENDER_ERROR', e.message))
     }
 
     const doc = {
@@ -46,7 +65,7 @@
       deviceType,
       title,
       content,
-      date: new Date()
+      date
     }
 
     try {
@@ -55,15 +74,6 @@
       logger.error(e)
     }
 
-    if (callbackUrl) {
-      await callback(callbackUrl, state, doc)
-    } else {
-      const isFull = mq.channel.sendToQueue(msg.properties.replyTo, Buffer.from(JSON.stringify(doc)), { correlationId: msg.properties.correlationId })
-      if (isFull) {
-        logger.warn('Message channel\'s buffer is full')
-      }
-    }
-
-    mq.channel.ack(msg)
+    return handleResult(doc)
   })
 }())

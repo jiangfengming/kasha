@@ -23,7 +23,14 @@ async function render(ctx) {
     }
   }
 
-  const snapshot = await db.collection('snapshots').findOne({ url, deviceType })
+  let snapshot
+  try {
+    snapshot = await db.collection('snapshot').findOne({ url, deviceType })
+  } catch (e) {
+    const { timestamp, eventId } = logger.error(e)
+    throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
+  }
+
   if (snapshot) {
     // todo
   } else {
@@ -46,9 +53,7 @@ async function render(ctx) {
 
     const isFull = mq.channel.sendToQueue(queue, msg, msgOpts)
 
-    if (isFull) {
-      console.warn("Message channel's buffer is full") // eslint-disable-line
-    }
+    if (isFull) logger.warn('Message channel\'s buffer is full')
 
     if (callbackUrl) {
       ctx.body = {} // end
@@ -58,13 +63,4 @@ async function render(ctx) {
   }
 }
 
-async function cache(ctx) {
-}
-
-async function proxy(ctx) {
-  console.log(ctx)
-  const url = ctx.url.slice(1)
-  ctx.body = url
-}
-
-module.exports = { render, cache, proxy }
+module.exports = render

@@ -9,6 +9,13 @@ class CustomError extends Error {
     const httpStatusMap = { CLIENT: 400, SERVER: 500 }
     this.status = httpStatusMap[code.split('_')[0]]
   }
+
+  toJSON() {
+    return {
+      code: this.code,
+      message: this.message
+    }
+  }
 }
 
 module.exports = CustomError
