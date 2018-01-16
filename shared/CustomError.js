@@ -1,13 +1,19 @@
 const errors = require('./errors')
 const { format } = require('util')
 
+const httpStatusMap = { CLIENT: 400, SERVER: 500 }
+
 class CustomError extends Error {
   constructor(code, ...args) {
-    super(format(errors[code], ...args))
-    this.code = code
+    if (code.constructor === Object) {
+      super(code.message)
+      this.code = code.code
+    } else {
+      super(format(errors[code], ...args))
+      this.code = code
+    }
 
-    const httpStatusMap = { CLIENT: 400, SERVER: 500 }
-    this.status = httpStatusMap[code.split('_')[0]]
+    this.status = httpStatusMap[this.code.split('_')[0]]
   }
 
   toJSON() {

@@ -9,9 +9,12 @@
   const callback = require('../shared/callback')
   const CustomError = require('../shared/CustomError')
   const { isAllowed } = require('./robotsTxt')
+  const { filterResult } = require('../shared/util')
 
   const rpcMode = Boolean(argv.rpc)
   const queueName = rpcMode ? 'renderWorkerRPC' : 'renderWorker'
+
+  prerender.timeout = 25 * 1000
 
   global.mq = {}
   mq.connection = await amqp.connect(config.amqp.url)
@@ -23,11 +26,15 @@
   global.db = mongoClient.db(config.mongodb.database)
 
   mq.channel.consume(queueName, async msg => {
-    const { url, deviceType, callbackUrl, state } = JSON.parse(msg.content.toString())
+    const { url, deviceType, callbackUrl, state, fields, followRedirect } = JSON.parse(msg.content.toString())
 
     function handleResult(result) {
+      if (!(result instanceof CustomError) && fields) {
+        result = filterResult(result, fields)
+      }
+
       if (callbackUrl) {
-        callback(callbackUrl, url, state, result)
+        callback(callbackUrl, state, result)
       } else if (msg.properties.replyTo) {
         const isFull = mq.channel.sendToQueue(
           msg.properties.replyTo,
@@ -54,7 +61,8 @@
     let title, content
     try {
       ({ title, content } = await prerender(url, {
-        userAgent: userAgents[deviceType]
+        userAgent: userAgents[deviceType],
+        followRedirect
       }))
     } catch (e) {
       return handleResult(new CustomError('SERVER_RENDER_ERROR', e.message))

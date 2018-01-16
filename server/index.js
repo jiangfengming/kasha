@@ -3,6 +3,7 @@
   const Router = require('koa-router')
   const amqp = require('amqplib')
   const { MongoClient } = require('mongodb')
+  const { consume } = require('./mqRPC')
 
   // global error class
   global.CustomError = require('../shared/CustomError')
@@ -18,6 +19,7 @@
   mq.connection = await amqp.connect(config.amqp.url)
   mq.channel = await mq.connection.createConfirmChannel()
   mq.queue = await mq.channel.assertQueue('', { exclusive: true })
+  mq.channel.consume(mq.queue.queue, consume, { noAck: true })
 
   // global MongoDB instance
   global.mongoClient = await MongoClient.connect(config.mongodb.url)
@@ -32,12 +34,13 @@
   router.get('/render', render)
 
   router.get('/cache', (ctx, next) => {
-    ctx.query.noWait = true
+    ctx.query.noWait = ''
     return next()
   }, render)
 
   router.get('/(http.+)', (ctx, next) => {
     ctx.query.url = ctx.url.slice(1)
+    ctx.query.format = 'html'
     return next()
   }, render)
 

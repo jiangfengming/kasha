@@ -4,22 +4,24 @@ const fetch = require('node-fetch')
 const RETRY = 3
 const TIMEOUT = 10
 
-function callback(callbackUrl, url, state, result) {
-  callbackUrl = new URL(callbackUrl)
-  callbackUrl.searchParams.set('url', url)
-  callbackUrl.searchParams.set('state', state)
+function callback(callbackUrl, state, result) {
+  const url = new URL(callbackUrl)
+  url.searchParams.set('code', result instanceof CustomError ? result.code : 'OK')
+  url.searchParams.set('state', state)
+
+  const init = {
+    method: 'POST',
+    body: JSON.stringify(result),
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    timeout: TIMEOUT
+  }
 
   let success = false, tried = 0
   do {
     try {
-      fetch(callbackUrl.href, {
-        method: 'POST',
-        body: JSON.stringify(result),
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        timeout: TIMEOUT
-      })
+      fetch(url.href, init)
       success = true
     } catch (e) {
       tried++
