@@ -25,6 +25,8 @@
   global.mongoClient = await MongoClient.connect(config.mongodb.url)
   global.db = mongoClient.db(config.mongodb.database)
 
+  collection = db.collection('cache')
+
   mq.channel.consume(queueName, async msg => {
     const { url, deviceType, callbackUrl, state, fields, followRedirect } = JSON.parse(msg.content.toString())
 
@@ -60,16 +62,31 @@
     const date = new Date()
     let title, content
     try {
-      ({ title, content } = await prerender(url, {
+      ({ status, redirect, title, content } = await prerender(url, {
         userAgent: userAgents[deviceType],
         followRedirect
       }))
     } catch (e) {
+      const doc = {
+        url,
+        deviceType,
+        status: null,
+        redirect: null,
+        title: null,
+        content: null,
+        error: e.message
+        date
+      }
+      try {
+        await collection.updateOne({ url, deviceType }, { $set: doc,  })
+      }
       return handleResult(new CustomError('SERVER_RENDER_ERROR', e.message))
     }
 
     const doc = {
       url,
+      status,
+      redirect,
       deviceType,
       title,
       content,
