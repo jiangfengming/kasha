@@ -25,10 +25,67 @@
   global.mongoClient = await MongoClient.connect(config.mongodb.url)
   global.db = mongoClient.db(config.mongodb.database)
 
-  collection = db.collection('cache')
+  const collection = db.collection('cache')
 
   mq.channel.consume(queueName, async msg => {
     const { url, deviceType, callbackUrl, state, fields, followRedirect } = JSON.parse(msg.content.toString())
+
+    // check robots.txt
+    if (!await isAllowed(url)) {
+      return handleResult(new CustomError('SERVER_ROBOTS_DISALLOW'))
+    }
+
+    const date = new Date()
+    let status = null, redirect = null, title = null, content = null
+
+    try {
+      ({ status, redirect, title, content } = await prerender(url, {
+        userAgent: userAgents[deviceType],
+        followRedirect
+      }))
+    } catch (e) {
+      const error = e.message
+
+      try {
+        await collection.updateOne({ url, deviceType }, {
+          $set: {
+            status,
+            redirect,
+            title,
+            content,
+            error,
+            date
+          },
+          $inc: {
+            retry: 1
+          }
+        }, { upsert: true })
+      } catch (e) {
+        const { timestamp, eventId } = logger.error(e)
+        return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+      }
+
+      return handleResult(new CustomError('SERVER_RENDER_ERROR', e.message))
+    }
+
+    try {
+      await db.collection('cache').updateOne({ url, deviceType }, {
+        $set: {
+          status,
+          redirect,
+          title,
+          content,
+          error: null,
+          date,
+          retry: 0
+        }
+      }, { upsert: true })
+    } catch (e) {
+      const { timestamp, eventId } = logger.error(e)
+      return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+    }
+
+    return handleResult({ url, deviceType, status, redirect, title, content, date })
 
     function handleResult(result) {
       if (!(result instanceof CustomError) && fields) {
@@ -54,51 +111,5 @@
 
       mq.channel.ack(msg)
     }
-
-    if (!await isAllowed(url)) {
-      return handleResult(new CustomError('SERVER_ROBOTS_DISALLOW'))
-    }
-
-    const date = new Date()
-    let title, content
-    try {
-      ({ status, redirect, title, content } = await prerender(url, {
-        userAgent: userAgents[deviceType],
-        followRedirect
-      }))
-    } catch (e) {
-      const doc = {
-        url,
-        deviceType,
-        status: null,
-        redirect: null,
-        title: null,
-        content: null,
-        error: e.message
-        date
-      }
-      try {
-        await collection.updateOne({ url, deviceType }, { $set: doc,  })
-      }
-      return handleResult(new CustomError('SERVER_RENDER_ERROR', e.message))
-    }
-
-    const doc = {
-      url,
-      status,
-      redirect,
-      deviceType,
-      title,
-      content,
-      date
-    }
-
-    try {
-      await db.collection('cache').updateOne({ url, deviceType }, { $set: doc }, { upsert: true })
-    } catch (e) {
-      logger.error(e)
-    }
-
-    return handleResult(doc)
   })
 }())

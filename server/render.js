@@ -60,10 +60,25 @@ async function render(ctx) {
     }
 
     if (snapshot) {
-      if (format === 'html') {
-        ctx.body = snapshot.content
+      const { status, redirect, title, content, error, date, retry } = snapshot
+
+      if (status >= 200 && status <= 299) {
+        if (format === 'html') {
+          ctx.body = snapshot.content
+        } else {
+          ctx.body = fields ? filterResult(snapshot, fields) : snapshot
+        }
+      } else if ([301, 302].includes(status)) {
+        if (format === 'html') {
+          ctx.status = status
+          ctx.redirect(redirect)
+        } else {
+          ctx.body = fields ? filterResult(snapshot, [...fields, 'status', 'redirect']) : snapshot
+        }
+      } else if (date.getTime() + 1000 < now && retry < 3) {
+
       } else {
-        ctx.body = fields ? filterResult(snapshot, fields) : snapshot
+        throw new CustomError('SERVER_RENDER_ERROR')
       }
     } else {
       const msg = Buffer.from(JSON.stringify({ url, deviceType, callbackUrl, state, fields, followRedirect }))
