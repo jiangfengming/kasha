@@ -29,18 +29,57 @@ function consume(msg) {
   const q = queue.find(q => q.correlationId === msg.properties.correlationId)
   if (!q) return
 
-  const { ctx, resolve, reject } = q
-  console.log(msg.properties.headers.status) // eslint-disable-line
-  const status = +msg.properties.headers.status
+  const { ctx, resolve, reject, format, followRedirect } = q
+  console.log(msg.properties.headers.code) // eslint-disable-line
+  const code = msg.properties.headers.code
   const result = JSON.parse(msg.content.toString())
 
-  if (status !== 200) {
+  if (code !== 'OK') {
     reject(new CustomError(result))
   } else {
-    ctx.body = result
-    Object.assign(q, { ctx: null, correlationId: null, date: null, resolve: null, reject: null })
+    if (format === 'json') {
+      ctx.body = result
+    } else {
+      const isOK = status >= 200 && status <= 299
+      const isRedirect = isOK ? false : [301, 302].includes(status)
+
+      if (isOK || (isRedirect && followRedirect)) {
+        ctx.body = result.content
+      } else if (isRedirect) {
+        ctx.status = result.status
+        ctx.redirect(result.redirect)
+      } else {
+
+      }
+    }
+
+    // release resource
+    for (const k in q) delete q[k]
     resolve()
   }
 }
 
-module.exports = { add, consume }
+function handleResult(ctx, result, { format, followRedirect }) {
+  const { status, redirect, content } = result
+  const isOK = status >= 200 && status <= 299
+  const isRedirect = isOK ? false : [301, 302].includes(status)
+
+  if (isOK || isRedirect && (!followRedirect || followRedirect && content !== null)) {
+    if (format === 'json') {
+      ctx.body = result
+    } else {
+      if (isOK || followRedirect) {
+        ctx.body = content
+      } else {
+        ctx.status = status
+        ctx.redirect(redirect)
+      }
+    }
+
+    return true
+  } else {
+    return false
+  }
+}
+
+module.exports = { add, consume, handleResult }

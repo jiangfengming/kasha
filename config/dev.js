@@ -11,9 +11,7 @@ module.exports = {
     database: 'renderService'
   },
 
-  cache: {
-    duration: 60 * 24 // 1 day
-  },
+  cache: 24 * 60, // 1 day
 
   sentry: {
     dsn: ''

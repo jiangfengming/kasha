@@ -4,10 +4,9 @@ const fetch = require('node-fetch')
 const RETRY = 3
 const TIMEOUT = 10
 
-function callback(callbackUrl, state, result) {
+function callback(callbackUrl, result) {
   const url = new URL(callbackUrl)
   url.searchParams.set('code', result instanceof CustomError ? result.code : 'OK')
-  url.searchParams.set('state', state)
 
   const init = {
     method: 'POST',

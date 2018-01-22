@@ -5,6 +5,7 @@ const parse = require('robots-txt-parse')
 const guard = require('robots-txt-guard')
 
 const EXPIRE = 24 * 60 * 60 * 1000 // cache one day
+const ERROR_EXIPRE = 60 * 1000 // one minute
 
 /*
 robotsTxt collection schema:
@@ -38,7 +39,7 @@ async function fetchRobotsTxt(site) {
       }
 
       return { content, fullAllow, fullDisallow }
-    } else if (retry >= 3) {
+    } else if (expire > now && retry >= 3) {
       throw new CustomError(
         'SERVER_NET_ERROR',
         `Fetching ${url} failed 3 times in one minute (${error || ('HTTP ' + status)}).`
@@ -60,7 +61,7 @@ async function fetchRobotsTxt(site) {
           $set: {
             status: null,
             content: null,
-            expire: new Date(now + 60 * 1000),
+            expire: new Date(now + ERROR_EXIPRE),
             fullAllow: null,
             fullDisallow: null,
             error: e.message
@@ -129,7 +130,7 @@ async function fetchRobotsTxt(site) {
           $set: {
             status: res.status,
             content,
-            expire: new Date(now + 60 * 1000),
+            expire: new Date(now + ERROR_EXIPRE),
             fullAllow,
             fullDisallow,
             error: null

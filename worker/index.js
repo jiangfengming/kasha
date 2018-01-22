@@ -9,7 +9,6 @@
   const callback = require('../shared/callback')
   const CustomError = require('../shared/CustomError')
   const { isAllowed } = require('./robotsTxt')
-  const { filterResult } = require('../shared/util')
 
   const rpcMode = Boolean(argv.rpc)
   const queueName = rpcMode ? 'renderWorkerRPC' : 'renderWorker'
@@ -28,7 +27,7 @@
   const collection = db.collection('cache')
 
   mq.channel.consume(queueName, async msg => {
-    const { url, deviceType, callbackUrl, state, fields, followRedirect } = JSON.parse(msg.content.toString())
+    const { url, deviceType, callbackUrl, metaOnly, followRedirect } = JSON.parse(msg.content.toString())
 
     // check robots.txt
     if (!await isAllowed(url)) {
@@ -88,12 +87,12 @@
     return handleResult({ url, deviceType, status, redirect, title, content, date })
 
     function handleResult(result) {
-      if (!(result instanceof CustomError) && fields) {
-        result = filterResult(result, fields)
+      if (!(result instanceof CustomError) && metaOnly) {
+        delete result.content
       }
 
       if (callbackUrl) {
-        callback(callbackUrl, state, result)
+        callback(callbackUrl, result)
       } else if (msg.properties.replyTo) {
         const isFull = mq.channel.sendToQueue(
           msg.properties.replyTo,
@@ -101,7 +100,7 @@
           {
             correlationId: msg.properties.correlationId,
             headers: {
-              status: result instanceof CustomError ? result.status : 200
+              code: result instanceof CustomError ? result.code : 'OK'
             }
           }
         )
