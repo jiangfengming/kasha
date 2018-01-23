@@ -35,7 +35,7 @@
     }
 
     const date = new Date()
-    let status = null, redirect = null, title = null, content = null
+    let status = null, redirect = null, title = null, content = null, error = null
 
     try {
       ({ status, redirect, title, content } = await prerender(url, {
@@ -43,8 +43,11 @@
         followRedirect
       }))
     } catch (e) {
-      const error = e.message
+      error = e.message
+    }
 
+    // if error occurs, retry up to 3 times in one minute
+    if (error || status >= 500 && status <= 599) {
       try {
         await collection.updateOne({ url, deviceType }, {
           $set: {
@@ -64,27 +67,31 @@
         return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
       }
 
-      return handleResult(new CustomError('SERVER_RENDER_ERROR', e.message))
-    }
+      if (error) {
+        return handleResult(new CustomError('SERVER_RENDER_ERROR', error))
+      } else {
+        return handleResult({ url, deviceType, status, redirect, title, content, date })
+      }
+    } else {
+      try {
+        await db.collection('cache').updateOne({ url, deviceType }, {
+          $set: {
+            status,
+            redirect,
+            title,
+            content,
+            error: null,
+            date,
+            retry: 0
+          }
+        }, { upsert: true })
+      } catch (e) {
+        const { timestamp, eventId } = logger.error(e)
+        return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+      }
 
-    try {
-      await db.collection('cache').updateOne({ url, deviceType }, {
-        $set: {
-          status,
-          redirect,
-          title,
-          content,
-          error: null,
-          date,
-          retry: 0
-        }
-      }, { upsert: true })
-    } catch (e) {
-      const { timestamp, eventId } = logger.error(e)
-      return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+      return handleResult({ url, deviceType, status, redirect, title, content, date })
     }
-
-    return handleResult({ url, deviceType, status, redirect, title, content, date })
 
     function handleResult(result) {
       if (!(result instanceof CustomError) && metaOnly) {

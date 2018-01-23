@@ -10,8 +10,8 @@ const ERROR_EXPIRE = 60 * 1000
 
 async function render(ctx) {
   const now = Date.now()
-  const { deviceType = 'desktop', callbackUrl, format = 'json' } = ctx.query
-  let { url, noWait, metaOnly, followRedirect } = ctx.query
+  const { deviceType = 'desktop', callbackUrl } = ctx.query
+  let { url, proxy, noWait, metaOnly, followRedirect } = ctx.query
 
   try {
     url = new URL(url)
@@ -33,8 +33,10 @@ async function render(ctx) {
     }
   }
 
-  if (!['json', 'html'].includes(format)) {
-    throw new CustomError('CLIENT_INVALID_PARAM', 'format')
+  if (![undefined, ''].includes(proxy)) {
+    throw new CustomError('CLIENT_INVALID_PARAM', 'proxy')
+  } else {
+    proxy = proxy === ''
   }
 
   if (![undefined, ''].includes(noWait)) {
@@ -55,10 +57,10 @@ async function render(ctx) {
     followRedirect = followRedirect === ''
   }
 
-  if (format === 'html' && (noWait || callbackUrl || metaOnly)) {
+  if (proxy && (callbackUrl || noWait || metaOnly)) {
     throw new CustomError(
       'CLIENT_INVALID_PARAM',
-      'callbackUrl|noWait|metaOnly can\'t be set when output format is html'
+      'callbackUrl|noWait|metaOnly can\'t be set in proxy mode'
     )
   }
 
@@ -76,6 +78,8 @@ async function render(ctx) {
       if (callbackUrl) {
         callback(callbackUrl, snapshot)
       } else if (!noWait) {
+        const { status, redirect, content, error, date, retry } = snapshot
+
         if (retry >= 3 && snapshot.date.getTime() + ERROR_EXPIRE > now) {
           throw new CustomError(
             'SERVER_RENDER_ERROR',
@@ -83,27 +87,6 @@ async function render(ctx) {
           )
         }
       }
-
-      const success = callback(ctx, snapshot, { format, followRedirect })
-
-      if (success) {
-        // refresh cache
-        if (snapshot.date.getTime() + EXPIRE < now) {
-
-        }
-
-        return
-      } else {
-        if ()
-
-      }
-
-      if (date.getTime() + 1000 < now && retry < 3) {
-        // nop
-      } else {
-      }
-
-
     }
 
     const msg = Buffer.from(JSON.stringify({
@@ -141,7 +124,7 @@ async function render(ctx) {
         ctx,
         correlationId: msgOpts.correlationId,
         date: now,
-        format,
+        proxy,
         metaOnly,
         followRedirect
       })

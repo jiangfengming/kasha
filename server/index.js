@@ -40,20 +40,21 @@
 
   router.get('/(http.+)', (ctx, next) => {
     ctx.query.url = ctx.url.slice(1)
-    ctx.query.format = 'html'
+    ctx.query.proxy = ''
     return next()
   }, render)
 
   app.use(async(ctx, next) => {
     try {
       await next()
+      ctx.set('X-Code', 'OK')
     } catch (e) {
       let err = e
       if (!(e instanceof CustomError)) {
         const { timestamp, eventId } = logger.error(e)
         err = new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
       }
-
+      ctx.set('X-Code', err.code)
       ctx.status = err.status
       ctx.body = err.toJSON()
     }

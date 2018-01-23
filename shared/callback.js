@@ -1,18 +1,15 @@
-const { URL } = require('url')
 const fetch = require('node-fetch')
 
 const RETRY = 3
 const TIMEOUT = 10
 
 function callback(callbackUrl, result) {
-  const url = new URL(callbackUrl)
-  url.searchParams.set('code', result instanceof CustomError ? result.code : 'OK')
-
   const init = {
     method: 'POST',
     body: JSON.stringify(result),
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'X-Code': result instanceof CustomError ? result.code : 'OK'
     },
     timeout: TIMEOUT
   }
@@ -20,7 +17,7 @@ function callback(callbackUrl, result) {
   let success = false, tried = 0
   do {
     try {
-      fetch(url.href, init)
+      fetch(callbackUrl, init)
       success = true
     } catch (e) {
       tried++
