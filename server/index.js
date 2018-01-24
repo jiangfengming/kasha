@@ -30,20 +30,6 @@
   const router = new Router()
   const render = require('./render')
 
-  // routes
-  router.get('/render', render)
-
-  router.get('/cache', (ctx, next) => {
-    ctx.query.noWait = ''
-    return next()
-  }, render)
-
-  router.get('/(http.+)', (ctx, next) => {
-    ctx.query.url = ctx.url.slice(1)
-    ctx.query.proxy = ''
-    return next()
-  }, render)
-
   app.use(async(ctx, next) => {
     try {
       await next()
@@ -59,6 +45,20 @@
       ctx.body = err.toJSON()
     }
   })
+
+  // routes
+  router.get('/render', render)
+
+  router.get('/cache', (ctx, next) => {
+    ctx.query.noWait = ''
+    return next()
+  }, render)
+
+  router.get('/(http.+)', (ctx, next) => {
+    ctx.query.url = ctx.url.slice(1)
+    ctx.query.proxy = ''
+    return next()
+  }, render)
 
   app.use(router.routes())
 

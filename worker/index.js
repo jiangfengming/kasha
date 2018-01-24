@@ -4,34 +4,51 @@
   const { MongoClient } = require('mongodb')
   const prerender = require('puppeteer-prerender')
 
-  const config = require('../shared/config')
   const userAgents = require('../shared/userAgents')
   const callback = require('../shared/callback')
-  const CustomError = require('../shared/CustomError')
   const { isAllowed } = require('./robotsTxt')
 
-  const rpcMode = Boolean(argv.rpc)
-  const queueName = rpcMode ? 'renderWorkerRPC' : 'renderWorker'
-
   prerender.timeout = 25 * 1000
+
+  // load config
+  const config = require('../shared/config')
+
+  // global error class
+  global.CustomError = require('../shared/CustomError')
+
+  // global logger
+  global.logger = require('../shared/logger')
+
+  // global RabbitMQ instance
+  const rpcMode = Boolean(process.env.npm_config_rpc || argv.rpc)
+  logger.info('RPC mode: ' + rpcMode)
+  const queueName = rpcMode ? 'renderWorkerRPC' : 'renderWorker'
 
   global.mq = {}
   mq.connection = await amqp.connect(config.amqp.url)
   mq.channel = await mq.connection.createChannel()
-  mq.queue = await mq.channel.assertQueue(queueName, { durable: true })
+  mq.queue = await mq.channel.assertQueue(queueName, { durable: !rpcMode })
   mq.channel.prefetch(config.amqp.prefetch)
 
+  // global MongoDB instance
   global.mongoClient = await MongoClient.connect(config.mongodb.url)
   global.db = mongoClient.db(config.mongodb.database)
 
-  const collection = db.collection('cache')
+  const collection = db.collection('snapshot')
 
   mq.channel.consume(queueName, async msg => {
-    const { url, deviceType, callbackUrl, metaOnly, followRedirect } = JSON.parse(msg.content.toString())
+    const msgContent = JSON.parse(msg.content.toString())
+    logger.debug(msgContent)
+
+    const { url, deviceType, callbackUrl, metaOnly, followRedirect } = msgContent
 
     // check robots.txt
-    if (!await isAllowed(url)) {
-      return handleResult(new CustomError('SERVER_ROBOTS_DISALLOW'))
+    try {
+      if (!await isAllowed(url)) {
+        return handleResult(new CustomError('SERVER_ROBOTS_DISALLOW'))
+      }
+    } catch (e) {
+      return handleResult(e)
     }
 
     const date = new Date()
@@ -74,7 +91,7 @@
       }
     } else {
       try {
-        await db.collection('cache').updateOne({ url, deviceType }, {
+        await collection.updateOne({ url, deviceType }, {
           $set: {
             status,
             redirect,
@@ -101,7 +118,7 @@
       if (callbackUrl) {
         callback(callbackUrl, result)
       } else if (msg.properties.replyTo) {
-        const isFull = mq.channel.sendToQueue(
+        const isFull = !mq.channel.sendToQueue(
           msg.properties.replyTo,
           Buffer.from(JSON.stringify(result)),
           {
@@ -115,7 +132,9 @@
         if (isFull) logger.warn('Message channel\'s buffer is full')
       }
 
-      mq.channel.ack(msg)
+      if (!rpcMode) mq.channel.ack(msg)
     }
-  })
+  }, { noAck: rpcMode })
+
+  logger.info('Worker started')
 }())

@@ -15,5 +15,7 @@ module.exports = {
 
   sentry: {
     dsn: ''
-  }
+  },
+
+  loglevel: 'debug'
 }

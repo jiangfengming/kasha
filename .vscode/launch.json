@@ -23,6 +23,13 @@
       "name": "Launch Worker",
       "program": "${workspaceFolder}/worker/index.js",
       "args": ["--config=dev"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch Worker(RPC)",
+      "program": "${workspaceFolder}/worker/index.js",
+      "args": ["--config=dev", "--rpc"]
     }
   ]
 }

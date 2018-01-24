@@ -157,10 +157,16 @@ async function isAllowed(url) {
   const robotsTxt = await fetchRobotsTxt(url.origin)
   if (robotsTxt.fullAllow) return true
   if (robotsTxt.fullDisallow) return false
-  const content = through()
-  content.end(robotsTxt.content)
-  const rules = await parse(content)
-  return guard(rules).isAllowed('*', url.pathname)
+  try {
+    const content = through()
+    const promise = parse(content).then(rules => guard(rules).isAllowed('*', url.pathname))
+    content.write(robotsTxt.content)
+    content.end()
+    return await promise
+  } catch (e) {
+    const { timestamp, eventId } = logger.error(e)
+    throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
+  }
 }
 
 module.exports = { fetch: fetchRobotsTxt, isAllowed }

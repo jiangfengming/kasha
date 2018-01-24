@@ -43,7 +43,8 @@ function consume(msg) {
         ctx.status = status
         ctx.redirect(redirect)
       } else {
-        ctx.body = content
+        ctx.status = status
+        ctx.body = content || ''
       }
     } else {
       ctx.body = result

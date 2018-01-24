@@ -1,7 +1,7 @@
 const { URL } = require('url')
 const assert = require('assert')
-const uid = require('../uid')
 const mpRPC = require('./mqRPC')
+const uid = require('../shared/uid')
 const callback = require('../shared/callback')
 const config = require('../shared/config')
 
@@ -10,8 +10,8 @@ const ERROR_EXPIRE = 60 * 1000
 
 async function render(ctx) {
   const now = Date.now()
-  const { deviceType = 'desktop', callbackUrl } = ctx.query
-  let { url, proxy, noWait, metaOnly, followRedirect } = ctx.query
+  const { deviceType = 'desktop' } = ctx.query
+  let { url, callbackUrl, proxy, noWait, metaOnly, followRedirect } = ctx.query
 
   try {
     url = new URL(url)
@@ -64,6 +64,12 @@ async function render(ctx) {
     )
   }
 
+  logger.debug(ctx.url, {
+    extra: {
+      params: { url, deviceType, callbackUrl, proxy, noWait, metaOnly, followRedirect }
+    }
+  })
+
   async function handler() {
     let snapshot
     try {
@@ -74,19 +80,48 @@ async function render(ctx) {
       throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
     }
 
-    if (snapshot) {
+    if (!snapshot) return sendToWorker()
+
+    const { status, redirect, content, error, date, retry } = snapshot
+    if (metaOnly) delete snapshot.content
+
+    if (retry) { // error cache
+      if (retry >= 3 && date.getTime() + ERROR_EXPIRE > now) {
+        throw new CustomError(
+          'SERVER_RENDER_ERROR',
+          `Fetching ${url} failed 3 times in one minute (${error || ('HTTP ' + status)}).`
+        )
+      } else {
+        return sendToWorker()
+      }
+    } else {
       if (callbackUrl) {
         callback(callbackUrl, snapshot)
-      } else if (!noWait) {
-        const { status, redirect, content, error, date, retry } = snapshot
-
-        if (retry >= 3 && snapshot.date.getTime() + ERROR_EXPIRE > now) {
-          throw new CustomError(
-            'SERVER_RENDER_ERROR',
-            `Fetching ${url} failed 3 times in one minute (${error || ('HTTP ' + status)}).`
-          )
+      } else if (proxy) {
+        if (redirect && !followRedirect) {
+          ctx.status = status
+          ctx.redirect(redirect)
+        } else {
+          ctx.status = status
+          ctx.body = content || ''
         }
+      } else if (!noWait) {
+        ctx.body = snapshot
       }
+
+      // refresh cache
+      if (date.getTime() + EXPIRE < now) {
+        sendToWorker(true)
+      }
+    }
+  }
+
+  function sendToWorker(refresh = false) {
+    if (refresh) {
+      logger.debug('refresh ' + url)
+      noWait = true
+      proxy = false
+      callbackUrl = null
     }
 
     const msg = Buffer.from(JSON.stringify({
@@ -113,14 +148,14 @@ async function render(ctx) {
 
     msgOpts.contentType = 'application/json'
 
-    const isFull = mq.channel.sendToQueue(queue, msg, msgOpts)
+    const isFull = !mq.channel.sendToQueue(queue, msg, msgOpts)
 
     if (isFull) logger.warn('Message channel\'s buffer is full')
 
-    if (callbackUrl || noWait) {
-      ctx.body = {} // end
-    } else {
-      return mpRPC.add({
+    if (callbackUrl) {
+      ctx.body = { queued: true } // end
+    } else if (!noWait) {
+      return mpRPC.add({ // promise
         ctx,
         correlationId: msgOpts.correlationId,
         date: now,
@@ -131,12 +166,11 @@ async function render(ctx) {
     }
   }
 
-  const promise = handler()
-
   if (noWait) {
-    ctx.body = {}
+    ctx.body = { queued: true }
+    handler()
   } else {
-    return promise
+    return handler()
   }
 }
 
