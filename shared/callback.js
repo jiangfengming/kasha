@@ -19,7 +19,6 @@ async function callback(callbackUrl, result) {
   do {
     try {
       await fetch(callbackUrl, init)
-      console.log('success')
       success = true
     } catch (e) {
       tried++
