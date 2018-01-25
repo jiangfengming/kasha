@@ -8,6 +8,8 @@ const config = require('../shared/config')
 const EXPIRE = config.cache * 60 * 1000
 const ERROR_EXPIRE = 60 * 1000
 
+const queued = { queued: true }
+
 async function render(ctx) {
   const now = Date.now()
   const { deviceType = 'desktop' } = ctx.query
@@ -96,8 +98,19 @@ async function render(ctx) {
         return sendToWorker()
       }
     } else {
+      const body = {
+        url,
+        deviceType,
+        status,
+        redirect,
+        title,
+        content: metaOnly ? null : content,
+        date
+      }
+
       if (callbackUrl) {
-        callback(callbackUrl, snapshot)
+        callback(callbackUrl, body)
+        ctx.body = queued
       } else if (proxy) {
         if (redirect && !followRedirect) {
           ctx.status = status
@@ -107,15 +120,7 @@ async function render(ctx) {
           ctx.body = content || ''
         }
       } else if (!noWait) {
-        ctx.body = {
-          url,
-          deviceType,
-          status,
-          redirect,
-          title,
-          content: metaOnly ? null : content,
-          date
-        }
+        ctx.body = body
       }
 
       // refresh cache
@@ -163,7 +168,7 @@ async function render(ctx) {
     if (isFull) logger.warn('Message channel\'s buffer is full')
 
     if (callbackUrl) {
-      ctx.body = { queued: true } // end
+      ctx.body = queued // end
     } else if (!noWait) {
       return mpRPC.add({ // promise
         ctx,
@@ -177,7 +182,7 @@ async function render(ctx) {
   }
 
   if (noWait) {
-    ctx.body = { queued: true }
+    ctx.body = queued
     handler()
   } else {
     return handler()

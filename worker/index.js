@@ -8,10 +8,10 @@
   const callback = require('../shared/callback')
   const { isAllowed } = require('./robotsTxt')
 
-  prerender.timeout = 25 * 1000
-
   // load config
   const config = require('../shared/config')
+
+  prerender.timeout = 25 * 1000
 
   // global error class
   global.CustomError = require('../shared/CustomError')

@@ -1,11 +1,11 @@
 {
-  "name": "prerender-service",
+  "name": "kasha",
   "version": "0.1.0-alpha",
   "description": "prerender service",
   "main": "index.js",
   "bin": {
-    "prerender-server": "./server/index.js",
-    "prerender-worker": "./worker/index.js"
+    "kasha-server": "./server/index.js",
+    "kasha-worker": "./worker/index.js"
   },
   "dependencies": {
     "amqplib": "0.5.2",
@@ -40,11 +40,10 @@
       "logger": false
     }
   },
-  "scripts": {
-  },
+  "scripts": {},
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fenivana/prerender-service.git"
+    "url": "git+https://github.com/fenivana/kasha.git"
   },
   "keywords": [
     "prerender",
@@ -53,7 +52,10 @@
   "author": "Jiang Fengming",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/fenivana/prerender-service/issues"
+    "url": "https://github.com/fenivana/kasha/issues"
   },
-  "homepage": "https://github.com/fenivana/prerender-service#readme"
+  "homepage": "https://github.com/fenivana/kasha#readme",
+  "directories": {
+    "test": "tests"
+  }
 }

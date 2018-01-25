@@ -160,8 +160,7 @@ async function isAllowed(url) {
   try {
     const content = through()
     const promise = parse(content).then(rules => guard(rules).isAllowed('*', url.pathname))
-    content.write(robotsTxt.content)
-    content.end()
+    content.end(robotsTxt.content)
     return await promise
   } catch (e) {
     const { timestamp, eventId } = logger.error(e)
