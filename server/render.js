@@ -13,10 +13,13 @@ async function render(ctx) {
   const { deviceType = 'desktop' } = ctx.query
   let { url, callbackUrl, proxy, noWait, metaOnly, followRedirect } = ctx.query
 
+  let site, path
   try {
-    url = new URL(url)
-    assert(['http:', 'https:'].includes(url.protocol))
-    url = url.href // normalize
+    const { origin, protocol, pathname, search, hash } = new URL(url)
+    assert(['http:', 'https:'].includes(protocol))
+    site = origin
+    path = pathname + search + hash
+    url = site + path
   } catch (e) {
     throw new CustomError('CLIENT_INVALID_PARAM', 'url')
   }
@@ -73,8 +76,7 @@ async function render(ctx) {
   async function handler() {
     let snapshot
     try {
-      snapshot = await db.collection('snapshot').findOne({ url, deviceType })
-      if (metaOnly) delete snapshot.content
+      snapshot = await db.collection('snapshot').findOne({ site, path, deviceType })
     } catch (e) {
       const { timestamp, eventId } = logger.error(e)
       throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
@@ -82,8 +84,7 @@ async function render(ctx) {
 
     if (!snapshot) return sendToWorker()
 
-    const { status, redirect, content, error, date, retry } = snapshot
-    if (metaOnly) delete snapshot.content
+    const { status, redirect, title, content, error, date, retry } = snapshot
 
     if (retry) { // error cache
       if (retry >= 3 && date.getTime() + ERROR_EXPIRE > now) {
@@ -106,7 +107,15 @@ async function render(ctx) {
           ctx.body = content || ''
         }
       } else if (!noWait) {
-        ctx.body = snapshot
+        ctx.body = {
+          url,
+          deviceType,
+          status,
+          redirect,
+          title,
+          content: metaOnly ? null : content,
+          date
+        }
       }
 
       // refresh cache
@@ -125,7 +134,8 @@ async function render(ctx) {
     }
 
     const msg = Buffer.from(JSON.stringify({
-      url,
+      site,
+      path,
       deviceType,
       callbackUrl,
       metaOnly,

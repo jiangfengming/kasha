@@ -3,6 +3,10 @@
   "version": "0.1.0-alpha",
   "description": "prerender service",
   "main": "index.js",
+  "bin": {
+    "prerender-server": "./server/index.js",
+    "prerender-worker": "./worker/index.js"
+  },
   "dependencies": {
     "amqplib": "0.5.2",
     "colors": "1.1.2",
@@ -13,7 +17,7 @@
     "pm2": "2.9.3",
     "puppeteer-prerender": "0.1.2",
     "raven": "2.4.0",
-    "raven-logger": "0.1.1",
+    "raven-logger": "0.1.2",
     "robots-txt-guard": "0.2.1",
     "robots-txt-parse": "1.0.1",
     "through": "2.3.8",
@@ -37,8 +41,6 @@
     }
   },
   "scripts": {
-    "server": "node server",
-    "worker": "node worker"
   },
   "repository": {
     "type": "git",

@@ -1,7 +1,8 @@
 const argv = require('yargs').argv
+const { resolve } = require('path')
 
-const configFile = argv.config || process.env.npm_config_config || 'default'
+const configFile = resolve(argv.config)
+
+// global logger hasn't been initialized, use console.log()
 console.log('load config file:', configFile) // eslint-disable-line
-const config = require('../config/' + configFile)
-
-module.exports = config
+module.exports = require(configFile)

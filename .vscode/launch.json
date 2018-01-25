@@ -7,29 +7,23 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "test.js",
-      "program": "${workspaceFolder}/test.js"
-    },
-    {
-      "type": "node",
-      "request": "launch",
       "name": "Launch Server",
       "program": "${workspaceFolder}/server/index.js",
-      "args": ["--config=dev"]
+      "args": ["--config=config.sample.js"]
     },
     {
       "type": "node",
       "request": "launch",
       "name": "Launch Worker",
       "program": "${workspaceFolder}/worker/index.js",
-      "args": ["--config=dev"]
+      "args": ["--config=config.sample.js"]
     },
     {
       "type": "node",
       "request": "launch",
       "name": "Launch Worker(RPC)",
       "program": "${workspaceFolder}/worker/index.js",
-      "args": ["--config=dev", "--rpc"]
+      "args": ["--config=config.sample.js", "--rpc"]
     }
   ]
 }

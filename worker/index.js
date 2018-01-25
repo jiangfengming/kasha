@@ -20,7 +20,7 @@
   global.logger = require('../shared/logger')
 
   // global RabbitMQ instance
-  const rpcMode = Boolean(process.env.npm_config_rpc || argv.rpc)
+  const rpcMode = Boolean(argv.rpc)
   logger.info('RPC mode: ' + rpcMode)
   const queueName = rpcMode ? 'renderWorkerRPC' : 'renderWorker'
 
@@ -40,7 +40,8 @@
     const msgContent = JSON.parse(msg.content.toString())
     logger.debug(msgContent)
 
-    const { url, deviceType, callbackUrl, metaOnly, followRedirect } = msgContent
+    const { site, path, deviceType, callbackUrl, metaOnly, followRedirect } = msgContent
+    const url = site + path
 
     // check robots.txt
     try {
@@ -66,7 +67,7 @@
     // if error occurs, retry up to 3 times in one minute
     if (error || status >= 500 && status <= 599) {
       try {
-        await collection.updateOne({ url, deviceType }, {
+        await collection.updateOne({ site, path, deviceType }, {
           $set: {
             status,
             redirect,
@@ -91,7 +92,7 @@
       }
     } else {
       try {
-        await collection.updateOne({ url, deviceType }, {
+        await collection.updateOne({ site, path, deviceType }, {
           $set: {
             status,
             redirect,
@@ -107,14 +108,18 @@
         return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
       }
 
-      return handleResult({ url, deviceType, status, redirect, title, content, date })
+      return handleResult({
+        url,
+        deviceType,
+        status,
+        redirect,
+        title,
+        content: metaOnly ? null : content,
+        date
+      })
     }
 
     function handleResult(result) {
-      if (!(result instanceof CustomError) && metaOnly) {
-        delete result.content
-      }
-
       if (callbackUrl) {
         callback(callbackUrl, result)
       } else if (msg.properties.replyTo) {

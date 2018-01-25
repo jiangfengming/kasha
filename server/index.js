@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 (async() => {
   const Koa = require('koa')
   const Router = require('koa-router')
@@ -55,8 +57,11 @@
   }, render)
 
   router.get('/(http.+)', (ctx, next) => {
-    ctx.query.url = ctx.url.slice(1)
-    ctx.query.proxy = ''
+    ctx.query = {
+      url: ctx.url.slice(1),
+      proxy: '',
+      deviceType: ctx.headers['x-device-type'] || 'desktop'
+    }
     return next()
   }, render)
 

@@ -29,7 +29,6 @@ function consume(msg) {
   if (!q) return
 
   const { ctx, resolve, reject, proxy, followRedirect } = q
-  console.log(msg.properties.headers.code) // eslint-disable-line
   const code = msg.properties.headers.code
   const result = JSON.parse(msg.content.toString())
 
