@@ -4,8 +4,8 @@
   const { MongoClient } = require('mongodb')
   const prerender = require('puppeteer-prerender')
 
-  const userAgents = require('../shared/userAgents')
   const callback = require('../shared/callback')
+  const userAgents = require('./userAgents')
   const { isAllowed } = require('./robotsTxt')
 
   // load config
@@ -40,12 +40,14 @@
     const msgContent = JSON.parse(msg.content.toString())
     logger.debug(msgContent)
 
-    const { site, path, deviceType, callbackUrl, metaOnly, followRedirect } = msgContent
+    const { site, path, deviceType, callbackUrl, metaOnly, followRedirect, ignoreRobotsTxt } = msgContent
     const url = site + path
 
     // check robots.txt
+    let allowCrawl
     try {
-      if (!await isAllowed(url)) {
+      allowCrawl = await isAllowed(url)
+      if (!allowCrawl && !ignoreRobotsTxt) {
         return handleResult(new CustomError('SERVER_ROBOTS_DISALLOW'))
       }
     } catch (e) {
@@ -73,6 +75,7 @@
             redirect,
             title,
             content,
+            allowCrawl,
             error,
             date
           },
@@ -98,6 +101,7 @@
             redirect,
             title,
             content,
+            allowCrawl,
             error: null,
             date,
             retry: 0

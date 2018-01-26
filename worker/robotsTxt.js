@@ -159,7 +159,7 @@ async function isAllowed(url) {
   if (robotsTxt.fullDisallow) return false
   try {
     const content = through()
-    const promise = parse(content).then(rules => guard(rules).isAllowed('*', url.pathname))
+    const promise = parse(content).then(rules => guard(rules).isAllowed('kasha', url.pathname))
     content.end(robotsTxt.content)
     return await promise
   } catch (e) {

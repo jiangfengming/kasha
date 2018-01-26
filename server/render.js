@@ -13,7 +13,7 @@ const queued = { queued: true }
 async function render(ctx) {
   const now = Date.now()
   const { deviceType = 'desktop' } = ctx.query
-  let { url, callbackUrl, proxy, noWait, metaOnly, followRedirect } = ctx.query
+  let { url, callbackUrl, proxy, noWait, metaOnly, followRedirect, ignoreRobotsTxt } = ctx.query
 
   let site, path
   try {
@@ -56,11 +56,18 @@ async function render(ctx) {
     metaOnly = metaOnly === ''
   }
 
+  if (![undefined, ''].includes(ignoreRobotsTxt)) {
+    throw new CustomError('CLIENT_INVALID_PARAM', 'ignoreRobotsTxt')
+  } else {
+    ignoreRobotsTxt = ignoreRobotsTxt === ''
+  }
+
   if (![undefined, ''].includes(followRedirect)) {
     throw new CustomError('CLIENT_INVALID_PARAM', 'followRedirect')
   } else {
     followRedirect = followRedirect === ''
   }
+
 
   if (proxy && (callbackUrl || noWait || metaOnly)) {
     throw new CustomError(
@@ -86,7 +93,7 @@ async function render(ctx) {
 
     if (!snapshot) return sendToWorker()
 
-    const { status, redirect, title, content, error, date, retry } = snapshot
+    const { status, redirect, title, content, allowCrawl, error, date, retry } = snapshot
 
     if (retry) { // error cache
       if (retry >= 3 && date.getTime() + ERROR_EXPIRE > now) {
@@ -98,35 +105,47 @@ async function render(ctx) {
         return sendToWorker()
       }
     } else {
-      const body = {
-        url,
-        deviceType,
-        status,
-        redirect,
-        title,
-        content: metaOnly ? null : content,
-        date
+      const expired = date.getTime() + EXPIRE < now
+
+      // disable crawling
+      if (!allowCrawl && !ignoreRobotsTxt) {
+        if (expired) sendToWorker(true)
+        throw new CustomError('SERVER_ROBOTS_DISALLOW')
       }
 
-      if (callbackUrl) {
-        callback(callbackUrl, body)
-        ctx.body = queued
-      } else if (proxy) {
+      if (content === null && followRedirect) {
+        return sendToWorker()
+      }
+
+      if (proxy) {
         if (redirect && !followRedirect) {
           ctx.status = status
           ctx.redirect(redirect)
         } else {
           ctx.status = status
-          ctx.body = content || ''
+          ctx.body = content
         }
-      } else if (!noWait) {
-        ctx.body = body
+      } else {
+        const body = {
+          url,
+          deviceType,
+          status,
+          redirect,
+          title,
+          content: metaOnly ? null : content,
+          date
+        }
+
+        if (callbackUrl) {
+          callback(callbackUrl, body)
+          ctx.body = queued
+        } else if (!noWait) {
+          ctx.body = body
+        }
       }
 
       // refresh cache
-      if (date.getTime() + EXPIRE < now) {
-        sendToWorker(true)
-      }
+      if (expired) sendToWorker(true)
     }
   }
 
@@ -144,7 +163,8 @@ async function render(ctx) {
       deviceType,
       callbackUrl,
       metaOnly,
-      followRedirect
+      followRedirect,
+      ignoreRobotsTxt
     }))
 
     let queue, msgOpts

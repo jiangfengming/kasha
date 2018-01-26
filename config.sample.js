@@ -7,8 +7,8 @@ module.exports = {
   },
 
   mongodb: {
-    url: 'mongodb://localhost:27017/renderService',
-    database: 'renderService'
+    url: 'mongodb://localhost:27017/kasha',
+    database: 'kasha'
   },
 
   cache: 24 * 60, // 1 day
