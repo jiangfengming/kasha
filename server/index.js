@@ -1,33 +1,15 @@
 #!/usr/bin/env node
 
 (async() => {
+  await require('../shared/db')
+  await require('./mq')
+  const config = require('../shared/config')
+  const CustomError = require('../shared/CustomError')
+  const logger = require('../shared/logger')
+
   const Koa = require('koa')
   const Router = require('koa-router')
-  const amqp = require('amqplib')
-  const { MongoClient } = require('mongodb')
-  const { consume } = require('./mqRPC')
 
-  // global error class
-  global.CustomError = require('../shared/CustomError')
-
-  // load config
-  const config = require('../shared/config')
-
-  // global logger
-  global.logger = require('../shared/logger')
-
-  // global RabbitMQ instance
-  global.mq = {}
-  mq.connection = await amqp.connect(config.amqp.url)
-  mq.channel = await mq.connection.createConfirmChannel()
-  mq.queue = await mq.channel.assertQueue('', { exclusive: true })
-  mq.channel.consume(mq.queue.queue, consume, { noAck: true })
-
-  // global MongoDB instance
-  global.mongoClient = await MongoClient.connect(config.mongodb.url)
-  global.db = mongoClient.db(config.mongodb.database)
-
-  // server
   const app = new Koa()
   const router = new Router()
   const render = require('./render')

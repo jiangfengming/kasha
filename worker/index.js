@@ -1,42 +1,19 @@
 (async function() {
-  const argv = require('yargs').argv
-  const amqp = require('amqplib')
-  const { MongoClient } = require('mongodb')
-  const prerender = require('puppeteer-prerender')
+  const config = require('../shared/config')
+  const CustomError = require('../shared/CustomError')
+  const logger = require('../shared/logger')
+  const db = await require('../shared/db')
+  const { channel, queue } = await require('./mq')
 
+  const prerender = require('puppeteer-prerender')
+  prerender.timeout = 25 * 1000
   const callback = require('../shared/callback')
   const userAgents = require('./userAgents')
   const { isAllowed } = require('./robotsTxt')
 
-  // load config
-  const config = require('../shared/config')
-
-  prerender.timeout = 25 * 1000
-
-  // global error class
-  global.CustomError = require('../shared/CustomError')
-
-  // global logger
-  global.logger = require('../shared/logger')
-
-  // global RabbitMQ instance
-  const rpcMode = Boolean(argv.rpc)
-  logger.info('RPC mode: ' + rpcMode)
-  const queueName = rpcMode ? 'renderWorkerRPC' : 'renderWorker'
-
-  global.mq = {}
-  mq.connection = await amqp.connect(config.amqp.url)
-  mq.channel = await mq.connection.createChannel()
-  mq.queue = await mq.channel.assertQueue(queueName, { durable: !rpcMode })
-  mq.channel.prefetch(config.amqp.prefetch)
-
-  // global MongoDB instance
-  global.mongoClient = await MongoClient.connect(config.mongodb.url)
-  global.db = mongoClient.db(config.mongodb.database)
-
   const collection = db.collection('snapshot')
 
-  mq.channel.consume(queueName, async msg => {
+  channel.consume(queue, async msg => {
     const msgContent = JSON.parse(msg.content.toString())
     logger.debug(msgContent)
 
@@ -71,11 +48,11 @@
       try {
         await collection.updateOne({ site, path, deviceType }, {
           $set: {
+            allowCrawl,
             status,
             redirect,
             title,
             content,
-            allowCrawl,
             error,
             date
           },
@@ -97,11 +74,11 @@
       try {
         await collection.updateOne({ site, path, deviceType }, {
           $set: {
+            allowCrawl,
             status,
             redirect,
             title,
             content,
-            allowCrawl,
             error: null,
             date,
             retry: 0
@@ -141,9 +118,9 @@
         if (isFull) logger.warn('Message channel\'s buffer is full')
       }
 
-      if (!rpcMode) mq.channel.ack(msg)
+      channel.ack(msg)
     }
-  }, { noAck: rpcMode })
+  })
 
   logger.info('Worker started')
 }())

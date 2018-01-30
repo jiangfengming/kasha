@@ -1,4 +1,4 @@
-const TIMEOUT = 20 * 1000
+const TIMEOUT = 28 * 1000
 const queue = []
 
 setInterval(() => {

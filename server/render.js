@@ -3,7 +3,6 @@ const assert = require('assert')
 const mpRPC = require('./mqRPC')
 const uid = require('../shared/uid')
 const callback = require('../shared/callback')
-const config = require('../shared/config')
 
 const EXPIRE = config.cache * 60 * 1000
 const ERROR_EXPIRE = 60 * 1000
@@ -93,7 +92,7 @@ async function render(ctx) {
 
     if (!snapshot) return sendToWorker()
 
-    const { status, redirect, title, content, allowCrawl, error, date, retry } = snapshot
+    const { allowCrawl, status, redirect, title, content, error, date, retry } = snapshot
 
     if (retry) { // error cache
       if (retry >= 3 && date.getTime() + ERROR_EXPIRE > now) {
@@ -167,14 +166,14 @@ async function render(ctx) {
       ignoreRobotsTxt
     }))
 
-    let queue, msgOpts
+    let worker, msgOpts
     if (callbackUrl || noWait) {
-      queue = 'renderWorker'
+      worker = 'renderWorker'
       msgOpts = {
         persistent: true
       }
     } else {
-      queue = 'renderWorkerRPC'
+      worker = 'renderWorkerRPC'
       msgOpts = {
         correlationId: uid(),
         replyTo: mq.queue.queue
@@ -183,7 +182,9 @@ async function render(ctx) {
 
     msgOpts.contentType = 'application/json'
 
-    const isFull = !mq.channel.sendToQueue(queue, msg, msgOpts)
+    const isFull = !mq.channel.sendToQueue(worker, msg, msgOpts, e => {
+      if (e) logger.error(e)
+    })
 
     if (isFull) logger.warn('Message channel\'s buffer is full')
 

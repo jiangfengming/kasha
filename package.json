@@ -33,8 +33,8 @@
       "node": true
     },
     "globals": {
+      "config": false,
       "mq": false,
-      "mongoClient": false,
       "db": false,
       "CustomError": false,
       "logger": false
