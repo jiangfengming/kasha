@@ -1,23 +1,42 @@
 (async function() {
-  const config = require('../shared/config')
   const CustomError = require('../shared/CustomError')
   const logger = require('../shared/logger')
+  const config = require('../shared/config')
+
   const db = await require('../shared/db')
-  const { channel, queue } = await require('./mq')
+  const collection = db.collection('snapshot')
 
   const prerender = require('puppeteer-prerender')
   prerender.timeout = 25 * 1000
-  const callback = require('../shared/callback')
-  const userAgents = require('./userAgents')
   const { isAllowed } = require('./robotsTxt')
+  const userAgents = require('./userAgents')
 
-  const collection = db.collection('snapshot')
+  const callback = require('../shared/callback')
 
-  channel.consume(queue, async msg => {
-    const msgContent = JSON.parse(msg.content.toString())
-    logger.debug(msgContent)
+  const argv = require('yargs').argv
+  const { Reader } = require('nsqjs')
+  const topic = argv.rpc ? 'syncQueue' : 'asyncQueue'
+  const reader = new Reader(topic, 'worker', config.nsq.reader)
+  reader.connect()
 
-    const { site, path, deviceType, callbackUrl, metaOnly, followRedirect, ignoreRobotsTxt } = msgContent
+  const EXPIRE = config.cache * 60 * 1000
+
+  reader.on('message', async msg => {
+    const req = msg.json()
+    logger.debug(req)
+
+    const {
+      replyTo,
+      correlationId,
+      site,
+      path,
+      deviceType,
+      callbackUrl,
+      metaOnly,
+      followRedirect,
+      ignoreRobotsTxt
+    } = req
+
     const url = site + path
 
     // check robots.txt
@@ -32,6 +51,35 @@
     }
 
     const date = new Date()
+
+    // lock
+    const lockQuery = {
+      site,
+      path,
+      deviceType,
+      $or: [
+        { retry: { $ne: 0 } }, //  retry != 0, invalid doc
+        { date: { $lt: new Date(date.getTime() - EXPIRE) } } // stale doc
+      ]
+    }
+
+    if (followRedirect) {
+      lockQuery.$or.push({ content: null })
+    }
+
+    await collection.updateOne(lockQuery, {
+      locked: true,
+      $setOnInsert: {
+        allowCrawl,
+        status: null,
+        redirect: null,
+        title: null,
+        content: null,
+        error: null,
+        date
+      }
+    })
+
     let status = null, redirect = null, title = null, content = null, error = null
 
     try {
