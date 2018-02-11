@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
 (async() => {
-  await require('../shared/db')
-  await require('./mq')
   const config = require('../shared/config')
   const CustomError = require('../shared/CustomError')
   const logger = require('../shared/logger')
+
+  await require('../shared/db')
 
   const Koa = require('koa')
   const Router = require('koa-router')

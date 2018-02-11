@@ -1,6 +1,6 @@
 const { URL } = require('url')
 const assert = require('assert')
-const mpRPC = require('./mqRPC')
+const { addToQueue, replyTo } = require('./workerResponse')
 const uid = require('../shared/uid')
 const callback = require('../shared/callback')
 
@@ -92,7 +92,7 @@ async function render(ctx) {
 
     if (!snapshot) return sendToWorker()
 
-    const { allowCrawl, status, redirect, title, content, error, date, retry } = snapshot
+    const { allowCrawl, status, redirect, title, content, error, date, retry, locked } = snapshot
 
     if (retry) { // error cache
       if (retry >= 3 && date.getTime() + ERROR_EXPIRE > now) {
@@ -182,11 +182,14 @@ async function render(ctx) {
 
     msgOpts.contentType = 'application/json'
 
-    const isFull = !mq.channel.sendToQueue(worker, msg, msgOpts, e => {
-      if (e) logger.error(e)
-    })
+    try {
+      if (!await sendToQueue(worker, msg, msgOpts)) {
+        logger.warn('Message channel\'s buffer is full')
+      }
+    } catch (e) {
+      logger.error(e)
+    }
 
-    if (isFull) logger.warn('Message channel\'s buffer is full')
 
     if (callbackUrl) {
       ctx.body = queued // end
