@@ -11,10 +11,11 @@
   const { isAllowed } = require('./robotsTxt')
   const userAgents = require('./userAgents')
 
+  const uid = require('../shared/uid')
   const callback = require('../shared/callback')
 
   const argv = require('yargs').argv
-  const { Reader } = require('nsqjs')
+  const { Reader } = require('nsqjs')
   const topic = argv.rpc ? 'syncQueue' : 'asyncQueue'
   const reader = new Reader(topic, 'worker', config.nsq.reader)
   reader.connect()
@@ -53,12 +54,15 @@
     const date = new Date()
 
     // lock
+    const lock = uid()
+
     const lockQuery = {
       site,
       path,
       deviceType,
+      lock: false,
       $or: [
-        { retry: { $ne: 0 } }, //  retry != 0, invalid doc
+        { retry: { $ne: 0 } }, // invalid doc, retry != 0
         { date: { $lt: new Date(date.getTime() - EXPIRE) } } // stale doc
       ]
     }
@@ -67,18 +71,61 @@
       lockQuery.$or.push({ content: null })
     }
 
-    await collection.updateOne(lockQuery, {
-      locked: true,
-      $setOnInsert: {
-        allowCrawl,
-        status: null,
-        redirect: null,
-        title: null,
-        content: null,
-        error: null,
-        date
+    let lockResult
+    try {
+      lockResult = await collection.updateOne(lockQuery, {
+        lock,
+        $setOnInsert: {
+          allowCrawl,
+          status: null,
+          redirect: null,
+          title: null,
+          content: null,
+          error: null,
+          date
+        }
+      }, { upsert: true })
+    } catch (e) {
+      // duplicate key on upsert
+      // there is a valid document
+      if (e.code === 11000) {
+        try {
+          const { status, redirect, title, content, date } = await collection.findOne({ site, path, deviceType })
+          return handleResult({ url, deviceType, status, redirect, title, content, date })
+        } catch (e) {
+          const { timestamp, eventId } = logger.error(e)
+          return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+        }
+      } else {
+        const { timestamp, eventId } = logger.error(e)
+        return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
       }
-    })
+    }
+
+    // document has been locked by others
+    // polling the result
+    if (lockResult.matchedCount && !lockResult.modifiedCount) {
+      const tried = 0
+      const intervalId = setInterval(async() => {
+        tried++
+
+        try {
+          const { status, redirect, title, content, date, locked } = await collection.findOne({ site, path, deviceType })
+          if (!locked) {
+            clearInterval(intervalId)
+            handleResult({ url, deviceType, status, redirect, title, content, date })
+          } else if (date.getTime() + prerender.timeout < Date.now()) { // timed out
+
+          }
+        } catch (e) {
+          clearInterval(intervalId)
+          const { timestamp, eventId } = logger.error(e)
+          handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+        }
+      }, 5000)
+
+      return
+    }
 
     let status = null, redirect = null, title = null, content = null, error = null
 
