@@ -71,61 +71,89 @@
       lockQuery.$or.push({ content: null })
     }
 
-    let lockResult
     try {
-      lockResult = await collection.updateOne(lockQuery, {
-        lock,
-        $setOnInsert: {
+      await collection.updateOne(lockQuery, {
+        $set: {
           allowCrawl,
           status: null,
           redirect: null,
           title: null,
           content: null,
           error: null,
-          date
+          date,
+          lock
+        },
+        $setOnInsert: {
+          retry: 0
         }
       }, { upsert: true })
     } catch (e) {
       // duplicate key on upsert
-      // there is a valid document
+      // the document has been locked by others
+      // or the document is valid
       if (e.code === 11000) {
         try {
-          const { status, redirect, title, content, date } = await collection.findOne({ site, path, deviceType })
-          return handleResult({ url, deviceType, status, redirect, title, content, date })
-        } catch (e) {
-          const { timestamp, eventId } = logger.error(e)
-          return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
-        }
-      } else {
-        const { timestamp, eventId } = logger.error(e)
-        return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
-      }
-    }
+          const doc = await collection.findOne({ site, path, deviceType })
+          // locked by others. polling the result
+          if (doc.lock) {
+            let tried = 0
 
-    // document has been locked by others
-    // polling the result
-    if (lockResult.matchedCount && !lockResult.modifiedCount) {
-      const tried = 0
-      const intervalId = setInterval(async() => {
-        tried++
+            const intervalId = setInterval(async() => {
+              tried++
 
-        try {
-          const { status, redirect, title, content, date, locked } = await collection.findOne({ site, path, deviceType })
-          if (!locked) {
-            clearInterval(intervalId)
-            handleResult({ url, deviceType, status, redirect, title, content, date })
-          } else if (date.getTime() + prerender.timeout < Date.now()) { // timed out
+              try {
+                const pollingResult = await collection.findOne({ site, path, deviceType })
+                if (!pollingResult.lock) { // unlocked
+                  clearInterval(intervalId)
+                  handleResult(pollingResult)
+                } else if (tried >= 5) {
+                  clearInterval(intervalId)
 
+                  if (doc.lock === pollingResult.lock) {
+                    try {
+                      await collection.updateOne({
+                        site,
+                        path,
+                        deviceType,
+                        lock: doc.lock
+                      }, {
+                        $set: {
+                          error: 'SERVER_CACHE_LOCK_TIMEOUT',
+                          lock: false
+                        },
+                        $inc: {
+                          retry: 1
+                        }
+                      })
+                    } catch (e) {
+                      const { timestamp, eventId } = logger.error(e)
+                      return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+                    }
+                  }
+
+                  handleResult(new CustomError('SERVER_CACHE_LOCK_TIMEOUT', url))
+                }
+              } catch (e) {
+                clearInterval(intervalId)
+                const { timestamp, eventId } = logger.error(e)
+                handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+              }
+            }, 5000)
+          } else { // valid document
+            handleResult(doc)
           }
         } catch (e) {
-          clearInterval(intervalId)
           const { timestamp, eventId } = logger.error(e)
           handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
         }
-      }, 5000)
+      } else {
+        const { timestamp, eventId } = logger.error(e)
+        handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+      }
 
       return
     }
+
 
     let status = null, redirect = null, title = null, content = null, error = null
 

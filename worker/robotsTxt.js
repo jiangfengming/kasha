@@ -6,7 +6,7 @@ const guard = require('robots-txt-guard')
 
 const EXPIRE = 24 * 60 * 60 * 1000 // cache one day
 const ERROR_EXIPRE = 60 * 1000 // one minute
-
+const FETCH_TIMEOUT = 10 * 1000
 /*
 robotsTxt collection schema:
 site: string,
@@ -32,7 +32,38 @@ async function fetchRobotsTxt(site) {
   }
 
   if (cache) {
-    const { status, content, expire, fullAllow, fullDisallow, error, retry } = cache
+    const { status, content, expire, fullAllow, fullDisallow, error, retry, lock } = cache
+
+    if (lock) {
+      return new Promise((resolve, reject) => {
+        let tried = 0
+
+        const intervalId = setInterval(async () => {
+          tried++
+
+          const doc = collection.findOne({ site })
+          if (!doc.lock) {
+
+          } else if (tried >= 5) {
+            clearInterval(intervalId)
+
+            if (lock === doc.lock) {
+              try {
+                await collection.updateOne({ site, lock: doc.lock }, { $set: { lock: false } })
+              } catch (e) {
+                const { timestamp, eventId } = logger.error(e)
+                return reject(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+              }
+            }
+
+            reject(new CustomError('SERVER_NET_ERROR', `Fetching ${url} failed.`))
+          }
+        }, 2000)
+      })
+    } else {
+
+    }
+
     if (status && (status >= 200 && status <= 299 || status >= 400 && status <= 499)) {
       if (expire < now) { // refresh
         _fetch().catch(() => { /* nop */ })
@@ -54,7 +85,7 @@ async function fetchRobotsTxt(site) {
   async function _fetch() {
     let res
     try {
-      res = await fetch(url, { follow: 5 })
+      res = await fetch(url, { follow: 5, timeout: FETCH_TIMEOUT })
     } catch (e) {
       try {
         await collection.updateOne({ site }, {
@@ -153,13 +184,13 @@ async function fetchRobotsTxt(site) {
 }
 
 async function isAllowed(url) {
-  url = new URL(url)
-  const robotsTxt = await fetchRobotsTxt(url.origin)
+  const { origin, pathname } = new URL(url)
+  const robotsTxt = await fetchRobotsTxt(origin)
   if (robotsTxt.fullAllow) return true
   if (robotsTxt.fullDisallow) return false
   try {
     const content = through()
-    const promise = parse(content).then(rules => guard(rules).isAllowed('kasha', url.pathname))
+    const promise = parse(content).then(rules => guard(rules).isAllowed('kasha', pathname))
     content.end(robotsTxt.content)
     return await promise
   } catch (e) {
