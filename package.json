@@ -31,13 +31,6 @@
     "extends": "enough",
     "env": {
       "node": true
-    },
-    "globals": {
-      "config": false,
-      "mq": false,
-      "db": false,
-      "CustomError": false,
-      "logger": false
     }
   },
   "scripts": {},

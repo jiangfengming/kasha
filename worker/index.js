@@ -20,6 +20,8 @@
   const reader = new Reader(topic, 'worker', config.nsq.reader)
   reader.connect()
 
+  const nsqWriter = require('../shared/nsqWriter')
+
   const EXPIRE = config.cache * 60 * 1000
 
   reader.on('message', async msg => {
@@ -39,6 +41,20 @@
     } = req
 
     const url = site + path
+
+    function doc2result({ status, redirect, title, content, error, date }) {
+      return error
+        ? new CustomError(JSON.parse(error))
+        : {
+          url,
+          deviceType,
+          status,
+          redirect,
+          title,
+          content: metaOnly ? null : content,
+          date
+        }
+    }
 
     // check robots.txt
     let allowCrawl
@@ -62,7 +78,7 @@
       deviceType,
       lock: false,
       $or: [
-        { retry: { $ne: 0 } }, // invalid doc, retry != 0
+        { error: { $ne: null } },
         { date: { $lt: new Date(date.getTime() - EXPIRE) } } // stale doc
       ]
     }
@@ -84,10 +100,13 @@
           lock
         },
         $setOnInsert: {
-          retry: 0
+          tried: 0
         }
       }, { upsert: true })
     } catch (e) {
+      // don't block the queue
+      msg.finish()
+
       // duplicate key on upsert
       // the document has been locked by others
       // or the document is valid
@@ -97,7 +116,6 @@
           // locked by others. polling the result
           if (doc.lock) {
             let tried = 0
-
             const intervalId = setInterval(async() => {
               tried++
 
@@ -105,9 +123,11 @@
                 const pollingResult = await collection.findOne({ site, path, deviceType })
                 if (!pollingResult.lock) { // unlocked
                   clearInterval(intervalId)
-                  handleResult(pollingResult)
+                  handleResult(doc2result(pollingResult))
                 } else if (tried >= 5) {
                   clearInterval(intervalId)
+
+                  const error = new CustomError('SERVER_CACHE_LOCK_TIMEOUT', url)
 
                   if (doc.lock === pollingResult.lock) {
                     try {
@@ -118,11 +138,9 @@
                         lock: doc.lock
                       }, {
                         $set: {
-                          error: 'SERVER_CACHE_LOCK_TIMEOUT',
+                          error: JSON.stringify(error),
+                          date,
                           lock: false
-                        },
-                        $inc: {
-                          retry: 1
                         }
                       })
                     } catch (e) {
@@ -131,7 +149,7 @@
                     }
                   }
 
-                  handleResult(new CustomError('SERVER_CACHE_LOCK_TIMEOUT', url))
+                  handleResult(error)
                 }
               } catch (e) {
                 clearInterval(intervalId)
@@ -139,8 +157,8 @@
                 handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
               }
             }, 5000)
-          } else { // valid document
-            handleResult(doc)
+          } else {
+            handleResult(doc2result(doc))
           }
         } catch (e) {
           const { timestamp, eventId } = logger.error(e)
@@ -154,7 +172,7 @@
       return
     }
 
-
+    // render the page
     let status = null, redirect = null, title = null, content = null, error = null
 
     try {
@@ -166,32 +184,32 @@
       error = e.message
     }
 
-    // if error occurs, retry up to 3 times in one minute
     if (error || status >= 500 && status <= 599) {
       try {
-        await collection.updateOne({ site, path, deviceType }, {
+        error = error
+          ? new CustomError('SERVER_RENDER_ERROR', error)
+          : new CustomError('SERVER_UPSTREAM_ERROR', 'HTTP' + status)
+
+        await collection.updateOne({ site, path, deviceType, lock }, {
           $set: {
             allowCrawl,
             status,
             redirect,
             title,
             content,
-            error,
-            date
+            error: JSON.stringify(error),
+            date,
+            lock: false
           },
           $inc: {
-            retry: 1
+            tried: 1
           }
         }, { upsert: true })
+
+        return handleResult(error)
       } catch (e) {
         const { timestamp, eventId } = logger.error(e)
         return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
-      }
-
-      if (error) {
-        return handleResult(new CustomError('SERVER_RENDER_ERROR', error))
-      } else {
-        return handleResult({ url, deviceType, status, redirect, title, content, date })
       }
     } else {
       try {
@@ -204,7 +222,8 @@
             content,
             error: null,
             date,
-            retry: 0
+            tried: 0,
+            lock: false
           }
         }, { upsert: true })
       } catch (e) {
@@ -223,25 +242,19 @@
       })
     }
 
-    function handleResult(result) {
+    function handleResult(data) {
       if (callbackUrl) {
-        callback(callbackUrl, result)
-      } else if (msg.properties.replyTo) {
-        const isFull = !mq.channel.sendToQueue(
-          msg.properties.replyTo,
-          Buffer.from(JSON.stringify(result)),
-          {
-            correlationId: msg.properties.correlationId,
-            headers: {
-              code: result instanceof CustomError ? result.code : 'OK'
-            }
-          }
-        )
-
-        if (isFull) logger.warn('Message channel\'s buffer is full')
+        callback(callbackUrl, data)
+      } else if (replyTo) {
+        nsqWriter.publish(replyTo, {
+          correlationId,
+          data
+        })
       }
 
-      channel.ack(msg)
+      if (!msg.hasResponded) {
+        msg.finish()
+      }
     }
   })
 
