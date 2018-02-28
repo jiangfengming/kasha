@@ -3,7 +3,7 @@
   const logger = require('../shared/logger')
   const config = require('../shared/config')
 
-  const db = await require('../shared/db')
+  const db = await require('../shared/db').connect()
   const collection = db.collection('snapshot')
 
   const prerender = require('puppeteer-prerender')

@@ -4,6 +4,8 @@ const through = require('through')
 const parse = require('robots-txt-parse')
 const guard = require('robots-txt-guard')
 
+const { db } = require('../shared/db')
+
 const EXPIRE = 24 * 60 * 60 * 1000 // cache one day
 const ERROR_EXIPRE = 60 * 1000 // one minute
 const FETCH_TIMEOUT = 10 * 1000
@@ -17,6 +19,10 @@ fullAllow: boolean,
 fullDisallow: boolean,
 error: string
 */
+
+function doc2result(doc) {
+
+}
 
 async function fetchRobotsTxt(site) {
   const url = site + '/robots.txt'
@@ -32,13 +38,13 @@ async function fetchRobotsTxt(site) {
   }
 
   if (cache) {
-    const { status, content, expire, fullAllow, fullDisallow, error, retry, lock } = cache
+    const { status, content, expire, fullAllow, fullDisallow, error, tried, lock } = cache
 
     if (lock) {
       return new Promise((resolve, reject) => {
         let tried = 0
 
-        const intervalId = setInterval(async () => {
+        const intervalId = setInterval(async() => {
           tried++
 
           const doc = collection.findOne({ site })
@@ -61,7 +67,7 @@ async function fetchRobotsTxt(site) {
         }, 2000)
       })
     } else {
-
+      return doc2result(doc)
     }
 
     if (status && (status >= 200 && status <= 299 || status >= 400 && status <= 499)) {
