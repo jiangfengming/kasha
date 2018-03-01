@@ -105,7 +105,7 @@ async function render(ctx) {
           }
         })
 
-        await db.collection('robotsTxt').updateOne({ site }, { $set: { expire: new Date(0) } })
+        await db.collection('robotsTxt').updateOne({ site }, { $set: { date: new Date(0) } })
       } catch (e) {
         const { timestamp, eventId } = logger.error(e)
         throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)

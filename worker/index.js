@@ -82,8 +82,6 @@
       return handleResult(e)
     }
 
-    const date = new Date()
-
     // lock
     const lock = uid()
 
@@ -93,8 +91,8 @@
       deviceType,
       lock: false,
       $or: [
-        { error: { $ne: null } },
-        { date: { $lt: new Date(date.getTime() - EXPIRE) } } // stale doc
+        { error: { $ne: null } }, // error
+        { date: { $lt: new Date(Date.now() - EXPIRE) } } // expired
       ]
     }
 
@@ -111,7 +109,7 @@
           title: null,
           content: null,
           error: null,
-          date,
+          date: new Date(),
           lock
         },
         $setOnInsert: {
@@ -154,7 +152,7 @@
                       }, {
                         $set: {
                           error: JSON.stringify(error),
-                          date,
+                          date: new Date(),
                           lock: false
                         }
                       })
@@ -213,7 +211,7 @@
             title,
             content,
             error: JSON.stringify(error),
-            date,
+            date: new Date(),
             lock: false
           },
           $inc: {
@@ -237,7 +235,7 @@
             content,
             error: null,
             tried: 0,
-            date,
+            date: new Date(),
             lock: false
           }
         }, { upsert: true })
@@ -253,7 +251,7 @@
         redirect,
         title,
         content: metaOnly ? null : content,
-        date
+        date: new Date()
       })
     }
 

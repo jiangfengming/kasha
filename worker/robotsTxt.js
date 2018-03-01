@@ -5,6 +5,7 @@ const parse = require('robots-txt-parse')
 const guard = require('robots-txt-guard')
 const CustomError = require('../shared/CustomError')
 const logger = require('../shared/logger')
+const uid = require('../shared/uid')
 
 const { db } = require('../shared/db')
 const collection = db.collection('robotsTxt')
@@ -17,7 +18,7 @@ fullAllow: Boolean
 fullDisallow: Boolean
 error: String
 tried: Number
-expire: Date
+date: Date
 lock: String
 */
 
@@ -33,7 +34,6 @@ async function doc2result({ content, fullAllow, fullDisallow, error }) {
 
 async function fetchRobotsTxt(site) {
   const url = site + '/robots.txt'
-  const now = Date.now()
 
   let cache
   try {
@@ -68,7 +68,7 @@ async function fetchRobotsTxt(site) {
                 }, {
                   $set: {
                     error: JSON.stringify(error),
-                    expire: new Date(now + ERROR_EXPIRE),
+                    date: new Date(),
                     lock: false
                   }
                 })
@@ -101,29 +101,30 @@ async function fetchRobotsTxt(site) {
 
     try {
       await collection.updateOne({
-          site,
-          $or: [
-            error: { $ne: null },
-            date:
-          ],
-          lock: false
-        }, {
-          $set: {
-            status: null,
-            content: null,
-            fullAllow: null,
-            fullDisallow: null,
-            error: null,
-            expire: new Date(),
-            lock
-          },
-          $setOnInsert: {
-            tried: 0
-          }
+        site,
+        lock: false,
+        $or: [
+          { error: { $ne: null } }, // error
+          { date: { $lt: new Date(Date.now() - EXPIRE) } } // expired
+        ]
+      }, {
+        $set: {
+          status: null,
+          content: null,
+          fullAllow: null,
+          fullDisallow: null,
+          error: null,
+          date: new Date(),
+          lock
         },
-        { upsert: true }
-      )
+        $setOnInsert: {
+          tried: 0
+        }
+      }, { upsert: true })
+    } catch (e) {
+
     }
+
     let res
     try {
       res = await fetch(url, { follow: 5, timeout: FETCH_TIMEOUT })
