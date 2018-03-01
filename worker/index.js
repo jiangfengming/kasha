@@ -5,6 +5,21 @@
 
   const db = await require('../shared/db').connect()
   const collection = db.collection('snapshot')
+  /*
+  snapshot collection schema:
+  site: String
+  path: String
+  deviceType: String
+  allowCrawl: Boolean
+  status: Number
+  redirect: String
+  title: String
+  content: String
+  error: String
+  tried: Number
+  date: Date
+  lock: String
+  */
 
   const prerender = require('puppeteer-prerender')
   prerender.timeout = 25 * 1000
@@ -127,7 +142,7 @@
                 } else if (tried >= 5) {
                   clearInterval(intervalId)
 
-                  const error = new CustomError('SERVER_CACHE_LOCK_TIMEOUT', url)
+                  const error = new CustomError('SERVER_CACHE_LOCK_TIMEOUT', 'snapshot')
 
                   if (doc.lock === pollingResult.lock) {
                     try {
@@ -221,8 +236,8 @@
             title,
             content,
             error: null,
-            date,
             tried: 0,
+            date,
             lock: false
           }
         }, { upsert: true })

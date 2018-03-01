@@ -1,5 +1,8 @@
 const { URL } = require('url')
 const assert = require('assert')
+const CustomError = require('../shared/CustomError')
+const logger = require('../shared/logger')
+const { db } = require('../shared/db')
 const { addToQueue, replyTo } = require('./workerResponse')
 const uid = require('../shared/uid')
 const callback = require('../shared/callback')
@@ -12,7 +15,7 @@ const queued = { queued: true }
 async function render(ctx) {
   const now = Date.now()
   const { deviceType = 'desktop' } = ctx.query
-  let { url, callbackUrl, proxy, noWait, metaOnly, followRedirect, ignoreRobotsTxt } = ctx.query
+  let { url, callbackUrl, proxy, noWait, metaOnly, followRedirect, ignoreRobotsTxt, refresh } = ctx.query
 
   let site, path
   try {
@@ -67,6 +70,12 @@ async function render(ctx) {
     followRedirect = followRedirect === ''
   }
 
+  if (![undefined, ''].includes(refresh)) {
+    throw new CustomError('CLIENT_INVALID_PARAM', 'refresh')
+  } else {
+    refresh = refresh === ''
+  }
+
 
   if (proxy && (callbackUrl || noWait || metaOnly)) {
     throw new CustomError(
@@ -82,69 +91,86 @@ async function render(ctx) {
   })
 
   async function handler() {
-    let snapshot
-    try {
-      snapshot = await db.collection('snapshot').findOne({ site, path, deviceType })
-    } catch (e) {
-      const { timestamp, eventId } = logger.error(e)
-      throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
-    }
-
-    if (!snapshot) return sendToWorker()
-
-    const { allowCrawl, status, redirect, title, content, error, date, retry, locked } = snapshot
-
-    if (retry) { // error cache
-      if (retry >= 3 && date.getTime() + ERROR_EXPIRE > now) {
-        throw new CustomError(
-          'SERVER_RENDER_ERROR',
-          `Fetching ${url} failed 3 times in one minute (${error || ('HTTP ' + status)}).`
-        )
-      } else {
-        return sendToWorker()
-      }
-    } else {
-      const expired = date.getTime() + EXPIRE < now
-
-      // disable crawling
-      if (!allowCrawl && !ignoreRobotsTxt) {
-        if (expired) sendToWorker(true)
-        throw new CustomError('SERVER_ROBOTS_DISALLOW')
-      }
-
-      if (content === null && followRedirect) {
-        return sendToWorker()
-      }
-
-      if (proxy) {
-        if (redirect && !followRedirect) {
-          ctx.status = status
-          ctx.redirect(redirect)
-        } else {
-          ctx.status = status
-          ctx.body = content
-        }
-      } else {
-        const body = {
-          url,
+    // to refresh the page, we make the cache expire.
+    if (refresh) {
+      try {
+        await db.collection('snapshot').updateOne({
+          site,
+          path,
           deviceType,
-          status,
-          redirect,
-          title,
-          content: metaOnly ? null : content,
-          date
-        }
+          lock: false
+        }, {
+          $set: {
+            date: new Date(0)
+          }
+        })
 
-        if (callbackUrl) {
-          callback(callbackUrl, body)
-          ctx.body = queued
-        } else if (!noWait) {
-          ctx.body = body
-        }
+        await db.collection('robotsTxt').updateOne({ site }, { $set: { expire: new Date(0) } })
+      } catch (e) {
+        const { timestamp, eventId } = logger.error(e)
+        throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
       }
 
-      // refresh cache
-      if (expired) sendToWorker(true)
+      return sendToWorker()
+    } else {
+      let snapshot
+      try {
+        snapshot = await db.collection('snapshot').findOne({ site, path, deviceType })
+      } catch (e) {
+        const { timestamp, eventId } = logger.error(e)
+        throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
+      }
+
+      if (!snapshot) return sendToWorker()
+
+      const { allowCrawl, status, redirect, title, content, error, date, retry, locked } = snapshot
+
+      if (retry) { // error cache
+        if (retry >= 3 && date.getTime() + ERROR_EXPIRE > now) {
+          throw new CustomError(
+            'SERVER_RENDER_ERROR',
+            `Fetching ${url} failed 3 times in one minute (${error || ('HTTP ' + status)}).`
+          )
+        } else {
+          return sendToWorker()
+        }
+      } else {
+        // disable crawling
+        if (!allowCrawl && !ignoreRobotsTxt) {
+          throw new CustomError('SERVER_ROBOTS_DISALLOW')
+        }
+
+        if (content === null && followRedirect) {
+          return sendToWorker()
+        }
+
+        if (proxy) {
+          if (redirect && !followRedirect) {
+            ctx.status = status
+            ctx.redirect(redirect)
+          } else {
+            ctx.status = status
+            ctx.body = content
+          }
+        } else {
+          const body = {
+            url,
+            deviceType,
+            status,
+            redirect,
+            title,
+            content: metaOnly ? null : content,
+            date
+          }
+
+          if (callbackUrl) {
+            callback(callbackUrl, body)
+            ctx.body = queued
+          } else if (!noWait) {
+            ctx.body = body
+          }
+        }
+      }
     }
   }
 
