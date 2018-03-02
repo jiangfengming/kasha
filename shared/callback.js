@@ -1,3 +1,4 @@
+const CustomError = require('./CustomError')
 const fetch = require('node-fetch')
 
 const RETRY = 3

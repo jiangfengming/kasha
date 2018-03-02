@@ -22,7 +22,7 @@
   */
 
   const prerender = require('puppeteer-prerender')
-  prerender.timeout = 25 * 1000
+  prerender.timeout = 24 * 1000
   const { isAllowed } = require('./robotsTxt')
   const userAgents = require('./userAgents')
 
@@ -120,69 +120,67 @@
       // don't block the queue
       msg.finish()
 
-      // duplicate key on upsert
-      // the document has been locked by others
-      // or the document is valid
-      if (e.code === 11000) {
-        try {
-          const doc = await collection.findOne({ site, path, deviceType })
-          // locked by others. polling the result
-          if (doc.lock) {
-            let tried = 0
-            const intervalId = setInterval(async() => {
-              tried++
-
-              try {
-                const pollingResult = await collection.findOne({ site, path, deviceType })
-                if (!pollingResult.lock) { // unlocked
-                  clearInterval(intervalId)
-                  handleResult(doc2result(pollingResult))
-                } else if (tried >= 5) {
-                  clearInterval(intervalId)
-
-                  const error = new CustomError('SERVER_CACHE_LOCK_TIMEOUT', 'snapshot')
-
-                  if (doc.lock === pollingResult.lock) {
-                    try {
-                      await collection.updateOne({
-                        site,
-                        path,
-                        deviceType,
-                        lock: doc.lock
-                      }, {
-                        $set: {
-                          error: JSON.stringify(error),
-                          date: new Date(),
-                          lock: false
-                        }
-                      })
-                    } catch (e) {
-                      const { timestamp, eventId } = logger.error(e)
-                      return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
-                    }
-                  }
-
-                  handleResult(error)
-                }
-              } catch (e) {
-                clearInterval(intervalId)
-                const { timestamp, eventId } = logger.error(e)
-                handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
-              }
-            }, 5000)
-          } else {
-            handleResult(doc2result(doc))
-          }
-        } catch (e) {
-          const { timestamp, eventId } = logger.error(e)
-          handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
-        }
-      } else {
+      if (e.code !== 11000) {
         const { timestamp, eventId } = logger.error(e)
-        handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+        return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
       }
 
-      return
+      // duplicate key on upsert
+      // the document maybe locked by others, or is valid
+      let tried = 0
+      let initialLock
+      const polling = async() => {
+        tried++
+
+        let pollingResult
+        try {
+          pollingResult = await collection.findOne({ site, path, deviceType })
+        } catch (e) {
+          clearInterval(intervalId)
+          const { timestamp, eventId } = logger.error(e)
+          return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+        }
+
+        if (!pollingResult.lock) { // unlocked
+          clearInterval(intervalId)
+          handleResult(doc2result(pollingResult))
+        } else {
+          if (!initialLock) initialLock = pollingResult.lock
+
+          if (tried > 5) {
+            clearInterval(intervalId)
+
+            const error = new CustomError('SERVER_CACHE_LOCK_TIMEOUT', 'snapshot')
+
+            // if the same lock lasts 25s, the other worker may went wrong
+            // we remove the lock
+            if (initialLock === pollingResult.lock) {
+              try {
+                await collection.updateOne({
+                  site,
+                  path,
+                  deviceType,
+                  lock: initialLock
+                }, {
+                  $set: {
+                    error: JSON.stringify(error),
+                    date: new Date(),
+                    lock: false
+                  }
+                })
+              } catch (e) {
+                const { timestamp, eventId } = logger.error(e)
+                return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+              }
+            }
+
+            handleResult(error)
+          }
+        }
+      }
+
+      const intervalId = setInterval(polling, 5000)
+      polling()
     }
 
     // render the page

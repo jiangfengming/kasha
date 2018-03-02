@@ -17,20 +17,15 @@ content: String
 fullAllow: Boolean
 fullDisallow: Boolean
 error: String
-tried: Number
+times: Number
 date: Date
 lock: String
 */
 
 const EXPIRE = 24 * 60 * 60 * 1000 // cache one day
 const ERROR_EXPIRE = 60 * 1000 // one minute
-const FETCH_TIMEOUT = 10 * 1000
+const FETCH_TIMEOUT = 9 * 1000
 
-
-async function doc2result({ content, fullAllow, fullDisallow, error }) {
-  if (error) throw new CustomError(JSON.parse(error))
-  else return { content, fullAllow, fullDisallow }
-}
 
 async function fetchRobotsTxt(site) {
   const url = site + '/robots.txt'
@@ -43,57 +38,84 @@ async function fetchRobotsTxt(site) {
     throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
   }
 
-  if (cache) {
-    if (cache.lock) {
-      return new Promise((resolve, reject) => {
-        let tried = 0
+  if (!cache) return _fetch()
 
-        const intervalId = setInterval(async() => {
-          tried++
+  if (cache.lock) return poll(cache.lock)
 
-          const pollingResult = collection.findOne({ site })
-          if (!pollingResult.lock) {
-            clearInterval(intervalId)
-            resolve(doc2result(pollingResult))
-          } else if (tried >= 5) {
+  if (!cache.error && cache.date.getTime() + EXPIRE >= Date.now()) return doc2result(cache)
+
+  if (cache.error && cache.date.getTime() + ERROR_EXPIRE > Date.now() && cache.times % 4 === 3) {
+    throw new CustomError(
+      'SERVER_NET_ERROR',
+      `Fetching ${url} failed 3 times in one minute.`
+    )
+  }
+
+  return _fetch()
+
+  async function doc2result({ content, fullAllow, fullDisallow, error }) {
+    if (error) throw new CustomError(JSON.parse(error))
+    else return { content, fullAllow, fullDisallow }
+  }
+
+  function poll(lock) {
+    return new Promise((resolve, reject) => {
+      let tried = 0
+
+      const intervalId = setInterval(p, 2000)
+      if (!lock) p()
+
+      async function p() {
+        tried++
+
+        let pollingResult
+        try {
+          pollingResult = await collection.findOne({ site })
+        } catch (e) {
+          clearInterval(intervalId)
+          const { timestamp, eventId } = logger.error(e)
+          return reject(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+        }
+
+        if (!pollingResult.lock) { // unlocked
+          clearInterval(intervalId)
+          resolve(doc2result(pollingResult))
+        } else {
+          if (!lock) lock = pollingResult.lock
+
+          if (tried > 5) {
             clearInterval(intervalId)
 
             const error = new CustomError('SERVER_CACHE_LOCK_TIMEOUT', 'robots.txt')
 
-            if (pollingResult.lock === cache.lock) {
+            // if the same lock lasts 10s, the other worker may went wrong
+            // we remove the lock
+            if (lock === pollingResult.lock) {
               try {
                 await collection.updateOne({
                   site,
-                  lock: cache.lock
+                  lock
                 }, {
                   $set: {
                     error: JSON.stringify(error),
                     date: new Date(),
                     lock: false
+                  },
+                  $inc: {
+                    times: 1
                   }
                 })
-
-                reject(error)
               } catch (e) {
                 const { timestamp, eventId } = logger.error(e)
-                reject(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+                return reject(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
               }
             }
+
+            reject(error)
           }
-        }, 2000)
-      })
-    } else if (!cache.error && cache.expire >= now) {
-      return doc2result(cache)
-    } else if (cache.error && cache.expire > now && cache.tried >= 3) {
-      throw new CustomError(
-        'SERVER_NET_ERROR',
-        `Fetching ${url} failed 3 times in one minute.`
-      )
-    } else {
-      return _fetch()
-    }
-  } else {
-    return _fetch()
+        }
+      }
+    })
   }
 
   async function _fetch() {
@@ -118,29 +140,36 @@ async function fetchRobotsTxt(site) {
           lock
         },
         $setOnInsert: {
-          tried: 0
+          times: 0
         }
       }, { upsert: true })
     } catch (e) {
+      if (e.code !== 11000) {
+        const { timestamp, eventId } = logger.error(e)
+        throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
+      }
 
+      return poll()
     }
 
     let res
     try {
       res = await fetch(url, { follow: 5, timeout: FETCH_TIMEOUT })
     } catch (e) {
+      const error = new CustomError('SERVER_NET_ERROR', e.message)
+
       try {
         await collection.updateOne({ site }, {
           $set: {
             status: null,
             content: null,
-            expire: new Date(now + ERROR_EXPIRE),
+            expire: new Date(Date.now() + ERROR_EXPIRE),
             fullAllow: null,
             fullDisallow: null,
-            error: e.message
+            error: JSON.stringify(error)
           },
           $inc: {
-            retry: 1
+            times: 1
           }
         })
       } catch (e) {
@@ -148,14 +177,8 @@ async function fetchRobotsTxt(site) {
         throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
       }
 
-      throw new CustomError('SERVER_NET_ERROR', e.message)
+      throw error
     }
-
-    let maxAge
-    const cacheControl = res.headers.get('Cache-Control')
-    if (cacheControl) maxAge = cacheControl.match(/(?:^|,)\s*max-age=(\d+)/)
-    maxAge = maxAge ? maxAge[1] * 1000 : EXPIRE
-    const expire = new Date(now + maxAge)
 
     const contentType = res.headers.get('Content-Type')
 
@@ -166,11 +189,13 @@ async function fetchRobotsTxt(site) {
           $set: {
             status: res.status,
             content,
-            expire,
             fullAllow: false,
             fullDisallow: false,
             error: null,
-            retry: 0
+            date: new Date()
+          },
+          $inc: {
+            times: 1
           }
         }, { upsert: true })
         return { content, fullAllow: false, fullDisallow: false }
@@ -190,11 +215,13 @@ async function fetchRobotsTxt(site) {
           $set: {
             status: res.status,
             content,
-            expire,
             fullAllow,
             fullDisallow,
             error: null,
-            retry: 0
+            date: new Date()
+          },
+          $inc: {
+            times: 1
           }
         }
       } else {
@@ -203,13 +230,13 @@ async function fetchRobotsTxt(site) {
           $set: {
             status: res.status,
             content,
-            expire: new Date(now + ERROR_EXPIRE),
             fullAllow,
             fullDisallow,
-            error: null
+            error: null,
+            date: new Date()
           },
           $inc: {
-            retry: 1
+            times: 1
           }
         }
       }
