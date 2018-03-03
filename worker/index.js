@@ -57,19 +57,6 @@
 
     const url = site + path
 
-    function doc2result({ status, redirect, title, content, error, date }) {
-      return error
-        ? new CustomError(JSON.parse(error))
-        : {
-          url,
-          deviceType,
-          status,
-          redirect,
-          title,
-          content: metaOnly ? null : content,
-          date
-        }
-    }
 
     // check robots.txt
     let allowCrawl
@@ -127,60 +114,7 @@
 
       // duplicate key on upsert
       // the document maybe locked by others, or is valid
-      let tried = 0
-      let initialLock
-      const polling = async() => {
-        tried++
 
-        let pollingResult
-        try {
-          pollingResult = await collection.findOne({ site, path, deviceType })
-        } catch (e) {
-          clearInterval(intervalId)
-          const { timestamp, eventId } = logger.error(e)
-          return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
-        }
-
-        if (!pollingResult.lock) { // unlocked
-          clearInterval(intervalId)
-          handleResult(doc2result(pollingResult))
-        } else {
-          if (!initialLock) initialLock = pollingResult.lock
-
-          if (tried > 5) {
-            clearInterval(intervalId)
-
-            const error = new CustomError('SERVER_CACHE_LOCK_TIMEOUT', 'snapshot')
-
-            // if the same lock lasts 25s, the other worker may went wrong
-            // we remove the lock
-            if (initialLock === pollingResult.lock) {
-              try {
-                await collection.updateOne({
-                  site,
-                  path,
-                  deviceType,
-                  lock: initialLock
-                }, {
-                  $set: {
-                    error: JSON.stringify(error),
-                    date: new Date(),
-                    lock: false
-                  }
-                })
-              } catch (e) {
-                const { timestamp, eventId } = logger.error(e)
-                return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
-              }
-            }
-
-            handleResult(error)
-          }
-        }
-      }
-
-      const intervalId = setInterval(polling, 5000)
-      polling()
     }
 
     // render the page
@@ -189,7 +123,9 @@
     try {
       ({ status, redirect, title, content } = await prerender(url, {
         userAgent: userAgents[deviceType],
-        followRedirect
+        // always followRedirect when caching pages
+        // in case of a request with followRedirect=true waits a cache lock of request with followRedirect=false
+        followRedirect: true
       }))
     } catch (e) {
       error = e.message

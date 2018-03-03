@@ -1,3 +1,5 @@
+const assert = require('assert')
+
 describe('robotsTxt', () => {
   let isAllowed
 
@@ -7,6 +9,16 @@ describe('robotsTxt', () => {
   })
 
   describe('#isAllowed()', () => {
-    it('should allow: https://www.bing.com/foo', () => isAllowed('https://www.bing.com/foo'))
+    it('should allow: https://www.bing.com/foo', async() => {
+      assert.deepEqual(await isAllowed('https://www.bing.com/foo'), true)
+    })
+
+    it('should disallow: https://www.bing.com/account/', async() => {
+      assert.deepEqual(await isAllowed('https://www.bing.com/account/'), false)
+    })
+
+    it('should allow if no valid robots.txt exists: http://www.example.com/foo', async() => {
+      assert.deepEqual(await isAllowed('http://www.example.com/foo'), true)
+    })
   })
 })

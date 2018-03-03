@@ -92,10 +92,7 @@ async function fetchRobotsTxt(site) {
             // we remove the lock
             if (lock === pollingResult.lock) {
               try {
-                await collection.updateOne({
-                  site,
-                  lock
-                }, {
+                await collection.updateOne({ site, lock }, {
                   $set: {
                     error: JSON.stringify(error),
                     date: new Date(),
@@ -154,19 +151,23 @@ async function fetchRobotsTxt(site) {
 
     let res
     try {
-      res = await fetch(url, { follow: 5, timeout: FETCH_TIMEOUT })
+      res = await fetch(url, {
+        follow: 5,
+        timeout: FETCH_TIMEOUT
+      })
     } catch (e) {
       const error = new CustomError('SERVER_NET_ERROR', e.message)
 
       try {
-        await collection.updateOne({ site }, {
+        await collection.updateOne({ site, lock }, {
           $set: {
             status: null,
             content: null,
-            expire: new Date(Date.now() + ERROR_EXPIRE),
             fullAllow: null,
             fullDisallow: null,
-            error: JSON.stringify(error)
+            error: JSON.stringify(error),
+            date: new Date(),
+            lock: false
           },
           $inc: {
             times: 1
@@ -192,58 +193,47 @@ async function fetchRobotsTxt(site) {
             fullAllow: false,
             fullDisallow: false,
             error: null,
-            date: new Date()
+            date: new Date(),
+            lock: false
           },
           $inc: {
             times: 1
           }
         }, { upsert: true })
-        return { content, fullAllow: false, fullDisallow: false }
+
+        return {
+          content,
+          fullAllow: false,
+          fullDisallow: false
+        }
       } catch (e) {
         const { timestamp, eventId } = logger.error(e)
         throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
       }
     } else {
-      const content = null
-      let update
-      let fullAllow = false
-      let fullDisallow = false
-
-      if (res.status >= 400 && res.status <= 499 || res.ok && !contentType.startsWith('text/plain')) {
-        fullAllow = true
-        update = {
-          $set: {
-            status: res.status,
-            content,
-            fullAllow,
-            fullDisallow,
-            error: null,
-            date: new Date()
-          },
-          $inc: {
-            times: 1
-          }
-        }
-      } else {
-        fullDisallow = true
-        update = {
-          $set: {
-            status: res.status,
-            content,
-            fullAllow,
-            fullDisallow,
-            error: null,
-            date: new Date()
-          },
-          $inc: {
-            times: 1
-          }
-        }
-      }
+      const fullAllow = res.status >= 400 && res.status <= 499 || res.ok && !contentType.startsWith('text/plain')
 
       try {
-        await collection.updateOne({ site }, update, { upsert: true })
-        return { content, fullAllow, fullDisallow }
+        await collection.updateOne({ site }, {
+          $set: {
+            status: res.status,
+            content: null,
+            fullAllow,
+            fullDisallow: !fullAllow,
+            error: null,
+            date: new Date(),
+            lock: false
+          },
+          $inc: {
+            times: 1
+          }
+        }, { upsert: true })
+
+        return {
+          content: null,
+          fullAllow,
+          fullDisallow: !fullAllow
+        }
       } catch (e) {
         const { timestamp, eventId } = logger.error(e)
         throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
@@ -268,4 +258,7 @@ async function isAllowed(url) {
   }
 }
 
-module.exports = { fetch: fetchRobotsTxt, isAllowed }
+module.exports = {
+  fetch: fetchRobotsTxt,
+  isAllowed
+}

@@ -91,7 +91,7 @@ async function render(ctx) {
   })
 
   async function handler() {
-    // to refresh the page, we make the cache expire.
+    // to refresh the page, we make the cache expired.
     if (refresh) {
       try {
         await db.collection('snapshot').updateOne({
@@ -105,7 +105,11 @@ async function render(ctx) {
           }
         })
 
-        await db.collection('robotsTxt').updateOne({ site }, { $set: { date: new Date(0) } })
+        await db.collection('robotsTxt').updateOne({ site }, {
+          $set: {
+            date: new Date(0)
+          }
+        })
       } catch (e) {
         const { timestamp, eventId } = logger.error(e)
         throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
@@ -121,54 +125,59 @@ async function render(ctx) {
         throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
       }
 
-      if (!snapshot) return sendToWorker()
+      if (!snapshot) {
+        sendToWorker()
+      } else if (snap.lock) {
+        try {
+          result = await poll(site, path, deviceType, lock)
+          if (proxy) {
+            if (redirect && !followRedirect) {
+              ctx.status = status
+              ctx.redirect(redirect)
+            } else {
+              ctx.status = status
+              ctx.body = content
+            }
+          } else {
+            const body = {
+              url,
+              deviceType,
+              status,
+              redirect,
+              title,
+              content: metaOnly ? null : content,
+              date
+            }
 
-      const { allowCrawl, status, redirect, title, content, error, date, retry, locked } = snapshot
+            if (callbackUrl) {
+              callback(callbackUrl, body)
+              ctx.body = queued
+            } else if (!noWait) {
+              ctx.body = body
+            }
+          }
+        } catch (e) {
+          if (callbackUrl) callback(callbackUrl, e)
+          else throw e
+        }
+      } else if (!error) {
+        if (date.getTime() + EXPIRE > now) {
+          // disable crawling
+          if (!allowCrawl && !ignoreRobotsTxt) {
+            throw new CustomError('SERVER_ROBOTS_DISALLOW')
+          }
 
-      if (retry) { // error cache
-        if (retry >= 3 && date.getTime() + ERROR_EXPIRE > now) {
-          throw new CustomError(
-            'SERVER_RENDER_ERROR',
-            `Fetching ${url} failed 3 times in one minute (${error || ('HTTP ' + status)}).`
-          )
         } else {
           return sendToWorker()
         }
       } else {
-        // disable crawling
-        if (!allowCrawl && !ignoreRobotsTxt) {
-          throw new CustomError('SERVER_ROBOTS_DISALLOW')
-        }
-
-        if (content === null && followRedirect) {
-          return sendToWorker()
-        }
-
-        if (proxy) {
-          if (redirect && !followRedirect) {
-            ctx.status = status
-            ctx.redirect(redirect)
-          } else {
-            ctx.status = status
-            ctx.body = content
-          }
+        if (times % 4 === 3 && date.getTime() + ERROR_EXPIRE > now) {
+          throw new CustomError(
+            'SERVER_RENDER_ERROR',
+            `Fetching ${url} failed 3 times in one minute.`
+          )
         } else {
-          const body = {
-            url,
-            deviceType,
-            status,
-            redirect,
-            title,
-            content: metaOnly ? null : content,
-            date
-          }
-
-          if (callbackUrl) {
-            callback(callbackUrl, body)
-            ctx.body = queued
-          } else if (!noWait) {
-            ctx.body = body
-          }
+          return sendToWorker()
         }
       }
     }
