@@ -1,4 +1,3 @@
-const CustomError = require('./CustomError')
 const fetch = require('node-fetch')
 
 const RETRY = 3
@@ -10,7 +9,7 @@ async function callback(callbackUrl, result) {
     body: JSON.stringify(result),
     headers: {
       'Content-Type': 'application/json',
-      'X-Code': result instanceof CustomError ? result.code : 'OK',
+      'X-Code': result.code || 'OK',
       'User-Agent': 'kasha'
     },
     timeout: TIMEOUT

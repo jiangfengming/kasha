@@ -36,6 +36,7 @@
   reader.connect()
 
   const nsqWriter = require('../shared/nsqWriter')
+  const poll = require('../shared/poll')
 
   const EXPIRE = config.cache * 60 * 1000
 
@@ -57,7 +58,6 @@
 
     const url = site + path
 
-
     // check robots.txt
     let allowCrawl
     try {
@@ -68,6 +68,9 @@
     } catch (e) {
       return handleResult(e)
     }
+
+    let status = null, redirect = null, title = null, content = null, error = null
+    let date = new Date()
 
     // lock
     const lock = uid()
@@ -96,7 +99,7 @@
           title: null,
           content: null,
           error: null,
-          date: new Date(),
+          date,
           lock
         },
         $setOnInsert: {
@@ -114,12 +117,28 @@
 
       // duplicate key on upsert
       // the document maybe locked by others, or is valid
+      try {
+        ({ status, redirect, title, content, error, date } = await poll(site, path, deviceType))
+      } catch (e) {
+        return handleResult(e)
+      }
 
+      if (error) {
+        return handleResult(new CustomError(JSON.parse(error)))
+      }
+
+      return handleResult({
+        url,
+        deviceType,
+        status,
+        redirect,
+        title,
+        content: metaOnly ? null : content,
+        date
+      })
     }
 
     // render the page
-    let status = null, redirect = null, title = null, content = null, error = null
-
     try {
       ({ status, redirect, title, content } = await prerender(url, {
         userAgent: userAgents[deviceType],
@@ -127,16 +146,16 @@
         // in case of a request with followRedirect=true waits a cache lock of request with followRedirect=false
         followRedirect: true
       }))
+
+      if (status >= 500 && status <= 599) {
+        error = new CustomError('SERVER_UPSTREAM_ERROR', 'HTTP' + status)
+      }
     } catch (e) {
-      error = e.message
+      error = new CustomError('SERVER_RENDER_ERROR', e.message)
     }
 
-    if (error || status >= 500 && status <= 599) {
+    if (error) {
       try {
-        error = error
-          ? new CustomError('SERVER_RENDER_ERROR', error)
-          : new CustomError('SERVER_UPSTREAM_ERROR', 'HTTP' + status)
-
         await collection.updateOne({ site, path, deviceType, lock }, {
           $set: {
             allowCrawl,
@@ -145,7 +164,7 @@
             title,
             content,
             error: JSON.stringify(error),
-            date: new Date(),
+            date,
             lock: false
           },
           $inc: {
@@ -169,7 +188,7 @@
             content,
             error: null,
             tried: 0,
-            date: new Date(),
+            date,
             lock: false
           }
         }, { upsert: true })
@@ -185,11 +204,13 @@
         redirect,
         title,
         content: metaOnly ? null : content,
-        date: new Date()
+        date
       })
     }
 
     function handleResult(data) {
+      if (data instanceof CustomError) data = data.toJSON()
+
       if (callbackUrl) {
         callback(callbackUrl, data)
       } else if (replyTo) {

@@ -1,3 +1,5 @@
+const CustomError = require('../shared/CustomError')
+
 const { Reader } = require('nsqjs')
 const { hostname } = require('os')
 const { nsq: { reader: options } } = require('../shared/config')

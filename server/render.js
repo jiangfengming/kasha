@@ -3,6 +3,7 @@ const assert = require('assert')
 const CustomError = require('../shared/CustomError')
 const logger = require('../shared/logger')
 const { db } = require('../shared/db')
+const nsqWriter = require('../shared/nsqWriter')
 const { addToQueue, replyTo } = require('./workerResponse')
 const uid = require('../shared/uid')
 const callback = require('../shared/callback')
@@ -10,7 +11,6 @@ const callback = require('../shared/callback')
 const EXPIRE = config.cache * 60 * 1000
 const ERROR_EXPIRE = 60 * 1000
 
-const queued = { queued: true }
 
 async function render(ctx) {
   const now = Date.now()
@@ -116,135 +116,122 @@ async function render(ctx) {
       }
 
       return sendToWorker()
-    } else {
-      let snapshot
-      try {
-        snapshot = await db.collection('snapshot').findOne({ site, path, deviceType })
-      } catch (e) {
-        const { timestamp, eventId } = logger.error(e)
-        throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
-      }
-
-      if (!snapshot) {
-        sendToWorker()
-      } else if (snap.lock) {
-        try {
-          result = await poll(site, path, deviceType, lock)
-          if (proxy) {
-            if (redirect && !followRedirect) {
-              ctx.status = status
-              ctx.redirect(redirect)
-            } else {
-              ctx.status = status
-              ctx.body = content
-            }
-          } else {
-            const body = {
-              url,
-              deviceType,
-              status,
-              redirect,
-              title,
-              content: metaOnly ? null : content,
-              date
-            }
-
-            if (callbackUrl) {
-              callback(callbackUrl, body)
-              ctx.body = queued
-            } else if (!noWait) {
-              ctx.body = body
-            }
-          }
-        } catch (e) {
-          if (callbackUrl) callback(callbackUrl, e)
-          else throw e
-        }
-      } else if (!error) {
-        if (date.getTime() + EXPIRE > now) {
-          // disable crawling
-          if (!allowCrawl && !ignoreRobotsTxt) {
-            throw new CustomError('SERVER_ROBOTS_DISALLOW')
-          }
-
-        } else {
-          return sendToWorker()
-        }
-      } else {
-        if (times % 4 === 3 && date.getTime() + ERROR_EXPIRE > now) {
-          throw new CustomError(
-            'SERVER_RENDER_ERROR',
-            `Fetching ${url} failed 3 times in one minute.`
-          )
-        } else {
-          return sendToWorker()
-        }
-      }
-    }
-  }
-
-  function sendToWorker(refresh = false) {
-    if (refresh) {
-      logger.debug('refresh ' + url)
-      noWait = true
-      proxy = false
-      callbackUrl = null
     }
 
-    const msg = Buffer.from(JSON.stringify({
-      site,
-      path,
-      deviceType,
-      callbackUrl,
-      metaOnly,
-      followRedirect,
-      ignoreRobotsTxt
-    }))
 
-    let worker, msgOpts
-    if (callbackUrl || noWait) {
-      worker = 'renderWorker'
-      msgOpts = {
-        persistent: true
-      }
-    } else {
-      worker = 'renderWorkerRPC'
-      msgOpts = {
-        correlationId: uid(),
-        replyTo: mq.queue.queue
-      }
-    }
-
-    msgOpts.contentType = 'application/json'
-
+    let snapshot
     try {
-      if (!await sendToQueue(worker, msg, msgOpts)) {
-        logger.warn('Message channel\'s buffer is full')
-      }
+      snapshot = await db.collection('snapshot').findOne({ site, path, deviceType })
     } catch (e) {
-      logger.error(e)
+      const { timestamp, eventId } = logger.error(e)
+      throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
     }
 
+    if (!snapshot) return sendToWorker()
 
-    if (callbackUrl) {
-      ctx.body = queued // end
-    } else if (!noWait) {
-      return mpRPC.add({ // promise
-        ctx,
-        correlationId: msgOpts.correlationId,
-        date: now,
-        proxy,
-        metaOnly,
-        followRedirect
-      })
+    if (snaphot.lock)
+      return handleResult(await poll(site, path, deviceType, snaphot.lock))
+    }
+
+    if (error) {
+      if (times % 4 === 3 && date.getTime() + ERROR_EXPIRE > now) {
+        throw new CustomError(
+          'SERVER_RENDER_ERROR',
+          `Fetching ${url} failed 3 times in one minute.`
+        )
+      }
+
+      return sendToWorker()
+    } else {
+      if (date.getTime() + EXPIRE > now) {
+        return handleResult(snapshot)
+      }
+
+      return sendToWorker()
     }
   }
 
-  if (noWait) {
-    ctx.body = queued
-    handler()
+  if (noWait || callbackUrl) {
+    ctx.body = { queued: true }
+    handler().catch(e => {
+      if (callbackUrl) callback(callbackUrl, e)
+    })
   } else {
     return handler()
+  }
+
+
+  function handleResult({ allowCrawl, status, redirect, title, content, error, date }) {
+    // has error
+    if (error) {
+      throw new CustomError(JSON.parse(error))
+    }
+
+    // disable crawling
+    if (!allowCrawl && !ignoreRobotsTxt) {
+      throw new CustomError('SERVER_ROBOTS_DISALLOW')
+    }
+
+    if (proxy) {
+      if (redirect && !followRedirect) {
+        ctx.status = status
+        ctx.redirect(redirect)
+      } else {
+        ctx.status = status
+        ctx.body = content
+      }
+    } else {
+      const doc = {
+        url,
+        deviceType,
+        status,
+        redirect,
+        title,
+        content: metaOnly ? null : content,
+        date
+      }
+
+      if (callbackUrl) {
+        callback(callbackUrl, doc)
+      } else if (!noWait) {
+        ctx.body = doc
+      }
+    }
+  }
+
+  function sendToWorker() {
+    return new Promise((resolve, reject) => {
+      const msg = {
+        site,
+        path,
+        deviceType,
+        callbackUrl,
+        metaOnly,
+        followRedirect,
+        ignoreRobotsTxt
+      }
+
+      let topic, msgOpts
+      if (callbackUrl || noWait) {
+        topic = 'asyncQueue'
+      } else {
+        topic = 'syncQueue'
+      }
+
+
+      if (callbackUrl) {
+        ctx.body = queued // end
+      } else if (!noWait) {
+        return mpRPC.add({ // promise
+          ctx,
+          correlationId: msgOpts.correlationId,
+          date: now,
+          proxy,
+          metaOnly,
+          followRedirect
+        })
+      }
+    })
   }
 }
 
