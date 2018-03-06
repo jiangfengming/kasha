@@ -1,21 +1,22 @@
 const { URL } = require('url')
 const assert = require('assert')
+const config = require('../shared/config')
 const CustomError = require('../shared/CustomError')
 const logger = require('../shared/logger')
 const { db } = require('../shared/db')
-const nsqWriter = require('../shared/nsqWriter')
+const { writer: nsqWriter } = require('../shared/nsqWriter')
 const { addToQueue, replyTo } = require('./workerResponse')
 const uid = require('../shared/uid')
 const callback = require('../shared/callback')
+const poll = require('../shared/poll')
 
 const EXPIRE = config.cache * 60 * 1000
 const ERROR_EXPIRE = 60 * 1000
 
-
 async function render(ctx) {
   const now = Date.now()
-  const { deviceType = 'desktop' } = ctx.query
-  let { url, callbackUrl, proxy, noWait, metaOnly, followRedirect, ignoreRobotsTxt, refresh } = ctx.query
+  const { deviceType = 'desktop', callbackUrl } = ctx.query
+  let { url, proxy, noWait, metaOnly, followRedirect, ignoreRobotsTxt, refresh } = ctx.query
 
   let site, path
   try {
@@ -118,19 +119,20 @@ async function render(ctx) {
       return sendToWorker()
     }
 
-
-    let snapshot
+    let doc
     try {
-      snapshot = await db.collection('snapshot').findOne({ site, path, deviceType })
+      doc = await db.collection('snapshot').findOne({ site, path, deviceType })
     } catch (e) {
       const { timestamp, eventId } = logger.error(e)
       throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
     }
 
-    if (!snapshot) return sendToWorker()
+    if (!doc) return sendToWorker()
 
-    if (snaphot.lock)
-      return handleResult(await poll(site, path, deviceType, snaphot.lock))
+    const { error, times, date, lock } = doc
+
+    if (lock) {
+      return handleResult(await poll(site, path, deviceType, lock))
     }
 
     if (error) {
@@ -144,7 +146,7 @@ async function render(ctx) {
       return sendToWorker()
     } else {
       if (date.getTime() + EXPIRE > now) {
-        return handleResult(snapshot)
+        return handleResult(doc)
       }
 
       return sendToWorker()
@@ -159,7 +161,6 @@ async function render(ctx) {
   } else {
     return handler()
   }
-
 
   function handleResult({ allowCrawl, status, redirect, title, content, error, date }) {
     // has error
@@ -192,7 +193,7 @@ async function render(ctx) {
       }
 
       if (callbackUrl) {
-        callback(callbackUrl, doc)
+        callback(callbackUrl, null, doc)
       } else if (!noWait) {
         ctx.body = doc
       }
@@ -211,26 +212,32 @@ async function render(ctx) {
         ignoreRobotsTxt
       }
 
-      let topic, msgOpts
+      let topic
       if (callbackUrl || noWait) {
         topic = 'asyncQueue'
       } else {
         topic = 'syncQueue'
+        msg.replyTo = replyTo
+        msg.correlationId = uid()
       }
 
-
-      if (callbackUrl) {
-        ctx.body = queued // end
-      } else if (!noWait) {
-        return mpRPC.add({ // promise
-          ctx,
-          correlationId: msgOpts.correlationId,
-          date: now,
-          proxy,
-          metaOnly,
-          followRedirect
-        })
-      }
+      nsqWriter.publish(topic, msg, e => {
+        if (e) {
+          const { timestamp, eventId } = logger.error(e)
+          reject(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+        } else {
+          if (callbackUrl || noWait) {
+            resolve()
+          } else {
+            resolve(addToQueue({
+              correlationId: msg.correlationId,
+              ctx,
+              proxy,
+              followRedirect
+            }))
+          }
+        }
+      })
     })
   }
 }

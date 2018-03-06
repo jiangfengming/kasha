@@ -29,9 +29,15 @@ setInterval(() => {
   }
 }, 1000)
 
+// { correlationId, ctx, proxy, followRedirect }
 function addToQueue(req) {
   return new Promise((resolve, reject) => {
-    queue.push({ ...req, resolve, reject })
+    queue.push({
+      ...req,
+      date: Date.now(),
+      resolve,
+      reject
+    })
   })
 }
 
@@ -43,14 +49,12 @@ reader.on('message', async msg => {
   const req = queue.find(req => req.correlationId === data.correlationId)
   if (!req) return
 
-  if (data.error) return reject(new CustomError(data.error))
-  const result = data.result
-
   const { ctx, resolve, reject, proxy, followRedirect } = req
 
-  const { status, redirect, content } = result
+  if (data.error) return reject(new CustomError(data.error))
 
   if (proxy) {
+    const { status, redirect, content } = data.result
     if (redirect && !followRedirect) {
       ctx.status = status
       ctx.redirect(redirect)
@@ -59,7 +63,7 @@ reader.on('message', async msg => {
       ctx.body = content || ''
     }
   } else {
-    ctx.body = result
+    ctx.body = data.result
   }
 
   // release resource

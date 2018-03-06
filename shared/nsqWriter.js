@@ -1,14 +1,26 @@
 const { Writer } = require('nsqjs')
 const { nsq: { writer: { host, port, options } } } = require('./config')
 
-const writer = new Writer(host, port, options)
-const promise = new Promise((resolve, reject) => {
-  writer.once('error', reject)
+const singleton = {
+  writer: null,
 
-  writer.once('ready', () => {
-    writer.removeAllListeners()
-    resolve(writer)
-  })
-})
+  connect() {
+    if (singleton.writer) return singleton.writer
 
-module.exports = promise
+    return new Promise((resolve, reject) => {
+      const writer = new Writer(host, port, options)
+
+      writer.once('error', reject)
+
+      writer.once('ready', () => {
+        writer.removeAllListeners()
+        singleton.writer = writer
+        resolve(writer)
+      })
+
+      writer.connect()
+    })
+  }
+}
+
+module.exports = singleton

@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 (async function() {
   const CustomError = require('../shared/CustomError')
   const logger = require('../shared/logger')
@@ -31,11 +33,11 @@
 
   const argv = require('yargs').argv
   const { Reader } = require('nsqjs')
-  const topic = argv.rpc ? 'syncQueue' : 'asyncQueue'
+  const topic = argv.async ? 'asyncQueue' : 'syncQueue'
   const reader = new Reader(topic, 'worker', config.nsq.reader)
   reader.connect()
 
-  const nsqWriter = require('../shared/nsqWriter')
+  const nsqWriter = await require('../shared/nsqWriter').connect()
   const poll = require('../shared/poll')
 
   const EXPIRE = config.cache * 60 * 1000
@@ -127,7 +129,7 @@
         return handleResult(new CustomError(JSON.parse(error)))
       }
 
-      return handleResult({
+      return handleResult(null, {
         url,
         deviceType,
         status,
@@ -197,7 +199,7 @@
         return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
       }
 
-      return handleResult({
+      return handleResult(null, {
         url,
         deviceType,
         status,
@@ -208,15 +210,14 @@
       })
     }
 
-    function handleResult(data) {
-      if (data instanceof CustomError) data = data.toJSON()
-
+    function handleResult(error, result) {
       if (callbackUrl) {
-        callback(callbackUrl, data)
+        callback(callbackUrl, error, result)
       } else if (replyTo) {
         nsqWriter.publish(replyTo, {
           correlationId,
-          data
+          error,
+          result
         })
       }
 

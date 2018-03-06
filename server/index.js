@@ -5,7 +5,8 @@
   const CustomError = require('../shared/CustomError')
   const logger = require('../shared/logger')
 
-  await require('../shared/db')
+  await require('../shared/db').connect()
+  await require('../shared/nsqWriter').connect()
 
   const Koa = require('koa')
   const Router = require('koa-router')

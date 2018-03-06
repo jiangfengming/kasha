@@ -1,6 +1,6 @@
-const CustomError = require('../shared/CustomError')
-const logger = require('../shared/logger')
-const { db } = require('../db')
+const CustomError = require('./CustomError')
+const logger = require('./logger')
+const { db } = require('./db')
 const collection = db.collection('snapshot')
 
 function poll(site, path, deviceType, lock) {

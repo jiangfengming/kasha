@@ -3,13 +3,13 @@ const fetch = require('node-fetch')
 const RETRY = 3
 const TIMEOUT = 10
 
-async function callback(callbackUrl, result) {
+async function callback(callbackUrl, error, result) {
   const init = {
     method: 'POST',
-    body: JSON.stringify(result),
+    body: JSON.stringify(error || result),
     headers: {
       'Content-Type': 'application/json',
-      'X-Code': result.code || 'OK',
+      'X-Code': error ? error.code : 'OK',
       'User-Agent': 'kasha'
     },
     timeout: TIMEOUT
