@@ -18,7 +18,7 @@
   title: String
   content: String
   error: String
-  tried: Number
+  times: Number
   date: Date
   lock: String
   */
@@ -105,7 +105,7 @@
           lock
         },
         $setOnInsert: {
-          tried: 0
+          times: 0
         }
       }, { upsert: true })
     } catch (e) {
@@ -170,7 +170,7 @@
             lock: false
           },
           $inc: {
-            tried: 1
+            times: 1
           }
         }, { upsert: true })
 
@@ -189,9 +189,11 @@
             title,
             content,
             error: null,
-            tried: 0,
             date,
             lock: false
+          },
+          $inc: {
+            times: 1
           }
         }, { upsert: true })
       } catch (e) {

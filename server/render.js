@@ -41,40 +41,43 @@ async function render(ctx) {
     }
   }
 
-  if (![undefined, ''].includes(proxy)) {
+  const validValues = [undefined, '', '0', '1']
+  const truthyValues = ['', '1']
+
+  if (!validValues.includes(proxy)) {
     throw new CustomError('CLIENT_INVALID_PARAM', 'proxy')
   } else {
-    proxy = proxy === ''
+    proxy = truthyValues.includes(proxy)
   }
 
-  if (![undefined, ''].includes(noWait)) {
+  if (!validValues.includes(noWait)) {
     throw new CustomError('CLIENT_INVALID_PARAM', 'noWait')
   } else {
-    noWait = noWait === ''
+    noWait = truthyValues.includes(noWait)
   }
 
-  if (![undefined, ''].includes(metaOnly)) {
+  if (!validValues.includes(metaOnly)) {
     throw new CustomError('CLIENT_INVALID_PARAM', 'metaOnly')
   } else {
-    metaOnly = metaOnly === ''
+    metaOnly = truthyValues.includes(metaOnly)
   }
 
-  if (![undefined, ''].includes(ignoreRobotsTxt)) {
+  if (!validValues.includes(ignoreRobotsTxt)) {
     throw new CustomError('CLIENT_INVALID_PARAM', 'ignoreRobotsTxt')
   } else {
-    ignoreRobotsTxt = ignoreRobotsTxt === ''
+    ignoreRobotsTxt = truthyValues.includes(ignoreRobotsTxt)
   }
 
-  if (![undefined, ''].includes(followRedirect)) {
+  if (!validValues.includes(followRedirect)) {
     throw new CustomError('CLIENT_INVALID_PARAM', 'followRedirect')
   } else {
-    followRedirect = followRedirect === ''
+    followRedirect = truthyValues.includes(followRedirect)
   }
 
-  if (![undefined, ''].includes(refresh)) {
+  if (!validValues.includes(refresh)) {
     throw new CustomError('CLIENT_INVALID_PARAM', 'refresh')
   } else {
-    refresh = refresh === ''
+    refresh = truthyValues.includes(refresh)
   }
 
 

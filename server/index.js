@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 (async() => {
+  await require('../install')
+
   const config = require('../shared/config')
   const CustomError = require('../shared/CustomError')
   const logger = require('../shared/logger')

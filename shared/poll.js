@@ -8,6 +8,8 @@ function poll(site, path, deviceType, lock) {
     let tried = 0
 
     async function p() {
+      logger.debug('polling ' + site + path)
+
       tried++
 
       let doc
