@@ -33,7 +33,7 @@
 
   const argv = require('yargs').argv
   const { Reader } = require('nsqjs')
-  const topic = argv.async ? 'asyncQueue' : 'syncQueue'
+  const topic = argv.async ? 'kasha-async-queue' : 'kasha-sync-queue'
   const reader = new Reader(topic, 'worker', config.nsq.reader)
   reader.connect()
 

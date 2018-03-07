@@ -9,15 +9,14 @@
   },
   "dependencies": {
     "colors": "1.1.2",
-    "koa": "2.4.1",
-    "koa-router": "7.3.0",
-    "mongodb": "3.0.1",
-    "node-fetch": "1.7.3",
-    "nsqjs": "0.10.0",
-    "pm2": "2.9.3",
-    "puppeteer-prerender": "0.1.2",
-    "raven": "2.4.0",
-    "raven-logger": "0.1.2",
+    "koa": "2.5.0",
+    "koa-router": "7.4.0",
+    "mongodb": "3.0.4",
+    "node-fetch": "2.1.1",
+    "nsqjs": "0.10.1",
+    "puppeteer-prerender": "0.1.3",
+    "raven": "2.4.2",
+    "raven-logger": "0.1.3",
     "robots-txt-guard": "0.2.1",
     "robots-txt-parse": "1.0.1",
     "schema-upgrade": "0.1.0",
@@ -25,9 +24,9 @@
     "yargs": "11.0.0"
   },
   "devDependencies": {
-    "eslint": "4.16.0",
+    "eslint": "4.18.2",
     "eslint-config-enough": "0.3.0",
-    "mocha": "5.0.1"
+    "mocha": "5.0.3"
   },
   "eslintConfig": {
     "extends": "enough",

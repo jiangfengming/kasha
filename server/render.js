@@ -217,9 +217,9 @@ async function render(ctx) {
 
       let topic
       if (callbackUrl || noWait) {
-        topic = 'asyncQueue'
+        topic = 'kasha-async-queue'
       } else {
-        topic = 'syncQueue'
+        topic = 'kasha-sync-queue'
         msg.replyTo = replyTo
         msg.correlationId = uid()
       }

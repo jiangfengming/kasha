@@ -4,7 +4,7 @@ const { Reader } = require('nsqjs')
 const { hostname } = require('os')
 const { nsq: { reader: options } } = require('../shared/config')
 
-const topic = 'server-' + hostname()
+const topic = 'kasha-server-' + hostname()
 const maxInFlight = 2500
 const reader = new Reader(topic, 'response', { ...options, maxInFlight })
 reader.connect()
