@@ -15,7 +15,8 @@
   allowCrawl: Boolean
   status: Number
   redirect: String
-  title: String
+  meta: Object
+  openGraph: Object
   content: String
   error: String
   times: Number
@@ -25,6 +26,11 @@
 
   const prerender = require('puppeteer-prerender')
   prerender.timeout = 24 * 1000
+  if (config.loglevel === 'debug') {
+    prerender.debug = true
+    prerender.headless = false
+  }
+
   const { isAllowed } = require('./robotsTxt')
   const userAgents = require('./userAgents')
 
@@ -71,7 +77,7 @@
       return handleResult(e)
     }
 
-    let status = null, redirect = null, title = null, content = null, error = null
+    let status = null, redirect = null, meta = null, openGraph = null, content = null, error = null
     let date = new Date()
 
     // lock
@@ -98,7 +104,8 @@
           allowCrawl,
           status: null,
           redirect: null,
-          title: null,
+          meta: null,
+          openGraph: null,
           content: null,
           error: null,
           date,
@@ -120,7 +127,7 @@
       // duplicate key on upsert
       // the document maybe locked by others, or is valid
       try {
-        ({ status, redirect, title, content, error, date } = await poll(site, path, deviceType))
+        ({ status, redirect, meta, openGraph, content, error, date } = await poll(site, path, deviceType))
       } catch (e) {
         return handleResult(e)
       }
@@ -134,7 +141,8 @@
         deviceType,
         status,
         redirect,
-        title,
+        meta,
+        openGraph,
         content: metaOnly ? null : content,
         date
       })
@@ -142,7 +150,7 @@
 
     // render the page
     try {
-      ({ status, redirect, title, content } = await prerender(url, {
+      ({ status, redirect, meta, openGraph, content } = await prerender(url, {
         userAgent: userAgents[deviceType],
         // always followRedirect when caching pages
         // in case of a request with followRedirect=true waits a cache lock of request with followRedirect=false
@@ -163,7 +171,8 @@
             allowCrawl,
             status,
             redirect,
-            title,
+            meta,
+            openGraph,
             content,
             error: JSON.stringify(error),
             date,
@@ -186,7 +195,8 @@
             allowCrawl,
             status,
             redirect,
-            title,
+            meta,
+            openGraph,
             content,
             error: null,
             date,
@@ -206,7 +216,8 @@
         deviceType,
         status,
         redirect,
-        title,
+        meta,
+        openGraph,
         content: metaOnly ? null : content,
         date
       })

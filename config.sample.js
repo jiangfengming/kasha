@@ -27,5 +27,5 @@ module.exports = {
     dsn: ''
   },
 
-  loglevel: 'debug'
+  loglevel: 'debug' // debug, info, warning, error, fatal
 }

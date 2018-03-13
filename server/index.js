@@ -17,6 +17,10 @@
   const router = new Router()
   const render = require('./render')
 
+  app.on('error', e => {
+    logger.error(e)
+  })
+
   app.use(async(ctx, next) => {
     try {
       await next()

@@ -21,9 +21,9 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch Worker(RPC)",
+      "name": "Launch Worker(async)",
       "program": "${workspaceFolder}/worker/index.js",
-      "args": ["--config=config.sample.js", "--rpc"]
+      "args": ["--config=config.sample.js", "--async"]
     }
   ]
 }

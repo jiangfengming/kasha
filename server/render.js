@@ -165,7 +165,7 @@ async function render(ctx) {
     return handler()
   }
 
-  function handleResult({ allowCrawl, status, redirect, title, content, error, date }) {
+  function handleResult({ allowCrawl, status, redirect, meta, openGraph, content, error, date }) {
     // has error
     if (error) {
       throw new CustomError(JSON.parse(error))
@@ -181,7 +181,7 @@ async function render(ctx) {
         ctx.status = status
         ctx.redirect(redirect)
       } else {
-        ctx.status = status
+        if (!redirect) ctx.status = status
         ctx.body = content
       }
     } else {
@@ -190,7 +190,8 @@ async function render(ctx) {
         deviceType,
         status,
         redirect,
-        title,
+        meta,
+        openGraph,
         content: metaOnly ? null : content,
         date
       }
