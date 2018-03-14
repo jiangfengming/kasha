@@ -72,4 +72,4 @@ reader.on('message', async msg => {
   resolve()
 })
 
-module.exports = { addToQueue, replyTo: topic }
+module.exports = { reader, addToQueue, replyTo: topic }

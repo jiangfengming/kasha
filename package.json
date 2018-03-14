@@ -13,7 +13,7 @@
     "mongodb": "3.0.4",
     "node-fetch": "2.1.1",
     "nsqjs": "0.10.1",
-    "puppeteer-prerender": "0.2.0",
+    "puppeteer-prerender": "0.2.1",
     "raven": "2.4.2",
     "raven-logger": "0.1.3",
     "robots-txt-guard": "0.2.1",

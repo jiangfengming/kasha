@@ -5,7 +5,9 @@
   const logger = require('../shared/logger')
   const config = require('../shared/config')
 
-  const db = await require('../shared/db').connect()
+  const mongodb = require('../shared/db')
+  const db = await mongodb.connect()
+
   const collection = db.collection('snapshot')
   /*
   snapshot collection schema:
@@ -234,9 +236,30 @@
         })
       }
 
-      if (!msg.hasResponded) {
-        msg.finish()
-      }
+      if (!msg.hasResponded) msg.finish()
+
+      logger.debug('job finished')
+    }
+  })
+
+  let stopping = false
+
+  process.on('SIGINT', async() => {
+    if (stopping) {
+      exit()
+    } else {
+      logger.info('Closing worker... Please wait 30s to finish the pending jobs. Press ctrl-c again to force.')
+      stopping = true
+      reader.pause()
+
+      setTimeout(exit, 30 * 1000)
+    }
+
+    async function exit() {
+      reader.close()
+      nsqWriter.close()
+      await prerender.close()
+      await mongodb.close()
     }
   })
 
