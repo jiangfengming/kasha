@@ -28,9 +28,14 @@
 
   const prerender = require('puppeteer-prerender')
   prerender.timeout = 24 * 1000
+
+  prerender.puppeteerLaunchOptions = {
+    handleSIGINT: false
+  }
+
   if (config.loglevel === 'debug') {
     prerender.debug = true
-    prerender.headless = false
+    prerender.puppeteerLaunchOptions.headless = false
   }
 
   const { isAllowed } = require('./robotsTxt')
@@ -50,7 +55,11 @@
 
   const EXPIRE = config.cache * 60 * 1000
 
+  let jobCounter = 0
+
   reader.on('message', async msg => {
+    jobCounter++
+
     const req = msg.json()
     logger.debug(req)
 
@@ -239,21 +248,26 @@
       if (!msg.hasResponded) msg.finish()
 
       logger.debug('job finished')
+      jobCounter--
     }
   })
 
+  // graceful exit
   let stopping = false
 
-  process.on('SIGINT', async() => {
-    if (stopping) {
-      exit()
-    } else {
-      logger.info('Closing worker... Please wait 30s to finish the pending jobs. Press ctrl-c again to force.')
-      stopping = true
-      reader.pause()
+  process.once('SIGINT', async() => {
+    if (stopping) return
 
-      setTimeout(exit, 30 * 1000)
-    }
+    stopping = true
+    logger.info('Closing the worker... Please wait for finishing the in-flight jobs.')
+    reader.pause()
+
+    const interval = setInterval(() => {
+      if (jobCounter === 0) {
+        clearInterval(interval)
+        exit()
+      }
+    }, 1000)
 
     async function exit() {
       reader.close()

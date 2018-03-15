@@ -7,11 +7,15 @@
   const CustomError = require('../shared/CustomError')
   const logger = require('../shared/logger')
 
-  await require('../shared/db').connect()
-  await require('../shared/nsqWriter').connect()
+  const mongodb = require('../shared/db')
+  await mongodb.connect()
+
+  const nsqWriter = await require('../shared/nsqWriter').connect()
+  const workerResponse = require('./workerResponse')
 
   const Koa = require('koa')
   const Router = require('koa-router')
+  const stoppable = require('stoppable')
 
   const app = new Koa()
   const router = new Router()
@@ -56,6 +60,23 @@
 
   app.use(router.routes())
 
-  app.listen(config.port)
+  const server = stoppable(app.listen(config.port))
+
+  // graceful exit
+  let stopping = false
+  process.on('SIGINT', async() => {
+    if (stopping) return
+
+    stopping = true
+    logger.info('Closing the server. Please wait for finishing the pending requests.')
+
+    server.stop(async() => {
+      clearInterval(workerResponse.interval)
+      workerResponse.reader.close()
+      nsqWriter.close()
+      await mongodb.close()
+    })
+  })
+
   logger.info(`http server started at port ${config.port}`)
 })()

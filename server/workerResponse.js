@@ -12,7 +12,7 @@ reader.connect()
 const TIMEOUT = 28 * 1000
 const queue = []
 
-setInterval(() => {
+const interval = setInterval(() => {
   const now = Date.now()
 
   while (queue.length) {
@@ -72,4 +72,4 @@ reader.on('message', async msg => {
   resolve()
 })
 
-module.exports = { reader, addToQueue, replyTo: topic }
+module.exports = { reader, interval, addToQueue, replyTo: topic }
