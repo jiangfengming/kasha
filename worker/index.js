@@ -10,7 +10,7 @@
 
   const collection = db.collection('snapshot')
   /*
-  snapshot collection schema:
+  schema:
   site: String
   path: String
   deviceType: String
@@ -19,6 +19,7 @@
   redirect: String
   meta: Object
   openGraph: Object
+  links: Array
   content: String
   error: String
   times: Number
@@ -26,17 +27,29 @@
   lock: String
   */
 
-  const prerender = require('puppeteer-prerender')
-  prerender.timeout = 24 * 1000
+  // const sitemap = db.collection('sitemap')
+  /*
+  schema:
+  site: String
+  path: String
+  meta: Object
+  */
 
-  prerender.puppeteerLaunchOptions = {
-    handleSIGINT: false
+  const Prerenderer = require('puppeteer-prerender')
+
+  const prerendererOpts = {
+    timeout: 24 * 1000,
+    puppeteerLaunchOptions: {
+      handleSIGINT: false
+    }
   }
 
   if (config.loglevel === 'debug') {
-    prerender.debug = true
-    prerender.puppeteerLaunchOptions.headless = false
+    prerendererOpts.debug = true
+    prerendererOpts.puppeteerLaunchOptions.headless = false
   }
+
+  const prerenderer = new Prerenderer(prerendererOpts)
 
   const { isAllowed } = require('./robotsTxt')
   const userAgents = require('./userAgents')
@@ -88,7 +101,7 @@
       return handleResult(e)
     }
 
-    let status = null, redirect = null, meta = null, openGraph = null, content = null, error = null
+    let status = null, redirect = null, meta = null, openGraph = null, links = null, content = null, error = null
     let date = new Date()
 
     // lock
@@ -113,12 +126,13 @@
       await collection.updateOne(lockQuery, {
         $set: {
           allowCrawl,
-          status: null,
-          redirect: null,
-          meta: null,
-          openGraph: null,
-          content: null,
-          error: null,
+          status,
+          redirect,
+          meta,
+          openGraph,
+          links,
+          content,
+          error,
           date,
           lock
         },
@@ -138,7 +152,7 @@
       // duplicate key on upsert
       // the document maybe locked by others, or is valid
       try {
-        ({ status, redirect, meta, openGraph, content, error, date } = await poll(site, path, deviceType))
+        ({ status, redirect, meta, openGraph, links, content, error, date } = await poll(site, path, deviceType))
       } catch (e) {
         return handleResult(e)
       }
@@ -154,6 +168,7 @@
         redirect,
         meta,
         openGraph,
+        links,
         content: metaOnly ? null : content,
         date
       })
@@ -161,7 +176,7 @@
 
     // render the page
     try {
-      ({ status, redirect, meta, openGraph, content } = await prerender(url, {
+      ({ status, redirect, meta, openGraph, links, content } = await prerenderer.render(url, {
         userAgent: userAgents[deviceType],
         // always followRedirect when caching pages
         // in case of a request with followRedirect=true waits a cache lock of request with followRedirect=false
@@ -184,6 +199,7 @@
             redirect,
             meta,
             openGraph,
+            links,
             content,
             error: JSON.stringify(error),
             date,
@@ -193,6 +209,10 @@
             times: 1
           }
         }, { upsert: true })
+
+        // if (meta.canonicalURL) {
+
+        // }
 
         return handleResult(error)
       } catch (e) {
@@ -208,6 +228,7 @@
             redirect,
             meta,
             openGraph,
+            links,
             content,
             error: null,
             date,
@@ -229,6 +250,7 @@
         redirect,
         meta,
         openGraph,
+        links,
         content: metaOnly ? null : content,
         date
       })
@@ -247,7 +269,7 @@
 
       if (!msg.hasResponded) msg.finish()
 
-      logger.debug('job finished')
+      logger.debug(`job finished: ${url}`)
       jobCounter--
     }
   })
@@ -272,7 +294,7 @@
     async function exit() {
       reader.close()
       nsqWriter.close()
-      await prerender.close()
+      await prerenderer.close()
       await mongodb.close()
     }
   })

@@ -165,7 +165,7 @@ async function render(ctx) {
     return handler()
   }
 
-  function handleResult({ allowCrawl, status, redirect, meta, openGraph, content, error, date }) {
+  function handleResult({ allowCrawl, status, redirect, meta, openGraph, links, content, error, date }) {
     // has error
     if (error) {
       throw new CustomError(JSON.parse(error))
@@ -192,6 +192,7 @@ async function render(ctx) {
         redirect,
         meta,
         openGraph,
+        links,
         content: metaOnly ? null : content,
         date
       }

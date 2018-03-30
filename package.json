@@ -10,10 +10,10 @@
   "dependencies": {
     "koa": "2.5.0",
     "koa-router": "7.4.0",
-    "mongodb": "3.0.4",
-    "node-fetch": "2.1.1",
+    "mongodb": "3.0.5",
+    "node-fetch": "2.1.2",
     "nsqjs": "0.10.1",
-    "puppeteer-prerender": "0.3.0",
+    "puppeteer-prerender": "0.5.0",
     "raven": "2.4.2",
     "raven-logger": "0.1.3",
     "robots-txt-guard": "0.2.1",
@@ -24,9 +24,9 @@
     "yargs": "11.0.0"
   },
   "devDependencies": {
-    "eslint": "4.18.2",
+    "eslint": "4.19.1",
     "eslint-config-enough": "0.3.0",
-    "mocha": "5.0.4"
+    "mocha": "5.0.5"
   },
   "eslintConfig": {
     "extends": "enough",
