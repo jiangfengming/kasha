@@ -1,6 +1,4 @@
 async function main() {
-  const VERSION_LATEST = 1
-
   const Schema = require('schema-upgrade')
   const db = await require('../shared/db').connect()
   const collection = db.collection('appInfo')
@@ -24,6 +22,12 @@ async function main() {
     await db.collection('robotsTxt').createIndex({ site: 1 }, { unique: true })
   })
 
+  schema.version(2, async db => {
+    const sitemap = db.collection('sitemap')
+    await sitemap.createIndex({ site: 1, path: 1 }, { unique: true })
+    await sitemap.createIndex({ date: -1 })
+  })
+
   if (!schema.needUpgrade()) return
 
   const result = await collection.updateOne({
@@ -42,18 +46,20 @@ async function main() {
 
   schema.upgrade()
 
+  const latest = schema.latest()
+
   await collection.updateOne({
     key: 'appInfo',
     version: appInfo.version,
     upgrading: true
   }, {
     $set: {
-      version: VERSION_LATEST,
+      version: latest,
       upgrading: false
     }
   })
 
-  console.log('Database schema upgraded to version ' + VERSION_LATEST) // eslint-disable-line
+  console.log('Database schema upgraded to version ' + latest) // eslint-disable-line
 }
 
 module.exports = main()

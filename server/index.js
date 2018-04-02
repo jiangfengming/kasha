@@ -20,6 +20,7 @@
   const app = new Koa()
   const router = new Router()
   const render = require('./render')
+  const sitemap = require('./sitemap')
 
   app.on('error', e => {
     logger.error(e)
@@ -57,6 +58,8 @@
     }
     return next()
   }, render)
+
+  router.get('/sitemap/:site(https?://[^/]+)/list', sitemap.list)
 
   app.use(router.routes())
 

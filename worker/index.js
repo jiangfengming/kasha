@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 (async function() {
+  const { URL } = require('url')
   const CustomError = require('../shared/CustomError')
   const logger = require('../shared/logger')
   const config = require('../shared/config')
@@ -27,7 +28,7 @@
   lock: String
   */
 
-  // const sitemap = db.collection('sitemap')
+  const sitemap = db.collection('sitemap')
   /*
   schema:
   site: String
@@ -210,10 +211,6 @@
           }
         }, { upsert: true })
 
-        // if (meta.canonicalURL) {
-
-        // }
-
         return handleResult(error)
       } catch (e) {
         const { timestamp, eventId } = logger.error(e)
@@ -241,6 +238,25 @@
       } catch (e) {
         const { timestamp, eventId } = logger.error(e)
         return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+      }
+
+      // sitemap
+      if (allowCrawl && meta.canonicalURL) {
+        const u = new URL(meta.canonicalURL)
+        const u2 = new URL(url)
+        // current URL is the canonical URL
+        if (u.origin + u.pathname + u.search === u2.origin + u2.pathname + u2.search) {
+          sitemap.updateOne({
+            site: u.origin,
+            path: u.pathname + u.search
+          }, {
+            $set: {
+              meta,
+              openGraph,
+              date
+            }
+          }, { upsert: true })
+        }
       }
 
       return handleResult(null, {
