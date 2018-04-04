@@ -28,7 +28,9 @@ async function main() {
     await sitemap.createIndex({ date: -1 })
   })
 
-  if (!schema.needUpgrade()) return
+  const latest = schema.latest()
+
+  if (latest === appInfo.version) return
 
   const result = await collection.updateOne({
     key: 'appInfo',
@@ -46,8 +48,6 @@ async function main() {
 
   schema.upgrade()
 
-  const latest = schema.latest()
-
   await collection.updateOne({
     key: 'appInfo',
     version: appInfo.version,
@@ -58,8 +58,6 @@ async function main() {
       upgrading: false
     }
   })
-
-  console.log('Database schema upgraded to version ' + latest) // eslint-disable-line
 }
 
 module.exports = main()
