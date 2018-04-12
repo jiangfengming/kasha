@@ -235,18 +235,11 @@
             times: 1
           }
         }, { upsert: true })
-      } catch (e) {
-        const { timestamp, eventId } = logger.error(e)
-        return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
-      }
 
-      // sitemap
-      if (allowCrawl && meta.canonicalURL) {
-        const u = new URL(meta.canonicalURL)
-        const u2 = new URL(url)
-        // current URL is the canonical URL
-        if (u.origin + u.pathname + u.search === u2.origin + u2.pathname + u2.search) {
-          sitemap.updateOne({
+        // sitemap
+        if (allowCrawl && meta.canonicalURL) {
+          const u = new URL(meta.canonicalURL)
+          await sitemap.updateOne({
             site: u.origin,
             path: u.pathname + u.search
           }, {
@@ -256,7 +249,16 @@
               date
             }
           }, { upsert: true })
+        } else if (meta.status === 404) {
+          const u = new URL(url)
+          await sitemap.deleteOne({
+            site: u.origin,
+            path: u.pathname + u.search
+          })
         }
+      } catch (e) {
+        const { timestamp, eventId } = logger.error(e)
+        return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
       }
 
       return handleResult(null, {
