@@ -249,7 +249,7 @@
               date
             }
           }, { upsert: true })
-        } else if (meta.status === 404) {
+        } else if (status < 200 || status >= 300) {
           const u = new URL(url)
           await sitemap.deleteOne({
             site: u.origin,
