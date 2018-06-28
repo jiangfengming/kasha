@@ -21,7 +21,8 @@
   meta: Object
   openGraph: Object
   links: Array
-  content: String
+  html: String
+  staticHTML: String
   error: String
   times: Number
   date: Date
@@ -85,7 +86,6 @@
       deviceType,
       callbackUrl,
       metaOnly,
-      followRedirect,
       ignoreRobotsTxt
     } = req
 
@@ -102,7 +102,7 @@
       return handleResult(e)
     }
 
-    let status = null, redirect = null, meta = null, openGraph = null, links = null, content = null, error = null
+    let status, redirect, meta, openGraph, links, html, staticHTML, error
     let date = new Date()
 
     // lock
@@ -119,10 +119,6 @@
       ]
     }
 
-    if (followRedirect) {
-      lockQuery.$or.push({ content: null })
-    }
-
     try {
       await collection.updateOne(lockQuery, {
         $set: {
@@ -132,7 +128,8 @@
           meta,
           openGraph,
           links,
-          content,
+          html,
+          staticHTML,
           error,
           date,
           lock
@@ -153,7 +150,7 @@
       // duplicate key on upsert
       // the document maybe locked by others, or is valid
       try {
-        ({ status, redirect, meta, openGraph, links, content, error, date } = await poll(site, path, deviceType))
+        ({ status, redirect, meta, openGraph, links, html, staticHTML, error, date } = await poll(site, path, deviceType))
       } catch (e) {
         return handleResult(e)
       }
@@ -170,19 +167,28 @@
         meta,
         openGraph,
         links,
-        content: metaOnly ? null : content,
+        html: metaOnly ? undefined : html,
+        staticHTML: metaOnly ? undefined : staticHTML,
         date
       })
     }
 
     // render the page
     try {
-      ({ status, redirect, meta, openGraph, links, content } = await prerenderer.render(url, {
+      ({ status, redirect, meta, openGraph, links, html, staticHTML } = await prerenderer.render(url, {
         userAgent: userAgents[deviceType],
         // always followRedirect when caching pages
         // in case of a request with followRedirect=true waits a cache lock of request with followRedirect=false
-        followRedirect: true
+        followRedirect: true,
+        extraMeta: {
+          status: { selector: 'meta[http-equiv="Status" i]', property: 'content' },
+          lastModified: { selector: 'meta[http-equiv="Last-Modified" i]', property: 'content' },
+          changefreq: { selector: 'meta[name="sitemap:changefreq"]', property: 'content' },
+          priority: { selector: 'meta[name="sitemap:priority"]', property: 'content' }
+        }
       }))
+
+      if (meta.status) status = meta.status
 
       if (status >= 500 && status <= 599) {
         error = new CustomError('SERVER_UPSTREAM_ERROR', 'HTTP' + status)
@@ -201,7 +207,8 @@
             meta,
             openGraph,
             links,
-            content,
+            html,
+            staticHTML,
             error: JSON.stringify(error),
             date,
             lock: false
@@ -226,7 +233,8 @@
             meta,
             openGraph,
             links,
-            content,
+            html,
+            staticHTML,
             error: null,
             date,
             lock: false
@@ -238,17 +246,27 @@
 
         // sitemap
         if (allowCrawl && meta.canonicalURL) {
-          const u = new URL(meta.canonicalURL)
-          await sitemap.updateOne({
-            site: u.origin,
-            path: u.pathname + u.search
-          }, {
-            $set: {
-              meta,
-              openGraph,
-              date
-            }
-          }, { upsert: true })
+          let u
+          try {
+            u = new URL(meta.canonicalURL)
+          } catch (e) {
+            // do nothing
+          }
+
+          const u2 = new URL(url)
+
+          if (u.origin === u2.origin) {
+            await sitemap.updateOne({
+              site: u.origin,
+              path: u.pathname + u.search
+            }, {
+              $set: {
+                meta,
+                openGraph,
+                date
+              }
+            }, { upsert: true })
+          }
         } else if (status < 200 || status >= 300) {
           const u = new URL(url)
           await sitemap.deleteOne({
@@ -269,7 +287,8 @@
         meta,
         openGraph,
         links,
-        content: metaOnly ? null : content,
+        html: metaOnly ? undefined : html,
+        staticHTML: metaOnly ? undefined : staticHTML,
         date
       })
     }

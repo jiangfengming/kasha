@@ -59,7 +59,7 @@
     return next()
   }, render)
 
-  router.get('/sitemap/:site(https?://[^/]+)/count', sitemap.count)
+  router.get('/sitemaps/:site(https?://[^/]+)/count', sitemap.count)
 
   app.use(router.routes())
 
