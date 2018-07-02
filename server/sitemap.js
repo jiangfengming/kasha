@@ -1,5 +1,5 @@
 const { db } = require('../shared/db')
-const sitemap = db.collection('sitemap')
+const sitemap = db.collection('sitemaps')
 const { URL } = require('url')
 const CustomError = require('../shared/CustomError')
 

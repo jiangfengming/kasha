@@ -1,7 +1,7 @@
 const CustomError = require('./CustomError')
 const logger = require('./logger')
 const { db } = require('./db')
-const collection = db.collection('snapshot')
+const collection = db.collection('snapshots')
 
 function poll(site, path, deviceType, lock) {
   return new Promise((resolve, reject) => {

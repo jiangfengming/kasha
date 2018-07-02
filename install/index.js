@@ -1,7 +1,7 @@
 async function main() {
   const Schema = require('schema-upgrade')
   const db = await require('../shared/db').connect()
-  const collection = db.collection('appInfo')
+  const collection = db.collection('meta')
   let appInfo = await collection.findOne({ key: 'appInfo' })
 
   if (!appInfo) {
@@ -18,12 +18,12 @@ async function main() {
   const schema = new Schema(db, appInfo.version)
 
   schema.version(1, async db => {
-    await db.collection('snapshot').createIndex({ site: 1, path: 1, deviceType: 1 }, { unique: true })
+    await db.collection('snapshots').createIndex({ site: 1, path: 1, deviceType: 1 }, { unique: true })
     await db.collection('robotsTxt').createIndex({ site: 1 }, { unique: true })
   })
 
   schema.version(2, async db => {
-    const sitemap = db.collection('sitemap')
+    const sitemap = db.collection('sitemaps')
     await sitemap.createIndex({ site: 1, path: 1 }, { unique: true })
     await sitemap.createIndex({ date: -1 })
   })

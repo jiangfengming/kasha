@@ -9,7 +9,7 @@
   const mongodb = require('../shared/db')
   const db = await mongodb.connect()
 
-  const collection = db.collection('snapshot')
+  const collection = db.collection('snapshots')
   /*
   schema:
   site: String
@@ -29,7 +29,7 @@
   lock: String
   */
 
-  const sitemap = db.collection('sitemap')
+  const sitemap = db.collection('sitemaps')
   /*
   schema:
   site: String
@@ -253,19 +253,21 @@
             // do nothing
           }
 
-          const u2 = new URL(url)
+          if (u) {
+            const u2 = new URL(url)
 
-          if (u.origin === u2.origin) {
-            await sitemap.updateOne({
-              site: u.origin,
-              path: u.pathname + u.search
-            }, {
-              $set: {
-                meta,
-                openGraph,
-                date
-              }
-            }, { upsert: true })
+            if (u.origin === u2.origin) {
+              await sitemap.updateOne({
+                site: u.origin,
+                path: u.pathname + u.search
+              }, {
+                $set: {
+                  meta,
+                  openGraph,
+                  date
+                }
+              }, { upsert: true })
+            }
           }
         } else if (status < 200 || status >= 300) {
           const u = new URL(url)

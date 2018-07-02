@@ -98,7 +98,7 @@ async function render(ctx) {
     // to refresh the page, we make the cache expired.
     if (refresh) {
       try {
-        await db.collection('snapshot').updateOne({
+        await db.collection('snapshots').updateOne({
           site,
           path,
           deviceType,
@@ -124,7 +124,7 @@ async function render(ctx) {
 
     let doc
     try {
-      doc = await db.collection('snapshot').findOne({ site, path, deviceType })
+      doc = await db.collection('snapshots').findOne({ site, path, deviceType })
     } catch (e) {
       const { timestamp, eventId } = logger.error(e)
       throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
