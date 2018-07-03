@@ -29,7 +29,7 @@ const interval = setInterval(() => {
   }
 }, 1000)
 
-// { correlationId, ctx, proxy, followRedirect }
+// { correlationId, ctx, type, followRedirect }
 function addToQueue(req) {
   return new Promise((resolve, reject) => {
     queue.push({
@@ -49,21 +49,21 @@ reader.on('message', async msg => {
   const req = queue.find(req => req.correlationId === data.correlationId)
   if (!req) return
 
-  const { ctx, resolve, reject, proxy, followRedirect } = req
+  const { ctx, resolve, reject, type, followRedirect } = req
 
   if (data.error) return reject(new CustomError(data.error))
 
-  if (proxy) {
-    const { status, redirect, content } = data.result
+  if (type === 'json') {
+    ctx.body = data.result
+  } else {
+    const { status, redirect, html, staticHTML } = data.result
     if (redirect && !followRedirect) {
       ctx.status = status
       ctx.redirect(redirect)
     } else {
       ctx.status = status
-      ctx.body = content || ''
+      ctx.body = type === 'html' ? html : staticHTML
     }
-  } else {
-    ctx.body = data.result
   }
 
   // release resource

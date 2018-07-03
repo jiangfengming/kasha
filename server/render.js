@@ -15,8 +15,8 @@ const ERROR_EXPIRE = 60 * 1000
 
 async function render(ctx) {
   const now = Date.now()
-  const { deviceType = 'desktop', callbackUrl } = ctx.query
-  let { url, proxy, noWait, metaOnly, followRedirect, ignoreRobotsTxt, refresh } = ctx.query
+  const { deviceType = 'desktop', type = 'html', callbackUrl } = ctx.query
+  let { url, noWait, metaOnly, followRedirect, ignoreRobotsTxt, refresh } = ctx.query
 
   let site, path
   try {
@@ -44,10 +44,8 @@ async function render(ctx) {
   const validValues = [undefined, '', '0', '1']
   const truthyValues = ['', '1']
 
-  if (!validValues.includes(proxy)) {
-    throw new CustomError('CLIENT_INVALID_PARAM', 'proxy')
-  } else {
-    proxy = truthyValues.includes(proxy)
+  if (!['html', 'static', 'json'].includes(type)) {
+    throw new CustomError('CLIENT_INVALID_PARAM', 'type')
   }
 
   if (!validValues.includes(noWait)) {
@@ -80,17 +78,23 @@ async function render(ctx) {
     refresh = truthyValues.includes(refresh)
   }
 
-
-  if (proxy && (callbackUrl || noWait || metaOnly)) {
+  if ((callbackUrl || metaOnly) && type !== 'json') {
     throw new CustomError(
       'CLIENT_INVALID_PARAM',
-      'callbackUrl|noWait|metaOnly can\'t be set in proxy mode'
+      'callbackUrl and metaOnly can only used with type=json'
+    )
+  }
+
+  if (noWait && (callbackUrl || metaOnly || ctx.query.type)) {
+    throw new CustomError(
+      'CLIENT_INVALID_PARAM',
+      'noWait can\'t be used with callbackUrl | metaOnly | type'
     )
   }
 
   logger.debug(ctx.url, {
     extra: {
-      params: { url, deviceType, callbackUrl, proxy, noWait, metaOnly, followRedirect }
+      params: { url, deviceType, callbackUrl, type, noWait, metaOnly, followRedirect }
     }
   })
 
@@ -165,7 +169,7 @@ async function render(ctx) {
     return handler()
   }
 
-  function handleResult({ allowCrawl, status, redirect, meta, openGraph, links, content, error, date }) {
+  function handleResult({ allowCrawl, status, redirect, meta, openGraph, links, html, staticHTML, error, date }) {
     // has error
     if (error) {
       throw new CustomError(JSON.parse(error))
@@ -176,15 +180,7 @@ async function render(ctx) {
       throw new CustomError('SERVER_ROBOTS_DISALLOW')
     }
 
-    if (proxy) {
-      if (redirect && !followRedirect) {
-        ctx.status = status
-        ctx.redirect(redirect)
-      } else {
-        if (!redirect) ctx.status = status
-        ctx.body = content
-      }
-    } else {
+    if (type === 'json') {
       const doc = {
         url,
         deviceType,
@@ -193,7 +189,8 @@ async function render(ctx) {
         meta,
         openGraph,
         links,
-        content: metaOnly ? null : content,
+        html: metaOnly ? undefined : html,
+        staticHTML: metaOnly ? undefined : staticHTML,
         date
       }
 
@@ -201,6 +198,14 @@ async function render(ctx) {
         callback(callbackUrl, null, doc)
       } else if (!noWait) {
         ctx.body = doc
+      }
+    } else {
+      if (redirect && !followRedirect) {
+        ctx.status = status
+        ctx.redirect(redirect)
+      } else {
+        if (!redirect) ctx.status = status
+        ctx.body = type === 'html' ? html : staticHTML
       }
     }
   }
@@ -237,7 +242,7 @@ async function render(ctx) {
             resolve(addToQueue({
               correlationId: msg.correlationId,
               ctx,
-              proxy,
+              type,
               followRedirect
             }))
           }

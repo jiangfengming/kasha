@@ -188,7 +188,14 @@
         }
       }))
 
-      if (meta.status) status = meta.status
+      if (meta.status) {
+        meta.status = parseInt(meta.status)
+        if (!isNaN(meta.status) && meta.status >= 100 && meta.status < 600) {
+          status = meta.status
+        } else {
+          delete meta.status
+        }
+      }
 
       if (status >= 500 && status <= 599) {
         error = new CustomError('SERVER_UPSTREAM_ERROR', 'HTTP' + status)

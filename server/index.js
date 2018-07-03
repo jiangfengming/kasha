@@ -53,7 +53,6 @@
   router.get('/(http.+)', (ctx, next) => {
     ctx.query = {
       url: ctx.url.slice(1),
-      proxy: '',
       deviceType: ctx.headers['x-device-type'] || 'desktop'
     }
     return next()
