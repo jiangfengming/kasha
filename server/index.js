@@ -58,7 +58,9 @@
     return next()
   }, render)
 
-  router.get('/sitemaps/:site(https?://[^/]+)/count', sitemap.count)
+  const siteRegex = ':site(https?://[^/]+)'
+  router.get(`/sitemaps/${siteRegex}/count`, sitemap.count)
+  router.get(`/sitemaps/${siteRegex}/:page`, sitemap.sitemap)
 
   app.use(router.routes())
 

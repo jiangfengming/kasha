@@ -19,10 +19,6 @@ async function main() {
 
   schema.version(1, async db => {
     await db.collection('snapshots').createIndex({ site: 1, path: 1, deviceType: 1 }, { unique: true })
-    await db.collection('robotsTxt').createIndex({ site: 1 }, { unique: true })
-  })
-
-  schema.version(2, async db => {
     const sitemap = db.collection('sitemaps')
     await sitemap.createIndex({ site: 1, path: 1 }, { unique: true })
     await sitemap.createIndex({ date: -1 })

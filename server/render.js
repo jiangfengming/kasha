@@ -112,12 +112,6 @@ async function render(ctx) {
             date: new Date(0)
           }
         })
-
-        await db.collection('robotsTxt').updateOne({ site }, {
-          $set: {
-            date: new Date(0)
-          }
-        })
       } catch (e) {
         const { timestamp, eventId } = logger.error(e)
         throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
@@ -169,15 +163,10 @@ async function render(ctx) {
     return handler()
   }
 
-  function handleResult({ allowCrawl, status, redirect, meta, openGraph, links, html, staticHTML, error, date }) {
+  function handleResult({ status, redirect, meta, openGraph, links, html, staticHTML, error, date }) {
     // has error
     if (error) {
       throw new CustomError(JSON.parse(error))
-    }
-
-    // disable crawling
-    if (!allowCrawl && !ignoreRobotsTxt) {
-      throw new CustomError('SERVER_ROBOTS_DISALLOW')
     }
 
     if (type === 'json') {

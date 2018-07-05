@@ -15,7 +15,6 @@
   site: String
   path: String
   deviceType: String
-  allowCrawl: Boolean
   status: Number
   redirect: String
   meta: Object
@@ -53,7 +52,6 @@
 
   const prerenderer = new Prerenderer(prerendererOpts)
 
-  const { isAllowed } = require('./robotsTxt')
   const userAgents = require('./userAgents')
 
   const uid = require('../shared/uid')
@@ -85,22 +83,10 @@
       path,
       deviceType,
       callbackUrl,
-      metaOnly,
-      ignoreRobotsTxt
+      metaOnly
     } = req
 
     const url = site + path
-
-    // check robots.txt
-    let allowCrawl
-    try {
-      allowCrawl = await isAllowed(url)
-      if (!allowCrawl && !ignoreRobotsTxt) {
-        return handleResult(new CustomError('SERVER_ROBOTS_DISALLOW'))
-      }
-    } catch (e) {
-      return handleResult(e)
-    }
 
     let status, redirect, meta, openGraph, links, html, staticHTML, error
     let date = new Date()
@@ -122,7 +108,6 @@
     try {
       await collection.updateOne(lockQuery, {
         $set: {
-          allowCrawl,
           status,
           redirect,
           meta,
@@ -208,7 +193,6 @@
       try {
         await collection.updateOne({ site, path, deviceType, lock }, {
           $set: {
-            allowCrawl,
             status,
             redirect,
             meta,
@@ -234,7 +218,6 @@
       try {
         await collection.updateOne({ site, path, deviceType }, {
           $set: {
-            allowCrawl,
             status,
             redirect,
             meta,
@@ -252,7 +235,7 @@
         }, { upsert: true })
 
         // sitemap
-        if (allowCrawl && meta.canonicalURL) {
+        if (meta.canonicalURL) {
           let u
           try {
             u = new URL(meta.canonicalURL)
