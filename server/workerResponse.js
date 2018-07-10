@@ -3,7 +3,7 @@ const CustomError = require('../shared/CustomError')
 const { Reader } = require('nsqjs')
 const { hostname } = require('os')
 const { nsq: { reader: options } } = require('../shared/config')
-
+const reply = require('./reply')
 const topic = 'kasha-server-' + hostname()
 const maxInFlight = 2500
 const reader = new Reader(topic, 'response', { ...options, maxInFlight })
@@ -53,20 +53,9 @@ reader.on('message', async msg => {
 
   if (data.error) return reject(new CustomError(data.error))
 
-  if (type === 'json') {
-    ctx.body = data.result
-  } else {
-    const { status, redirect, html, staticHTML } = data.result
-    if (redirect && !followRedirect) {
-      ctx.status = status
-      ctx.redirect(redirect)
-    } else {
-      ctx.status = status
-      ctx.body = type === 'html' ? html : staticHTML
-    }
-  }
+  reply(ctx, type, followRedirect, data.result)
 
-  // release resource
+  // release resources
   for (const k in req) delete req[k]
 
   resolve()

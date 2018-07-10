@@ -1,6 +1,5 @@
 const { URL } = require('url')
 const assert = require('assert')
-const config = require('../shared/config')
 const CustomError = require('../shared/CustomError')
 const logger = require('../shared/logger')
 const { db } = require('../shared/db')
@@ -9,8 +8,8 @@ const { addToQueue, replyTo } = require('./workerResponse')
 const uid = require('../shared/uid')
 const callback = require('../shared/callback')
 const poll = require('../shared/poll')
+const reply = require('./reply')
 
-const EXPIRE = config.cache * 60 * 1000
 const ERROR_EXPIRE = 60 * 1000
 
 async function render(ctx) {
@@ -130,7 +129,7 @@ async function render(ctx) {
 
     if (!doc) return sendToWorker()
 
-    const { error, times, date, lock } = doc
+    const { error, times, date, expires, lock } = doc
 
     if (lock) {
       return handleResult(await poll(site, path, deviceType, lock))
@@ -146,7 +145,7 @@ async function render(ctx) {
 
       return sendToWorker()
     } else {
-      if (date.getTime() + EXPIRE > now) {
+      if (expires.getTime() >= now) {
         return handleResult(doc)
       }
 
@@ -169,34 +168,18 @@ async function render(ctx) {
       throw new CustomError(JSON.parse(error))
     }
 
-    if (type === 'json') {
-      const doc = {
-        url,
-        deviceType,
-        status,
-        redirect,
-        meta,
-        openGraph,
-        links,
-        html: metaOnly ? undefined : html,
-        staticHTML: metaOnly ? undefined : staticHTML,
-        date
-      }
-
-      if (callbackUrl) {
-        callback(callbackUrl, null, doc)
-      } else if (!noWait) {
-        ctx.body = doc
-      }
-    } else {
-      if (redirect && !followRedirect) {
-        ctx.status = status
-        ctx.redirect(redirect)
-      } else {
-        if (!redirect) ctx.status = status
-        ctx.body = type === 'html' ? html : staticHTML
-      }
-    }
+    reply(ctx, type, followRedirect, {
+      url,
+      deviceType,
+      status,
+      redirect,
+      meta,
+      openGraph,
+      links,
+      html: metaOnly ? undefined : html,
+      staticHTML: metaOnly ? undefined : staticHTML,
+      date
+    })
   }
 
   function sendToWorker() {

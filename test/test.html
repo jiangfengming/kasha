@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
-<head prefix="og: http://ogp.me/ns#">
+<head prefix="og: http://ogp.me/ns# kasha: https://kashajs.github.io/kasha/ns#">
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Page Title</title>
 <meta http-equiv="Status" content="200">
 <meta http-equiv="Last-Modified" content="Fri, 25 May 2018 09:19:54 GMT">
-<meta name="sitemap:changefreq" content="hourly">
-<meta name="sitemap:priority" content="1">
+<meta http-equiv="Cache-Control" content="max-age=300">
+<meta http-equiv="Expires" content="Fri, 25 May 2018 09:24:54 GMT">
 <meta name="description" content="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.">
 <meta name="author" content="John Smith">
 <meta name="keywords" content="hello, world">
@@ -23,6 +23,14 @@
 <meta property="og:site_name" content="My Awesome Site Name">
 <meta property="og:locale" content="en_US">
 <meta property="og:locale:alternate" content="de_DE">
+<meta property="kasha:sitemap:changefreq" content="hourly">
+<meta property="kasha:sitemap:priority" content="1">
+<meta property="kasha:sitemap:extension" content="google-news">
+<meta property="kasha:sitemap:news:publication:name" content="The Example Times">
+<meta property="kasha:sitemap:news:publication:language" content="en">
+<meta property="kasha:sitemap:news:genres" content="PressRelease, Blog">
+<meta property="kasha:sitemap:news:stock_tickers" content="NASDAQ:A, NASDAQ:B">
+
 <script>
 // staticHTML should trim <script> tags and event attributes
 function onPageLoad() {

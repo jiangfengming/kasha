@@ -25,6 +25,7 @@
   error: String
   times: Number
   date: Date
+  expires: Date
   lock: String
   */
 
@@ -66,8 +67,6 @@
   const nsqWriter = await require('../shared/nsqWriter').connect()
   const poll = require('../shared/poll')
 
-  const EXPIRE = config.cache * 60 * 1000
-
   let jobCounter = 0
 
   reader.on('message', async msg => {
@@ -88,7 +87,7 @@
 
     const url = site + path
 
-    let status, redirect, meta, openGraph, links, html, staticHTML, error
+    let status, redirect, meta, openGraph, links, html, staticHTML, error, expires
     let date = new Date()
 
     // lock
@@ -101,7 +100,7 @@
       lock: false,
       $or: [
         { error: { $ne: null } }, // error
-        { date: { $lt: new Date(Date.now() - EXPIRE) } } // expired
+        { expires: { $lt: date } } // expired
       ]
     }
 
@@ -117,6 +116,7 @@
           staticHTML,
           error,
           date,
+          expires,
           lock
         },
         $setOnInsert: {
@@ -168,22 +168,39 @@
         extraMeta: {
           status: { selector: 'meta[http-equiv="Status" i]', property: 'content' },
           lastModified: { selector: 'meta[http-equiv="Last-Modified" i]', property: 'content' },
-          changefreq: { selector: 'meta[name="sitemap:changefreq"]', property: 'content' },
-          priority: { selector: 'meta[name="sitemap:priority"]', property: 'content' }
+          cacheControl: { selector: 'meta[http-equiv="Cache-Control" i]', property: 'content' },
+          expires: { selector: 'meta[http-equiv="Expires" i]', property: 'content' }
         }
       }))
 
       if (meta.status) {
-        meta.status = parseInt(meta.status)
-        if (!isNaN(meta.status) && meta.status >= 100 && meta.status < 600) {
-          status = meta.status
-        } else {
-          delete meta.status
+        const s = parseInt(meta.status)
+        if (!isNaN(s) && s >= 100 && s < 600) {
+          status = s
         }
       }
 
       if (status >= 500 && status <= 599) {
         error = new CustomError('SERVER_UPSTREAM_ERROR', 'HTTP' + status)
+      } else {
+        if (meta.cacheControl) {
+          const match = meta.cacheControl.match(/s-max-age=(\d+)/) || meta.cacheControl.match(/max-age=(\d+)/)
+          if (match) {
+            const age = parseInt(match[1])
+            if (age >= 0) expires = new Date(date.getTime() + age * 1000)
+          }
+        }
+
+        if (!expires && meta.expires) {
+          const d = new Date(meta.expires)
+          if (!isNaN(d.getTime())) {
+            expires = d
+          }
+        }
+
+        if (!expires) {
+          expires = new Date(date.getTime() + config.cache * 1000)
+        }
       }
     } catch (e) {
       error = new CustomError('SERVER_RENDER_ERROR', e.message)
@@ -202,6 +219,7 @@
             staticHTML,
             error: JSON.stringify(error),
             date,
+            expires,
             lock: false
           },
           $inc: {
@@ -227,6 +245,7 @@
             staticHTML,
             error: null,
             date,
+            expires,
             lock: false
           },
           $inc: {
