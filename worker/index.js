@@ -24,7 +24,7 @@
   staticHTML: String
   error: String
   times: Number
-  date: Date
+  createdAt: Date
   expires: Date
   lock: String
   */
@@ -34,7 +34,13 @@
   schema:
   site: String
   path: String
-  meta: Object
+  lastmod: String
+  changefreq: String
+  priority: String
+  news: Array
+  images: Array
+  videos: Array
+  createdAt: Date
   */
 
   const Prerenderer = require('puppeteer-prerender')
@@ -88,7 +94,8 @@
     const url = site + path
 
     let status, redirect, meta, openGraph, links, html, staticHTML, error, expires
-    let date = new Date()
+    const now = new Date()
+    let createdAt = now
 
     // lock
     const lock = uid()
@@ -100,7 +107,7 @@
       lock: false,
       $or: [
         { error: { $ne: null } }, // error
-        { expires: { $lt: date } } // expired
+        { expires: { $lt: now } } // expired
       ]
     }
 
@@ -115,7 +122,7 @@
           html,
           staticHTML,
           error,
-          date,
+          createdAt,
           expires,
           lock
         },
@@ -135,7 +142,7 @@
       // duplicate key on upsert
       // the document maybe locked by others, or is valid
       try {
-        ({ status, redirect, meta, openGraph, links, html, staticHTML, error, date } = await poll(site, path, deviceType))
+        ({ status, redirect, meta, openGraph, links, html, staticHTML, error, createdAt } = await poll(site, path, deviceType))
       } catch (e) {
         return handleResult(e)
       }
@@ -154,7 +161,7 @@
         links,
         html: metaOnly ? undefined : html,
         staticHTML: metaOnly ? undefined : staticHTML,
-        date
+        createdAt
       })
     }
 
@@ -187,7 +194,7 @@
           const match = meta.cacheControl.match(/s-max-age=(\d+)/) || meta.cacheControl.match(/max-age=(\d+)/)
           if (match) {
             const age = parseInt(match[1])
-            if (age >= 0) expires = new Date(date.getTime() + age * 1000)
+            if (age >= 0) expires = new Date(now.getTime() + age * 1000)
           }
         }
 
@@ -199,7 +206,7 @@
         }
 
         if (!expires) {
-          expires = new Date(date.getTime() + config.cache * 1000)
+          expires = new Date(now.getTime() + config.cache * 1000)
         }
       }
     } catch (e) {
@@ -218,7 +225,7 @@
             html,
             staticHTML,
             error: JSON.stringify(error),
-            date,
+            createdAt,
             expires,
             lock: false
           },
@@ -244,7 +251,7 @@
             html,
             staticHTML,
             error: null,
-            date,
+            createdAt,
             expires,
             lock: false
           },
@@ -266,14 +273,33 @@
             const u2 = new URL(url)
 
             if (u.origin === u2.origin) {
+              let lastmod, changefreq, priority, news, images, videos
+
+              if (meta.lastModified) {
+                const date = new Date(meta.lastModified)
+                if (!isNaN(date.getTime())) {
+                  lastmod = get.toISOString()
+                }
+              }
+
+              if (openGraph.kasha && openGraph.kasha.sitemap) {
+                const sitemap = openGraph.kasha.sitemap
+                // if (sitemap.changefreq)
+              }
+
               await sitemap.updateOne({
                 site: u.origin,
                 path: u.pathname + u.search
               }, {
                 $set: {
-                  meta,
+                  lastmod,
                   openGraph,
-                  date
+                  changefreq,
+                  priority,
+                  news,
+                  images,
+                  videos,
+                  createdAt
                 }
               }, { upsert: true })
             }
@@ -300,7 +326,7 @@
         links,
         html: metaOnly ? undefined : html,
         staticHTML: metaOnly ? undefined : staticHTML,
-        date
+        createdAt
       })
     }
 
