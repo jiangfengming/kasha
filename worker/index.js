@@ -49,6 +49,22 @@
     timeout: 24 * 1000,
     puppeteerLaunchOptions: {
       handleSIGINT: false
+    },
+    parseOpenGraphOptions: {
+      // these tag has attributes
+      alias: {
+        'sitemap:video:player_loc': 'sitemap:video:player_loc:_',
+        'sitemap:video:restriction': 'sitemap:video:restriction:_',
+        'sitemap:video:platform': 'sitemap:video:platform:_',
+        'sitemap:video:price': 'sitemap:video:price:_',
+        'sitemap:video:uploader': 'sitemap:video:uploader:_'
+      },
+
+      arrays: [
+        'sitemap:image',
+        'sitemap:video',
+        'sitemap:video:tag'
+      ]
     }
   }
 
@@ -278,13 +294,13 @@
               if (meta.lastModified) {
                 const date = new Date(meta.lastModified)
                 if (!isNaN(date.getTime())) {
-                  lastmod = get.toISOString()
+                  lastmod = date.toISOString()
                 }
               }
 
-              if (openGraph.kasha && openGraph.kasha.sitemap) {
-                const sitemap = openGraph.kasha.sitemap
-                // if (sitemap.changefreq)
+              if (openGraph.sitemap) {
+                const sitemap = openGraph.sitemap
+                if (sitemap.changefreq) changefreq = sitemap.changefreq
               }
 
               await sitemap.updateOne({
@@ -293,7 +309,6 @@
               }, {
                 $set: {
                   lastmod,
-                  openGraph,
                   changefreq,
                   priority,
                   news,
