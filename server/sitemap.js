@@ -2,6 +2,7 @@ const { db } = require('../shared/db')
 const sitemaps = db.collection('sitemaps')
 const { URL } = require('url')
 const CustomError = require('../shared/CustomError')
+const { PassThrough } = require('stream')
 
 const PAGE_LIMIT = 50000
 const GOOGLE_NEWS_LIMIT = 1000
@@ -40,13 +41,17 @@ function parsePageParam(page) {
   }
 }
 
-function genSitemap(data) {
-  return `
-<?xml version="1.0" encoding="UTF-8"?>
+async function genSitemap(stream, data) {
+  stream.write(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${data.map(page => `<url>${standardTags(page)}</url>`).join('')}
-</urlset>
-  `
+  `)
+
+  let entry
+  while (entry = await data.next()) {
+    stream.write(`<url>${standardTags(entry)}</url>`)
+  }
+
+  stream.end('</urlset>')
 }
 
 
@@ -73,16 +78,13 @@ function genGoogleNewsSitemap(data) {
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
-${
-
-}
 </urlset>
   `
 }
 
-function standardTags(page) {
+function standardTags({ site, path, lastmod, changefreq, priority }) {
   return `
-<loc>${loc}</loc>
+<loc>${site + path}</loc>
 ${lastmod ? `<lastmod>${lastmod}</lastmod>` : ''}
 ${changefreq ? `<changefreq>${changefreq}</changefreq>` : ''}
 ${priority ? `<priority>${priority}</priority>` : ''}
@@ -160,13 +162,21 @@ async function count(ctx) {
 async function sitemap(ctx) {
   const site = parseSiteParam(ctx.params.site)
   const limit = parseLimitParam(ctx.query.limit)
-  let page = parsePageParam(ctx.params.page)
+  const page = parsePageParam(ctx.params.page)
 
-  const result = await sitemaps.find({
-    site,
+  const result = await sitemaps.find({ site }, {
     skip: (page - 1) * limit,
     limit
   })
+
+  ctx.set('Content-Type', 'text/xml')
+
+  const count = await result.count()
+  if (count) {
+    const stream = new PassThrough()
+    ctx.body = stream
+    genSitemap(stream, result)
+  }
 }
 
 async function googleSitemap(ctx) {

@@ -12,7 +12,10 @@ const me = {
   async connect() {
     if (me.db) return me.db
 
-    const opts = {}
+    const opts = {
+      useNewUrlParser: true
+    }
+
     if (options.poolSize) opts.poolSize = options.poolSize
 
     me.mongoClient = await new MongoClient(options.url, opts).connect()

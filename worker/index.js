@@ -29,7 +29,7 @@
   lock: String
   */
 
-  const sitemap = db.collection('sitemaps')
+  const sitemaps = db.collection('sitemaps')
   /*
   schema:
   site: String
@@ -289,39 +289,41 @@
             const u2 = new URL(url)
 
             if (u.origin === u2.origin) {
-              let lastmod, changefreq, priority, news, images, videos
+              let sitemap = {}
 
-              if (meta.lastModified) {
-                const date = new Date(meta.lastModified)
-                if (!isNaN(date.getTime())) {
-                  lastmod = date.toISOString()
+              if (openGraph) {
+                if (openGraph.sitemap) sitemap = openGraph.sitemap
+
+                if (!sitemap.image && openGraph.og && openGraph.og.image) {
+                  for (const img of openGraph.og.image) {
+                    sitemap.image.push({
+                      loc: img.secure_url || img.url
+                    })
+                  }
                 }
               }
 
-              if (openGraph.sitemap) {
-                const sitemap = openGraph.sitemap
-                if (sitemap.changefreq) changefreq = sitemap.changefreq
+              if (!sitemap.lastmod && meta.lastModified) {
+                const date = new Date(meta.lastModified)
+                if (!isNaN(date.getTime())) {
+                  sitemap.lastmod = date.toISOString()
+                }
               }
 
-              await sitemap.updateOne({
+              await sitemaps.updateOne({
                 site: u.origin,
                 path: u.pathname + u.search
               }, {
                 $set: {
-                  lastmod,
-                  changefreq,
-                  priority,
-                  news,
-                  images,
-                  videos,
+                  ...sitemap,
                   createdAt
                 }
               }, { upsert: true })
             }
           }
-        } else if (status < 200 || status >= 300) {
+        } else {
           const u = new URL(url)
-          await sitemap.deleteOne({
+          await sitemaps.deleteOne({
             site: u.origin,
             path: u.pathname + u.search
           })
