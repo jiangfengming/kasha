@@ -43,11 +43,11 @@ function parsePageParam(page) {
 
 async function genSitemap(stream, data) {
   stream.write(`<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   `)
 
   let entry
-  while (entry = await data.next()) {
+  while (entry = await data.next()) { // eslint-disable-line no-cond-assign
     stream.write(`<url>${standardTags(entry)}</url>`)
   }
 
@@ -73,37 +73,44 @@ ${
   `
 }
 
-function genGoogleNewsSitemap(data) {
-  return `
-<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
-</urlset>
-  `
+async function genGoogleNewsSitemap(stream, data) {
+  stream.write(`<?xml version="1.0" encoding="UTF-8"?>
+    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+            xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
+  `)
+
+  let entry
+  while (entry = await data.next()) { // eslint-disable-line no-cond-assign
+    stream.write(`
+      <url>
+        ${standardTags(entry)}
+        ${googleNewsTags(entry.news)}
+      </url>
+    `)
+  }
+
+  stream.end('</urlset>')
 }
 
 function standardTags({ site, path, lastmod, changefreq, priority }) {
   return `
-<loc>${site + path}</loc>
-${lastmod ? `<lastmod>${lastmod}</lastmod>` : ''}
-${changefreq ? `<changefreq>${changefreq}</changefreq>` : ''}
-${priority ? `<priority>${priority}</priority>` : ''}
+    <loc>${site + path}</loc>
+    ${lastmod ? `<lastmod>${lastmod}</lastmod>` : ''}
+    ${changefreq ? `<changefreq>${changefreq}</changefreq>` : ''}
+    ${priority ? `<priority>${priority}</priority>` : ''}
   `
 }
 
-function googleNews(page) {
+function googleNewsTags(news) {
   return `
-<news:news>
-  <news:publication>
-    <news:name>The Example Times</news:name>
-    <news:language>en</news:language>
-  </news:publication>
-  <news:genres>PressRelease, Blog</news:genres>
-  <news:publication_date>2008-12-23</news:publication_date>
-  <news:title>Companies A, B in Merger Talks</news:title>
-  <news:keywords>business, merger, acquisition, A, B</news:keywords>
-  <news:stock_tickers>NASDAQ:A, NASDAQ:B</news:stock_tickers>
-</news:news>
+    <news:news>
+      <news:publication>
+        <news:name>${news.publication.name}</news:name>
+        <news:language>${news.publication.language}</news:language>
+      </news:publication>
+      <news:publication_date>${news.publication_date}</news:publication_date>
+      <news:title>${news.title}</news:title>
+    </news:news>
   `
 }
 
@@ -159,6 +166,16 @@ async function count(ctx) {
   }
 }
 
+async function respond(ctx, result, gen) {
+  ctx.set('Content-Type', 'text/xml')
+  const count = await result.count()
+  if (count) {
+    const stream = new PassThrough()
+    ctx.body = stream
+    gen(stream, result)
+  }
+}
+
 async function sitemap(ctx) {
   const site = parseSiteParam(ctx.params.site)
   const limit = parseLimitParam(ctx.query.limit)
@@ -169,14 +186,7 @@ async function sitemap(ctx) {
     limit
   })
 
-  ctx.set('Content-Type', 'text/xml')
-
-  const count = await result.count()
-  if (count) {
-    const stream = new PassThrough()
-    ctx.body = stream
-    genSitemap(stream, result)
-  }
+  await respond(ctx, result, genSitemap)
 }
 
 async function googleSitemap(ctx) {
@@ -184,7 +194,19 @@ async function googleSitemap(ctx) {
 }
 
 async function googleNewsSitemap(ctx) {
+  const site = parseSiteParam(ctx.params.site)
+  const limit = parseLimitParam(ctx.query.limit)
+  const page = parsePageParam(ctx.params.page)
 
+  const result = await sitemaps.find({
+    site,
+    news: { $exists: true }
+  }, {
+    skip: (page - 1) * limit,
+    limit
+  })
+
+  await respond(ctx, result, genGoogleNewsSitemap)
 }
 
 async function googleImageSitemap(ctx) {
