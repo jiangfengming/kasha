@@ -8,6 +8,7 @@
     "kasha-worker": "./worker/index.js"
   },
   "dependencies": {
+    "html-entities": "^1.2.1",
     "koa": "^2.5.2",
     "koa-router": "7.4.0",
     "mongodb": "^3.1.1",

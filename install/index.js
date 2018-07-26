@@ -21,7 +21,7 @@ async function main() {
     await db.collection('snapshots').createIndex({ site: 1, path: 1, deviceType: 1 }, { unique: true })
     const sitemap = db.collection('sitemaps')
     await sitemap.createIndex({ site: 1, path: 1 }, { unique: true })
-    await sitemap.createIndex({ date: -1 })
+    await sitemap.createIndex({ 'news.publication_date': -1 })
   })
 
   const latest = schema.latest()

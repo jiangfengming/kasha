@@ -294,7 +294,17 @@
               if (openGraph) {
                 if (openGraph.sitemap) sitemap = openGraph.sitemap
 
+                if (sitemap.news) {
+                  const date = new Date(sitemap.news.publication_date)
+                  if (isNaN(date.getTime())) {
+                    delete sitemap.news
+                  } else {
+                    sitemap.news.publication_date = date
+                  }
+                }
+
                 if (!sitemap.image && openGraph.og && openGraph.og.image) {
+                  sitemap.image = []
                   for (const img of openGraph.og.image) {
                     sitemap.image.push({
                       loc: img.secure_url || img.url
