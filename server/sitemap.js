@@ -281,11 +281,23 @@ async function googleVideoSitemap(ctx) {
   await respond(ctx, result, genGoogleVideoSitemap)
 }
 
+async function sitemapIndex(ctx) {
+  const site = parseSiteParam(ctx.params.site)
+  const limit = parseLimitParam(ctx.query.limit)
+  const page = parsePageParam(ctx.params.page)
+
+  const docNums = await sitemaps.countDocuments({ site }, {
+    skip: (page - 1) * limit * PAGE_LIMIT,
+    limit: limit * PAGE_LIMIT
+  })
+}
+
 module.exports = {
   count,
   sitemap,
   googleSitemap,
   googleNewsSitemap,
   googleImageSitemap,
-  googleVideoSitemap
+  googleVideoSitemap,
+  sitemapIndex
 }

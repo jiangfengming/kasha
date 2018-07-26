@@ -60,11 +60,12 @@
 
   const siteRegex = ':site(https?://[^/]+)'
   router.get(`/sitemaps/${siteRegex}/count`, sitemap.count)
-  router.get(`/sitemaps/${siteRegex}/:page`, sitemap.sitemap)
-  router.get(`/sitemaps/${siteRegex}/google/:page`, sitemap.googleSitemap)
-  router.get(`/sitemaps/${siteRegex}/google/news/:page`, sitemap.googleNewsSitemap)
-  router.get(`/sitemaps/${siteRegex}/google/image/:page`, sitemap.googleImageSitemap)
-  router.get(`/sitemaps/${siteRegex}/google/video/:page`, sitemap.googleVideoSitemap)
+  router.get(`/sitemaps/${siteRegex}/:page.xml`, sitemap.sitemap)
+  router.get(`/sitemaps/${siteRegex}/google/:page.xml`, sitemap.googleSitemap)
+  router.get(`/sitemaps/${siteRegex}/google/news/:page.xml`, sitemap.googleNewsSitemap)
+  router.get(`/sitemaps/${siteRegex}/google/image/:page.xml`, sitemap.googleImageSitemap)
+  router.get(`/sitemaps/${siteRegex}/google/video/:page.xml`, sitemap.googleVideoSitemap)
+  router.get(`/sitemaps/${siteRegex}/index/:page.xml`, sitemap.sitemapIndex)
 
   app.use(router.routes())
 
