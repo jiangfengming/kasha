@@ -6,7 +6,7 @@ const { PassThrough } = require('stream')
 const { XmlEntities } = require('html-entities')
 
 const PAGE_LIMIT = 50000
-const GOOGLE_NEWS_LIMIT = 1000
+const GOOGLE_LIMIT = 1000
 
 const entities = new XmlEntities()
 
@@ -182,19 +182,6 @@ function googleVideoTags(video) {
   return tags
 }
 
-async function count(ctx) {
-  const site = parseSiteParam(ctx.params.site)
-  const limit = parseLimitParam(ctx.query.limit)
-  const urlCount = await sitemaps.count({ site })
-  const sitemapCount = Math.ceil(urlCount / limit)
-  const sitemapIndexCount = Math.ceil(sitemapCount / PAGE_LIMIT)
-  ctx.body = {
-    url: urlCount,
-    sitemap: sitemapCount,
-    sitemapIndex: sitemapIndexCount
-  }
-}
-
 async function respond(ctx, result, gen) {
   ctx.set('Content-Type', 'text/xml')
   const count = await result.count()
@@ -220,7 +207,7 @@ async function sitemap(ctx) {
 
 async function googleSitemap(ctx) {
   const site = parseSiteParam(ctx.params.site)
-  const limit = parseLimitParam(ctx.query.limit)
+  const limit = parseLimitParam(ctx.query.limit, GOOGLE_LIMIT)
   const page = parsePageParam(ctx.params.page)
 
   const result = await sitemaps.find({ site }, {
@@ -233,7 +220,7 @@ async function googleSitemap(ctx) {
 
 async function googleNewsSitemap(ctx) {
   const site = parseSiteParam(ctx.params.site)
-  const limit = parseLimitParam(ctx.query.limit, GOOGLE_NEWS_LIMIT)
+  const limit = parseLimitParam(ctx.query.limit, GOOGLE_LIMIT)
   const page = parsePageParam(ctx.params.page)
 
   const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
@@ -251,7 +238,7 @@ async function googleNewsSitemap(ctx) {
 
 async function googleImageSitemap(ctx) {
   const site = parseSiteParam(ctx.params.site)
-  const limit = parseLimitParam(ctx.query.limit)
+  const limit = parseLimitParam(ctx.query.limit, GOOGLE_LIMIT)
   const page = parsePageParam(ctx.params.page)
 
   const result = await sitemaps.find({
@@ -267,7 +254,7 @@ async function googleImageSitemap(ctx) {
 
 async function googleVideoSitemap(ctx) {
   const site = parseSiteParam(ctx.params.site)
-  const limit = parseLimitParam(ctx.query.limit)
+  const limit = parseLimitParam(ctx.query.limit, GOOGLE_LIMIT)
   const page = parsePageParam(ctx.params.page)
 
   const result = await sitemaps.find({
@@ -279,6 +266,40 @@ async function googleVideoSitemap(ctx) {
   })
 
   await respond(ctx, result, genGoogleVideoSitemap)
+}
+
+async function robotsTxt(ctx) {
+  const site = parseSiteParam(ctx.params.site)
+  const limit = parseLimitParam(ctx.query.limit)
+  const googleLimit = parseLimitParam(ctx.query.googleLimit)
+
+  const allCount = await sitemaps.countDocuments({ site })
+  const newsCount = await sitemaps.countDocuments({ site, news: { $exists: true } })
+  const imageCount = await sitemaps.countDocuments({ site, image: { $exists: true } })
+  const videoCount = await sitemaps.countDocuments({ site, video: { $exists: true } })
+
+  const normalSitemapIndexCount = Math.ceil(allCount / limit / PAGE_LIMIT)
+  const googleSitemapIndexCount = Math.ceil(allCount / googleLimit / PAGE_LIMIT)
+  const newsSitemapIndexCount = Math.ceil(newsCount / googleLimit / PAGE_LIMIT)
+  const imageSitemapIndexCount = Math.ceil(imageCount / googleLimit / PAGE_LIMIT)
+  const videoSitemapIndexCount = Math.ceil(videoCount / googleLimit / PAGE_LIMIT)
+
+  ctx.body = ''
+  for (let n = 1; n <= normalSitemapIndexCount; n++) {
+    ctx.body += `Sitemap: ${site}/sitemaps/index/${n}.xml?limit=${limit}\n`
+  }
+  for (let n = 1; n <= googleSitemapIndexCount; n++) {
+    ctx.body += `Sitemap: ${site}/sitemaps/index/google/${n}.xml?limit=${googleLimit}\n`
+  }
+  for (let n = 1; n <= newsSitemapIndexCount; n++) {
+    ctx.body += `Sitemap: ${site}/sitemaps/index/google/news/${n}.xml?limit=${googleLimit}\n`
+  }
+  for (let n = 1; n <= imageSitemapIndexCount; n++) {
+    ctx.body += `Sitemap: ${site}/sitemaps/index/google/image/${n}.xml?limit=${googleLimit}\n`
+  }
+  for (let n = 1; n <= videoSitemapIndexCount; n++) {
+    ctx.body += `Sitemap: ${site}/sitemaps/index/google/video/${n}.xml?limit=${googleLimit}\n`
+  }
 }
 
 async function sitemapIndex(ctx) {
@@ -293,7 +314,7 @@ async function sitemapIndex(ctx) {
 }
 
 module.exports = {
-  count,
+  robotsTxt,
   sitemap,
   googleSitemap,
   googleNewsSitemap,
