@@ -18,7 +18,7 @@ function parseSiteParam(site) {
   }
 }
 
-function parseLimitParam(limit, max = PAGE_LIMIT) {
+function parseLimitParam(limit, max) {
   if (limit) {
     limit = parseInt(limit)
     if (isNaN(limit) || limit <= 0 || limit > max) {
@@ -183,7 +183,7 @@ function googleVideoTags(video) {
 }
 
 async function respond(ctx, result, gen) {
-  ctx.set('Content-Type', 'text/xml')
+  ctx.set('Content-Type', 'text/xml; charset=utf-8')
   const count = await result.count()
   if (count) {
     const stream = new PassThrough()
@@ -194,7 +194,7 @@ async function respond(ctx, result, gen) {
 
 async function sitemap(ctx) {
   const site = parseSiteParam(ctx.params.site)
-  const limit = parseLimitParam(ctx.query.limit)
+  const limit = parseLimitParam(ctx.query.limit, PAGE_LIMIT)
   const page = parsePageParam(ctx.params.page)
 
   const result = await sitemaps.find({ site }, {
@@ -270,8 +270,8 @@ async function googleVideoSitemap(ctx) {
 
 async function robotsTxt(ctx) {
   const site = parseSiteParam(ctx.params.site)
-  const limit = parseLimitParam(ctx.query.limit)
-  const googleLimit = parseLimitParam(ctx.query.googleLimit)
+  const limit = parseLimitParam(ctx.query.limit, PAGE_LIMIT)
+  const googleLimit = parseLimitParam(ctx.query.googleLimit, GOOGLE_LIMIT)
 
   const allCount = await sitemaps.countDocuments({ site })
   const newsCount = await sitemaps.countDocuments({ site, news: { $exists: true } })
@@ -285,32 +285,99 @@ async function robotsTxt(ctx) {
   const videoSitemapIndexCount = Math.ceil(videoCount / googleLimit / PAGE_LIMIT)
 
   ctx.body = ''
+
   for (let n = 1; n <= normalSitemapIndexCount; n++) {
-    ctx.body += `Sitemap: ${site}/sitemaps/index/${n}.xml?limit=${limit}\n`
+    ctx.body += `Sitemap: ${site}/sitemaps/index/${n}.xml`
+    if (limit !== PAGE_LIMIT) ctx.body += `?limit=${limit}`
+    ctx.body += '\n'
   }
+
   for (let n = 1; n <= googleSitemapIndexCount; n++) {
-    ctx.body += `Sitemap: ${site}/sitemaps/index/google/${n}.xml?limit=${googleLimit}\n`
+    ctx.body += `Sitemap: ${site}/sitemaps/index/google/${n}.xml`
+    if (googleLimit !== GOOGLE_LIMIT) ctx.body += `?limit=${googleLimit}`
+    ctx.body += '\n'
   }
+
   for (let n = 1; n <= newsSitemapIndexCount; n++) {
-    ctx.body += `Sitemap: ${site}/sitemaps/index/google/news/${n}.xml?limit=${googleLimit}\n`
+    ctx.body += `Sitemap: ${site}/sitemaps/index/google/news/${n}.xml`
+    if (googleLimit !== GOOGLE_LIMIT) ctx.body += `?limit=${googleLimit}`
+    ctx.body += '\n'
   }
+
   for (let n = 1; n <= imageSitemapIndexCount; n++) {
-    ctx.body += `Sitemap: ${site}/sitemaps/index/google/image/${n}.xml?limit=${googleLimit}\n`
+    ctx.body += `Sitemap: ${site}/sitemaps/index/google/image/${n}.xml`
+    if (googleLimit !== GOOGLE_LIMIT) ctx.body += `?limit=${googleLimit}`
+    ctx.body += '\n'
   }
+
   for (let n = 1; n <= videoSitemapIndexCount; n++) {
-    ctx.body += `Sitemap: ${site}/sitemaps/index/google/video/${n}.xml?limit=${googleLimit}\n`
+    ctx.body += `Sitemap: ${site}/sitemaps/index/google/video/${n}.xml`
+    if (googleLimit !== GOOGLE_LIMIT) ctx.body += `?limit=${googleLimit}`
+    ctx.body += '\n'
   }
 }
 
-async function sitemapIndex(ctx) {
+async function _sitemapIndex(ctx, type) {
+  const MAX = type === 'normal' ? PAGE_LIMIT : GOOGLE_LIMIT
+
   const site = parseSiteParam(ctx.params.site)
-  const limit = parseLimitParam(ctx.query.limit)
+  const limit = parseLimitParam(ctx.query.limit, MAX)
   const page = parsePageParam(ctx.params.page)
 
-  const docNums = await sitemaps.countDocuments({ site }, {
+  const query = { site }
+  if (['news', 'image', 'video'].includes(type)) {
+    query[type] = { $exists: true }
+  }
+
+  const docCount = await sitemaps.countDocuments(query, {
     skip: (page - 1) * limit * PAGE_LIMIT,
     limit: limit * PAGE_LIMIT
   })
+
+  if (docCount) {
+    ctx.set('Content-Type', 'text/xml; charset=utf-8')
+
+    const stream = new PassThrough()
+    ctx.body = stream
+
+    stream.write('<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
+
+    let path
+    if (type === 'normal') path = site + '/sitemaps'
+    else if (type === 'google') path = site + '/sitemaps/google'
+    else path = site + '/sitemaps/google/' + type
+
+    const start = (page - 1) * limit
+    const pageCount = Math.ceil(docCount / limit)
+
+    for (let n = 1; n <= pageCount; n++) {
+      stream.write(`<sitemap><loc>${path}/${start + n}.xml`)
+      if (limit !== MAX) stream.write(`?limit=${limit}`)
+      stream.write('</loc></sitemap>')
+    }
+
+    stream.end('</sitemapindex>')
+  }
+}
+
+function sitemapIndex(ctx) {
+  return _sitemapIndex(ctx, 'normal')
+}
+
+function googleSitemapIndex(ctx) {
+  return _sitemapIndex(ctx, 'google')
+}
+
+function googleNewsSitemapIndex(ctx) {
+  return _sitemapIndex(ctx, 'news')
+}
+
+function googleImageSitemapIndex(ctx) {
+  return _sitemapIndex(ctx, 'image')
+}
+
+function googleVideoSitemapIndex(ctx) {
+  return _sitemapIndex(ctx, 'video')
 }
 
 module.exports = {
@@ -320,5 +387,9 @@ module.exports = {
   googleNewsSitemap,
   googleImageSitemap,
   googleVideoSitemap,
-  sitemapIndex
+  sitemapIndex,
+  googleSitemapIndex,
+  googleNewsSitemapIndex,
+  googleImageSitemapIndex,
+  googleVideoSitemapIndex
 }
