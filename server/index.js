@@ -50,6 +50,19 @@
     return next()
   }, render)
 
+  const siteRegex = ':site(https?://[^/]+)'
+  router.get(`/${siteRegex}/sitemaps/:page.xml`, sitemap.sitemap)
+  router.get(`/${siteRegex}/sitemaps/google/:page.xml`, sitemap.googleSitemap)
+  router.get(`/${siteRegex}/sitemaps/google/news/:page.xml`, sitemap.googleNewsSitemap)
+  router.get(`/${siteRegex}/sitemaps/google/image/:page.xml`, sitemap.googleImageSitemap)
+  router.get(`/${siteRegex}/sitemaps/google/video/:page.xml`, sitemap.googleVideoSitemap)
+  router.get(`/${siteRegex}/sitemaps/index/:page.xml`, sitemap.sitemapIndex)
+  router.get(`/${siteRegex}/sitemaps/index/google/:page.xml`, sitemap.googleSitemapIndex)
+  router.get(`/${siteRegex}/sitemaps/index/google/news/:page.xml`, sitemap.googleNewsSitemapIndex)
+  router.get(`/${siteRegex}/sitemaps/index/google/image/:page.xml`, sitemap.googleImageSitemapIndex)
+  router.get(`/${siteRegex}/sitemaps/index/google/video/:page.xml`, sitemap.googleVideoSitemapIndex)
+  router.get(`/${siteRegex}/sitemaps/robots.txt`, sitemap.robotsTxt)
+
   router.get('/(http.+)', (ctx, next) => {
     ctx.query = {
       url: ctx.url.slice(1),
@@ -57,19 +70,6 @@
     }
     return next()
   }, render)
-
-  const siteRegex = ':site(https?://[^/]+)'
-  router.get(`/sitemaps/${siteRegex}/:page.xml`, sitemap.sitemap)
-  router.get(`/sitemaps/${siteRegex}/google/:page.xml`, sitemap.googleSitemap)
-  router.get(`/sitemaps/${siteRegex}/google/news/:page.xml`, sitemap.googleNewsSitemap)
-  router.get(`/sitemaps/${siteRegex}/google/image/:page.xml`, sitemap.googleImageSitemap)
-  router.get(`/sitemaps/${siteRegex}/google/video/:page.xml`, sitemap.googleVideoSitemap)
-  router.get(`/sitemaps/${siteRegex}/index/:page.xml`, sitemap.sitemapIndex)
-  router.get(`/sitemaps/${siteRegex}/index/google/:page.xml`, sitemap.googleSitemapIndex)
-  router.get(`/sitemaps/${siteRegex}/index/google/news/:page.xml`, sitemap.googleNewsSitemapIndex)
-  router.get(`/sitemaps/${siteRegex}/index/google/image/:page.xml`, sitemap.googleImageSitemapIndex)
-  router.get(`/sitemaps/${siteRegex}/index/google/video/:page.xml`, sitemap.googleVideoSitemapIndex)
-  router.get(`/sitemaps/${siteRegex}/robots.txt`, sitemap.robotsTxt)
 
   app.use(router.routes())
 

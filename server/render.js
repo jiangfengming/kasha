@@ -108,7 +108,7 @@ async function render(ctx) {
           lock: false
         }, {
           $set: {
-            date: new Date(0)
+            createdAt: new Date(0)
           }
         })
       } catch (e) {
@@ -129,14 +129,14 @@ async function render(ctx) {
 
     if (!doc) return sendToWorker()
 
-    const { error, times, date, expires, lock } = doc
+    const { error, times, createdAt, expires, lock } = doc
 
     if (lock) {
       return handleResult(await poll(site, path, deviceType, lock))
     }
 
     if (error) {
-      if (times % 4 === 3 && date.getTime() + ERROR_EXPIRE > now) {
+      if (times % 4 === 3 && createdAt.getTime() + ERROR_EXPIRE > now) {
         throw new CustomError(
           'SERVER_RENDER_ERROR',
           `Fetching ${url} failed 3 times in one minute.`
@@ -162,7 +162,7 @@ async function render(ctx) {
     return handler()
   }
 
-  function handleResult({ status, redirect, meta, openGraph, links, html, staticHTML, error, date }) {
+  function handleResult({ status, redirect, meta, openGraph, links, html, staticHTML, error, createdAt }) {
     // has error
     if (error) {
       throw new CustomError(JSON.parse(error))
@@ -178,7 +178,7 @@ async function render(ctx) {
       links,
       html: metaOnly ? undefined : html,
       staticHTML: metaOnly ? undefined : staticHTML,
-      date
+      createdAt
     })
   }
 
