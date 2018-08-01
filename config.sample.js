@@ -21,7 +21,10 @@ module.exports = {
     poolSize: 5
   },
 
-  cache: 24 * 60 * 60, // 1 day
+  cache: {
+    maxAge: 3 * 60, // 3 minutes
+    maxStale: 3 * 60 // 3 minutes
+  },
 
   sentry: {
     dsn: ''

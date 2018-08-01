@@ -14,8 +14,8 @@ const ERROR_EXPIRE = 60 * 1000
 
 async function render(ctx) {
   const now = Date.now()
-  const { deviceType = 'desktop', type = 'html', callbackUrl } = ctx.query
-  let { url, noWait, metaOnly, followRedirect, ignoreRobotsTxt, refresh } = ctx.query
+  const { deviceType = 'desktop', type = 'html' } = ctx.query
+  let { url, callbackUrl, noWait, metaOnly, followRedirect, ignoreRobotsTxt, refresh } = ctx.query
 
   let site, path
   try {
@@ -129,7 +129,7 @@ async function render(ctx) {
 
     if (!doc) return sendToWorker()
 
-    const { error, times, createdAt, expires, lock } = doc
+    const { error, times, createdAt, sharedExpires, privateExpires, lock } = doc
 
     if (lock) {
       return handleResult(await poll(site, path, deviceType, lock))
@@ -145,11 +145,19 @@ async function render(ctx) {
 
       return sendToWorker()
     } else {
-      if (expires.getTime() >= now) {
-        return handleResult(doc)
-      }
+      if (sharedExpires.getTime() >= now) {
+        handleResult(doc)
 
-      return sendToWorker()
+        if (privateExpires.getTime() <= now) {
+          callbackUrl = null
+          noWait = true
+          sendToWorker()
+        }
+
+        return
+      } else {
+        return sendToWorker()
+      }
     }
   }
 
@@ -162,7 +170,7 @@ async function render(ctx) {
     return handler()
   }
 
-  function handleResult({ status, redirect, meta, openGraph, links, html, staticHTML, error, createdAt }) {
+  function handleResult({ status, redirect, meta, openGraph, links, html, staticHTML, privateExpires, sharedExpires, error, createdAt }) {
     // has error
     if (error) {
       throw new CustomError(JSON.parse(error))
@@ -178,6 +186,8 @@ async function render(ctx) {
       links,
       html: metaOnly ? undefined : html,
       staticHTML: metaOnly ? undefined : staticHTML,
+      privateExpires,
+      sharedExpires,
       createdAt
     })
   }

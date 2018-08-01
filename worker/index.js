@@ -25,7 +25,8 @@
   error: String
   times: Number
   createdAt: Date
-  expires: Date
+  privateExpires: Date
+  sharedExpires: Date
   lock: String
   */
 
@@ -109,7 +110,7 @@
 
     const url = site + path
 
-    let status, redirect, meta, openGraph, links, html, staticHTML, error, expires
+    let status, redirect, meta, openGraph, links, html, staticHTML, error, privateExpires, sharedExpires
     const now = new Date()
     let createdAt = now
 
@@ -123,7 +124,7 @@
       lock: false,
       $or: [
         { error: { $ne: null } }, // error
-        { expires: { $lt: now } } // expired
+        { privateExpires: { $lt: now } } // expired
       ]
     }
 
@@ -139,7 +140,8 @@
           staticHTML,
           error,
           createdAt,
-          expires,
+          privateExpires,
+          sharedExpires,
           lock
         },
         $setOnInsert: {
@@ -158,7 +160,7 @@
       // duplicate key on upsert
       // the document maybe locked by others, or is valid
       try {
-        ({ status, redirect, meta, openGraph, links, html, staticHTML, error, createdAt } = await poll(site, path, deviceType))
+        ({ status, redirect, meta, openGraph, links, html, staticHTML, privateExpires, sharedExpires, error, createdAt } = await poll(site, path, deviceType))
       } catch (e) {
         return handleResult(e)
       }
@@ -177,6 +179,8 @@
         links,
         html: metaOnly ? undefined : html,
         staticHTML: metaOnly ? undefined : staticHTML,
+        privateExpires,
+        sharedExpires,
         createdAt
       })
     }
@@ -207,22 +211,34 @@
         error = new CustomError('SERVER_UPSTREAM_ERROR', 'HTTP' + status)
       } else {
         if (meta.cacheControl) {
-          const match = meta.cacheControl.match(/s-max-age=(\d+)/) || meta.cacheControl.match(/max-age=(\d+)/)
-          if (match) {
-            const age = parseInt(match[1])
-            if (age >= 0) expires = new Date(now.getTime() + age * 1000)
+          let maxage = meta.cacheControl.match(/max-age=(\d+)/)
+          if (maxage) {
+            maxage = parseInt(maxage[1])
+            if (maxage >= 0) privateExpires = new Date(now.getTime() + maxage * 1000)
+            else maxage = null
+          }
+
+          let sMaxage = meta.cacheControl.match(/s-maxage=(\d+)/)
+          if (sMaxage) {
+            sMaxage = parseInt(sMaxage[1])
+            if (sMaxage >= 0) sharedExpires = new Date(now.getTime() + sMaxage * 1000)
+            else sMaxage = null
           }
         }
 
-        if (!expires && meta.expires) {
+        if (!privateExpires && meta.expires) {
           const d = new Date(meta.expires)
           if (!isNaN(d.getTime())) {
-            expires = d
+            privateExpires = d
           }
         }
 
-        if (!expires) {
-          expires = new Date(now.getTime() + config.cache * 1000)
+        if (!privateExpires) {
+          privateExpires = new Date(now.getTime() + config.cache.maxAge * 1000)
+        }
+
+        if (!sharedExpires) {
+          sharedExpires = new Date(privateExpires.getTime() + config.cache.maxStale * 1000)
         }
       }
     } catch (e) {
@@ -242,7 +258,8 @@
             staticHTML,
             error: JSON.stringify(error),
             createdAt,
-            expires,
+            privateExpires,
+            sharedExpires,
             lock: false
           },
           $inc: {
@@ -268,7 +285,8 @@
             staticHTML,
             error: null,
             createdAt,
-            expires,
+            privateExpires,
+            sharedExpires,
             lock: false
           },
           $inc: {
@@ -353,6 +371,8 @@
         links,
         html: metaOnly ? undefined : html,
         staticHTML: metaOnly ? undefined : staticHTML,
+        privateExpires,
+        sharedExpires,
         createdAt
       })
     }
