@@ -23,7 +23,7 @@ module.exports = {
 
   cache: {
     maxAge: 3 * 60, // 3 minutes
-    maxStale: 3 * 60 // 3 minutes
+    maxStale: 24 * 60 * 60 // 1 day
   },
 
   sentry: {

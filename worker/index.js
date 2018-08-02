@@ -104,8 +104,9 @@
       site,
       path,
       deviceType,
-      callbackUrl,
-      metaOnly
+      callbackURL,
+      metaOnly,
+      cacheStatus
     } = req
 
     const url = site + path
@@ -182,7 +183,7 @@
         privateExpires,
         sharedExpires,
         createdAt
-      })
+      }, cacheStatus)
     }
 
     // render the page
@@ -374,17 +375,18 @@
         privateExpires,
         sharedExpires,
         createdAt
-      })
+      }, cacheStatus)
     }
 
-    function handleResult(error, result) {
-      if (callbackUrl) {
-        callback(callbackUrl, error, result)
+    function handleResult(error, result, cacheStatus) {
+      if (callbackURL) {
+        callback(callbackURL, error, result, cacheStatus)
       } else if (replyTo) {
         nsqWriter.publish(replyTo, {
           correlationId,
           error,
-          result
+          result,
+          cacheStatus
         })
       }
 

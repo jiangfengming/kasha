@@ -29,14 +29,14 @@
   app.use(async(ctx, next) => {
     try {
       await next()
-      ctx.set('X-Code', 'OK')
+      ctx.set('Kasha-Code', 'OK')
     } catch (e) {
       let err = e
       if (!(e instanceof CustomError)) {
         const { timestamp, eventId } = logger.error(e)
         err = new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
       }
-      ctx.set('X-Code', err.code)
+      ctx.set('Kasha-Code', err.code)
       ctx.status = err.status
       ctx.body = err.toJSON()
     }

@@ -24,7 +24,7 @@ kasha-server --config=/path/to/config.js
 kasha-worker --config=/path/to/config.js
 
 # async worker
-# requests with 'callbackUrl' parameter will be dispatched to async workers.
+# requests with 'callbackURL' parameter will be dispatched to async workers.
 kasha-worker --async --config=/path/to/config.js
 ```
 
@@ -38,7 +38,7 @@ Prerenders the page.
 `deviceType`: `desktop`|`mobile`. Use what type of device to render the page. Defaults to `desktop`.  
 `proxy`: Returns the page with `Content-Type: text/html`. Otherwise returns `json`.  
 `noWait`: Don't wait the result. It is useful for pre-caching the page.  
-`callbackUrl`: Don't wait the result. Once the job is done, `POST` the result to the given url with `json` format.  
+`callbackURL`: Don't wait the result. Once the job is done, `POST` the result to the given url with `json` format.  
 `metaOnly`: Only returns meta data without html content.  
 `followRedirect`: Follows the redirects if the page return `301`/`302`.  
 `ignoreRobotsTxt`: Still crawl the page even if `robots.txt` of the site disallowed.  
@@ -47,7 +47,7 @@ Prerenders the page.
 To the boolean parameters, if the param is absent or set to `0`, it means `false`.
 If set to `1` or empty value (e.g., `&proxy`, `&proxy=`, `&proxy=1`), it means `true`.   
 
-Example: `http://localhost:3000/render?url=https%3A%2F%2Fdavidwalsh.name%2Ffacebook-meta-tags&deviceType=mobile&callbackUrl=http%3A%2F%2Flocalhost%3A8080%2F&followRedirect`
+Example: `http://localhost:3000/render?url=https%3A%2F%2Fdavidwalsh.name%2Ffacebook-meta-tags&deviceType=mobile&callbackURL=http%3A%2F%2Flocalhost%3A8080%2F&followRedirect`
 
 #### The returned JSON format example:
 ```json

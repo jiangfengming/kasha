@@ -14,8 +14,8 @@ const ERROR_EXPIRE = 60 * 1000
 
 async function render(ctx) {
   const now = Date.now()
-  const { deviceType = 'desktop', type = 'html' } = ctx.query
-  let { url, callbackUrl, noWait, metaOnly, followRedirect, ignoreRobotsTxt, refresh } = ctx.query
+  const { deviceType = 'desktop' } = ctx.query
+  let { url, type = 'html', callbackURL, noWait, metaOnly, followRedirect, refresh } = ctx.query
 
   let site, path
   try {
@@ -32,11 +32,11 @@ async function render(ctx) {
     throw new CustomError('CLIENT_INVALID_PARAM', 'deviceType')
   }
 
-  if (callbackUrl) {
+  if (callbackURL) {
     try {
-      assert(['http:', 'https:'].includes(new URL(callbackUrl).protocol))
+      assert(['http:', 'https:'].includes(new URL(callbackURL).protocol))
     } catch (e) {
-      throw new CustomError('CLIENT_INVALID_PARAM', 'callbackUrl')
+      throw new CustomError('CLIENT_INVALID_PARAM', 'callbackURL')
     }
   }
 
@@ -59,12 +59,6 @@ async function render(ctx) {
     metaOnly = truthyValues.includes(metaOnly)
   }
 
-  if (!validValues.includes(ignoreRobotsTxt)) {
-    throw new CustomError('CLIENT_INVALID_PARAM', 'ignoreRobotsTxt')
-  } else {
-    ignoreRobotsTxt = truthyValues.includes(ignoreRobotsTxt)
-  }
-
   if (!validValues.includes(followRedirect)) {
     throw new CustomError('CLIENT_INVALID_PARAM', 'followRedirect')
   } else {
@@ -77,23 +71,20 @@ async function render(ctx) {
     refresh = truthyValues.includes(refresh)
   }
 
-  if ((callbackUrl || metaOnly) && type !== 'json') {
-    throw new CustomError(
-      'CLIENT_INVALID_PARAM',
-      'callbackUrl and metaOnly can only used with type=json'
-    )
+  if ((callbackURL || metaOnly) && type !== 'json') {
+    type = 'json'
   }
 
-  if (noWait && (callbackUrl || metaOnly || ctx.query.type)) {
+  if (noWait && (callbackURL || metaOnly || ctx.query.type)) {
     throw new CustomError(
       'CLIENT_INVALID_PARAM',
-      'noWait can\'t be used with callbackUrl | metaOnly | type'
+      'noWait can\'t be used with callbackURL | metaOnly | type'
     )
   }
 
   logger.debug(ctx.url, {
     extra: {
-      params: { url, deviceType, callbackUrl, type, noWait, metaOnly, followRedirect }
+      params: { url, deviceType, callbackURL, type, noWait, metaOnly, followRedirect }
     }
   })
 
@@ -116,7 +107,7 @@ async function render(ctx) {
         throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
       }
 
-      return sendToWorker()
+      return sendToWorker('MISS')
     }
 
     let doc
@@ -127,12 +118,14 @@ async function render(ctx) {
       throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
     }
 
-    if (!doc) return sendToWorker()
+    if (!doc) {
+      return sendToWorker('MISS')
+    }
 
     const { error, times, createdAt, sharedExpires, privateExpires, lock } = doc
 
     if (lock) {
-      return handleResult(await poll(site, path, deviceType, lock))
+      return handleResult(await poll(site, path, deviceType, lock), 'MISS')
     }
 
     if (error) {
@@ -143,34 +136,35 @@ async function render(ctx) {
         )
       }
 
-      return sendToWorker()
+      return sendToWorker('MISS')
     } else {
       if (sharedExpires.getTime() >= now) {
-        handleResult(doc)
-
         if (privateExpires.getTime() <= now) {
-          callbackUrl = null
+          handleResult(doc, 'UPDATING')
+
+          callbackURL = null
           noWait = true
           sendToWorker()
+        } else {
+          handleResult(doc, 'HIT')
         }
-
         return
       } else {
-        return sendToWorker()
+        return sendToWorker('EXPIRED')
       }
     }
   }
 
-  if (noWait || callbackUrl) {
+  if (noWait || callbackURL) {
     ctx.body = { queued: true }
     handler().catch(e => {
-      if (callbackUrl) callback(callbackUrl, e)
+      if (callbackURL) callback(callbackURL, e)
     })
   } else {
     return handler()
   }
 
-  function handleResult({ status, redirect, meta, openGraph, links, html, staticHTML, privateExpires, sharedExpires, error, createdAt }) {
+  function handleResult({ status, redirect, meta, openGraph, links, html, staticHTML, privateExpires, sharedExpires, error, createdAt }, cacheStatus) {
     // has error
     if (error) {
       throw new CustomError(JSON.parse(error))
@@ -189,23 +183,22 @@ async function render(ctx) {
       privateExpires,
       sharedExpires,
       createdAt
-    })
+    }, cacheStatus)
   }
 
-  function sendToWorker() {
+  function sendToWorker(cacheStatus) {
     return new Promise((resolve, reject) => {
       const msg = {
         site,
         path,
         deviceType,
-        callbackUrl,
+        callbackURL,
         metaOnly,
-        followRedirect,
-        ignoreRobotsTxt
+        cacheStatus
       }
 
       let topic
-      if (callbackUrl || noWait) {
+      if (callbackURL || noWait) {
         topic = 'kasha-async-queue'
       } else {
         topic = 'kasha-sync-queue'
@@ -218,7 +211,7 @@ async function render(ctx) {
           const { timestamp, eventId } = logger.error(e)
           reject(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
         } else {
-          if (callbackUrl || noWait) {
+          if (callbackURL || noWait) {
             resolve()
           } else {
             resolve(addToQueue({

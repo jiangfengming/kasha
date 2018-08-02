@@ -53,7 +53,10 @@ reader.on('message', async msg => {
 
   if (data.error) return reject(new CustomError(data.error))
 
-  reply(ctx, type, followRedirect, data.result)
+  data.result.privateExpires = new Date(data.result.privateExpires)
+  data.result.sharedExpires = new Date(data.result.sharedExpires)
+
+  reply(ctx, type, followRedirect, data.result, data.cacheStatus)
 
   // release resources
   for (const k in req) delete req[k]
