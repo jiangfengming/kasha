@@ -164,26 +164,23 @@ async function render(ctx) {
     return handler()
   }
 
-  function handleResult({ status, redirect, meta, openGraph, links, html, staticHTML, privateExpires, sharedExpires, error, createdAt }, cacheStatus) {
+  function handleResult({ html, staticHTML, error, ...doc }, cacheStatus) {
     // has error
     if (error) {
       throw new CustomError(JSON.parse(error))
     }
 
-    reply(ctx, type, followRedirect, {
-      url,
-      deviceType,
-      status,
-      redirect,
-      meta,
-      openGraph,
-      links,
+    doc = {
+      ...doc,
       html: metaOnly ? undefined : html,
-      staticHTML: metaOnly ? undefined : staticHTML,
-      privateExpires,
-      sharedExpires,
-      createdAt
-    }, cacheStatus)
+      staticHTML: metaOnly ? undefined : staticHTML
+    }
+
+    if (callbackURL) {
+      callback(callbackURL, null, doc, cacheStatus)
+    } else if (!noWait) {
+      reply(ctx, type, followRedirect, doc, cacheStatus)
+    }
   }
 
   function sendToWorker(cacheStatus) {
