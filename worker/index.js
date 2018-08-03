@@ -24,7 +24,7 @@
   staticHTML: String
   error: String
   times: Number
-  createdAt: Date
+  updatedAt: Date
   privateExpires: Date
   sharedExpires: Date
   lock: String
@@ -41,7 +41,7 @@
   news: Array
   images: Array
   videos: Array
-  createdAt: Date
+  updatedAt: Date
   */
 
   const Prerenderer = require('puppeteer-prerender')
@@ -113,7 +113,7 @@
 
     let status, redirect, meta, openGraph, links, html, staticHTML, error, privateExpires, sharedExpires
     const now = new Date()
-    let createdAt = now
+    let updatedAt = now
 
     // lock
     const lock = uid()
@@ -140,7 +140,7 @@
           html,
           staticHTML,
           error,
-          createdAt,
+          updatedAt,
           privateExpires,
           sharedExpires,
           lock
@@ -161,7 +161,7 @@
       // duplicate key on upsert
       // the document maybe locked by others, or is valid
       try {
-        ({ status, redirect, meta, openGraph, links, html, staticHTML, privateExpires, sharedExpires, error, createdAt } = await poll(site, path, deviceType))
+        ({ status, redirect, meta, openGraph, links, html, staticHTML, privateExpires, sharedExpires, error, updatedAt } = await poll(site, path, deviceType))
       } catch (e) {
         return handleResult(e)
       }
@@ -182,7 +182,7 @@
         staticHTML: metaOnly ? undefined : staticHTML,
         privateExpires,
         sharedExpires,
-        createdAt
+        updatedAt
       }, cacheStatus)
     }
 
@@ -258,7 +258,7 @@
             html,
             staticHTML,
             error: JSON.stringify(error),
-            createdAt,
+            updatedAt,
             privateExpires,
             sharedExpires,
             lock: false
@@ -285,7 +285,7 @@
             html,
             staticHTML,
             error: null,
-            createdAt,
+            updatedAt,
             privateExpires,
             sharedExpires,
             lock: false
@@ -345,7 +345,7 @@
               }, {
                 $set: {
                   ...sitemap,
-                  createdAt
+                  updatedAt
                 }
               }, { upsert: true })
             }
@@ -374,7 +374,7 @@
         staticHTML: metaOnly ? undefined : staticHTML,
         privateExpires,
         sharedExpires,
-        createdAt
+        updatedAt
       }, cacheStatus)
     }
 

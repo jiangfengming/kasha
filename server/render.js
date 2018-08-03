@@ -99,7 +99,7 @@ async function render(ctx) {
           lock: false
         }, {
           $set: {
-            createdAt: new Date(0)
+            updatedAt: new Date(0)
           }
         })
       } catch (e) {
@@ -122,14 +122,14 @@ async function render(ctx) {
       return sendToWorker('MISS')
     }
 
-    const { error, times, createdAt, sharedExpires, privateExpires, lock } = doc
+    const { error, times, updatedAt, sharedExpires, privateExpires, lock } = doc
 
     if (lock) {
       return handleResult(await poll(site, path, deviceType, lock), 'MISS')
     }
 
     if (error) {
-      if (times % 4 === 3 && createdAt.getTime() + ERROR_EXPIRE > now) {
+      if (times % 4 === 3 && updatedAt.getTime() + ERROR_EXPIRE > now) {
         throw new CustomError(
           'SERVER_RENDER_ERROR',
           `Fetching ${url} failed 3 times in one minute.`
