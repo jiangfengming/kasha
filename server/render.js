@@ -124,34 +124,35 @@ async function render(ctx) {
 
     const { error, times, updatedAt, sharedExpires, privateExpires, lock } = doc
 
-    if (lock) {
-      return handleResult(await poll(site, path, deviceType, lock), 'MISS')
-    }
+    const retryReachedLimit = error && times % 4 === 3 && updatedAt.getTime() + ERROR_EXPIRE > now
 
-    if (error) {
-      if (times % 4 === 3 && updatedAt.getTime() + ERROR_EXPIRE > now) {
+    if (sharedExpires && sharedExpires.getTime() >= now) {
+      if (privateExpires.getTime() <= now) {
+        handleResult(doc, 'UPDATING')
+
+        if (!lock && !retryReachedLimit) {
+          callbackURL = null
+          noWait = true
+          sendToWorker()
+        }
+
+        return
+      } else {
+        return handleResult(doc, 'HIT')
+      }
+    } else if (lock) {
+      return handleResult(await poll(site, path, deviceType, lock), 'MISS')
+    } else if (error) {
+      if (retryReachedLimit) {
         throw new CustomError(
           'SERVER_RENDER_ERROR',
           `Fetching ${url} failed 3 times in one minute.`
         )
-      }
-
-      return sendToWorker('MISS')
-    } else {
-      if (sharedExpires.getTime() >= now) {
-        if (privateExpires.getTime() <= now) {
-          handleResult(doc, 'UPDATING')
-
-          callbackURL = null
-          noWait = true
-          sendToWorker()
-        } else {
-          handleResult(doc, 'HIT')
-        }
-        return
       } else {
-        return sendToWorker('EXPIRED')
+        return sendToWorker('MISS')
       }
+    } else {
+      return sendToWorker('EXPIRED')
     }
   }
 
