@@ -141,6 +141,7 @@ async function render(ctx) {
         return handleResult(doc, 'HIT')
       }
     } else if (lock) {
+      // updating and no stale content available
       return handleResult(await poll(site, path, deviceType, lock), 'MISS')
     } else if (error) {
       if (retryReachedLimit) {

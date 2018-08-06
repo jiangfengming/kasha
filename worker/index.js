@@ -132,17 +132,8 @@
     try {
       await collection.updateOne(lockQuery, {
         $set: {
-          status,
-          redirect,
-          meta,
-          openGraph,
-          links,
-          html,
-          staticHTML,
           error,
           updatedAt,
-          privateExpires,
-          sharedExpires,
           lock
         },
         $setOnInsert: {
@@ -250,17 +241,8 @@
       try {
         await collection.updateOne({ site, path, deviceType, lock }, {
           $set: {
-            status,
-            redirect,
-            meta,
-            openGraph,
-            links,
-            html,
-            staticHTML,
             error: JSON.stringify(error),
             updatedAt,
-            privateExpires,
-            sharedExpires,
             lock: false
           },
           $inc: {
