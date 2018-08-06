@@ -16,9 +16,21 @@ module.exports = {
   },
 
   mongodb: {
-    url: 'mongodb://localhost:27017',
-    database: 'kasha',
-    poolSize: 5
+    server: {
+      url: 'mongodb://localhost:27017',
+      database: 'kasha',
+      options: {
+        poolSize: 10
+      }
+    },
+
+    worker: {
+      url: 'mongodb://localhost:27017',
+      database: 'kasha',
+      options: {
+        poolSize: 2
+      }
+    }
   },
 
   cache: {

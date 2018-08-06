@@ -7,7 +7,7 @@
   const config = require('../shared/config')
 
   const mongodb = require('../shared/db')
-  const db = await mongodb.connect()
+  const db = await mongodb.connect(config.mongodb.worker)
 
   const collection = db.collection('snapshots')
   /*
