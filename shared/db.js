@@ -2,13 +2,13 @@ const { MongoClient } = require('mongodb')
 
 const me = {
   // after the entry point function has initialized the db connection via:
-  // const db = await require('./db').connect(options)
+  // const db = await require('./db').connect(url, database, options)
   // other modules can import db instance without await:
   // const { db } = require('./db')
   mongoClient: null,
   db: null,
 
-  async connect({ url, database, options }) {
+  async connect(url, database, options = {}) {
     if (me.db) return me.db
 
     options.useNewUrlParser = true

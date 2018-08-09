@@ -1,7 +1,7 @@
 async function main() {
   const Schema = require('schema-upgrade')
   const config = require('../shared/config')
-  const db = await require('../shared/db').connect(config.mongodb.server)
+  const db = await require('../shared/db').connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
   const collection = db.collection('meta')
   let appInfo = await collection.findOne({ key: 'appInfo' })
 

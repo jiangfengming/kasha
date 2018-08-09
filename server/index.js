@@ -8,7 +8,7 @@
   const logger = require('../shared/logger')
 
   const mongodb = require('../shared/db')
-  await mongodb.connect(config.mongodb.server)
+  await mongodb.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
 
   const nsqWriter = await require('../shared/nsqWriter').connect()
   const workerResponse = require('./workerResponse')
