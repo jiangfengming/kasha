@@ -124,13 +124,13 @@ async function render(ctx) {
 
     const { error, times, updatedAt, sharedExpires, privateExpires, lock } = doc
 
-    const retryReachedLimit = error && times % 4 === 3 && updatedAt.getTime() + ERROR_EXPIRE > now
+    const retryLimitReached = error && times % 4 === 3 && updatedAt.getTime() + ERROR_EXPIRE > now
 
     if (sharedExpires && sharedExpires.getTime() >= now) {
       if (privateExpires.getTime() <= now) {
         handleResult(doc, 'UPDATING')
 
-        if (!lock && !retryReachedLimit) {
+        if (!lock && !retryLimitReached) {
           callbackURL = null
           noWait = true
           sendToWorker()
@@ -144,7 +144,7 @@ async function render(ctx) {
       // updating and no stale content available
       return handleResult(await poll(site, path, deviceType, lock), 'MISS')
     } else if (error) {
-      if (retryReachedLimit) {
+      if (retryLimitReached) {
         throw new CustomError(
           'SERVER_RENDER_ERROR',
           `Fetching ${url} failed 3 times in one minute.`

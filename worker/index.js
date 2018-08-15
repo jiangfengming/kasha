@@ -195,16 +195,14 @@
         }
       }))
 
-      if (meta.status) {
-        const s = parseInt(meta.status)
-        if (!isNaN(s) && s >= 100 && s < 600) {
-          status = s
+      if (meta) {
+        if (meta.status) {
+          const s = parseInt(meta.status)
+          if (!isNaN(s) && s >= 100 && s < 600) {
+            status = s
+          }
         }
-      }
 
-      if (status >= 500 && status <= 599) {
-        error = new CustomError('SERVER_UPSTREAM_ERROR', 'HTTP' + status)
-      } else {
         if (meta.cacheControl) {
           let maxage = meta.cacheControl.match(/max-age=(\d+)/)
           if (maxage) {
@@ -227,14 +225,14 @@
             privateExpires = d
           }
         }
+      }
 
-        if (!privateExpires) {
-          privateExpires = new Date(now.getTime() + config.cache.maxAge * 1000)
-        }
+      if (!privateExpires) {
+        privateExpires = new Date(now.getTime() + config.cache.maxAge * 1000)
+      }
 
-        if (!sharedExpires) {
-          sharedExpires = new Date(privateExpires.getTime() + config.cache.maxStale * 1000)
-        }
+      if (!sharedExpires) {
+        sharedExpires = new Date(privateExpires.getTime() + config.cache.maxStale * 1000)
       }
     } catch (e) {
       error = new CustomError('SERVER_RENDER_ERROR', e.message)
@@ -281,7 +279,7 @@
         }, { upsert: true })
 
         // sitemap
-        if (meta.canonicalURL) {
+        if (meta && meta.canonicalURL) {
           let u
           try {
             u = new URL(meta.canonicalURL)
