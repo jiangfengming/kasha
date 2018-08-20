@@ -2,7 +2,7 @@
 
 (async function() {
   const { URL } = require('url')
-  const CustomError = require('../shared/CustomError')
+  const RESTError = require('../shared/RESTError')
   const logger = require('../shared/logger')
   const config = require('../shared/config')
 
@@ -149,7 +149,7 @@
 
       if (e.code !== 11000) {
         const { timestamp, eventId } = logger.error(e)
-        return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+        return handleResult(new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId))
       }
 
       // duplicate key on upsert
@@ -161,7 +161,7 @@
       }
 
       if (error) {
-        return handleResult(new CustomError(JSON.parse(error)))
+        return handleResult(new RESTError(JSON.parse(error)))
       }
 
       return handleResult(null, {
@@ -235,7 +235,7 @@
         sharedExpires = new Date(privateExpires.getTime() + config.cache.maxStale * 1000)
       }
     } catch (e) {
-      error = new CustomError('SERVER_RENDER_ERROR', e.message)
+      error = new RESTError('SERVER_RENDER_ERROR', e.message)
     }
 
     if (error) {
@@ -254,7 +254,7 @@
         return handleResult(error)
       } catch (e) {
         const { timestamp, eventId } = logger.error(e)
-        return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+        return handleResult(new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId))
       }
     } else {
       try {
@@ -342,7 +342,7 @@
         }
       } catch (e) {
         const { timestamp, eventId } = logger.error(e)
-        return handleResult(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+        return handleResult(new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId))
       }
 
       return handleResult(null, {

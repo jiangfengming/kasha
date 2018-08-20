@@ -1,6 +1,6 @@
 const { URL } = require('url')
 const assert = require('assert')
-const CustomError = require('../shared/CustomError')
+const RESTError = require('../shared/RESTError')
 const logger = require('../shared/logger')
 const { db } = require('../shared/db')
 const { writer: nsqWriter } = require('../shared/nsqWriter')
@@ -25,18 +25,18 @@ async function render(ctx) {
     path = pathname + search + hash
     url = site + path
   } catch (e) {
-    throw new CustomError('CLIENT_INVALID_PARAM', 'url')
+    throw new RESTError('CLIENT_INVALID_PARAM', 'url')
   }
 
   if (!['mobile', 'desktop'].includes(deviceType)) {
-    throw new CustomError('CLIENT_INVALID_PARAM', 'deviceType')
+    throw new RESTError('CLIENT_INVALID_PARAM', 'deviceType')
   }
 
   if (callbackURL) {
     try {
       assert(['http:', 'https:'].includes(new URL(callbackURL).protocol))
     } catch (e) {
-      throw new CustomError('CLIENT_INVALID_PARAM', 'callbackURL')
+      throw new RESTError('CLIENT_INVALID_PARAM', 'callbackURL')
     }
   }
 
@@ -44,29 +44,29 @@ async function render(ctx) {
   const truthyValues = ['', '1']
 
   if (!['html', 'static', 'json'].includes(type)) {
-    throw new CustomError('CLIENT_INVALID_PARAM', 'type')
+    throw new RESTError('CLIENT_INVALID_PARAM', 'type')
   }
 
   if (!validValues.includes(noWait)) {
-    throw new CustomError('CLIENT_INVALID_PARAM', 'noWait')
+    throw new RESTError('CLIENT_INVALID_PARAM', 'noWait')
   } else {
     noWait = truthyValues.includes(noWait)
   }
 
   if (!validValues.includes(metaOnly)) {
-    throw new CustomError('CLIENT_INVALID_PARAM', 'metaOnly')
+    throw new RESTError('CLIENT_INVALID_PARAM', 'metaOnly')
   } else {
     metaOnly = truthyValues.includes(metaOnly)
   }
 
   if (!validValues.includes(followRedirect)) {
-    throw new CustomError('CLIENT_INVALID_PARAM', 'followRedirect')
+    throw new RESTError('CLIENT_INVALID_PARAM', 'followRedirect')
   } else {
     followRedirect = truthyValues.includes(followRedirect)
   }
 
   if (!validValues.includes(refresh)) {
-    throw new CustomError('CLIENT_INVALID_PARAM', 'refresh')
+    throw new RESTError('CLIENT_INVALID_PARAM', 'refresh')
   } else {
     refresh = truthyValues.includes(refresh)
   }
@@ -76,7 +76,7 @@ async function render(ctx) {
   }
 
   if (noWait && (callbackURL || metaOnly || ctx.query.type)) {
-    throw new CustomError(
+    throw new RESTError(
       'CLIENT_INVALID_PARAM',
       'noWait can\'t be used with callbackURL | metaOnly | type'
     )
@@ -104,7 +104,7 @@ async function render(ctx) {
         })
       } catch (e) {
         const { timestamp, eventId } = logger.error(e)
-        throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
+        throw new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId)
       }
 
       return sendToWorker('MISS')
@@ -115,7 +115,7 @@ async function render(ctx) {
       doc = await db.collection('snapshots').findOne({ site, path, deviceType })
     } catch (e) {
       const { timestamp, eventId } = logger.error(e)
-      throw new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
+      throw new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId)
     }
 
     if (!doc) {
@@ -145,7 +145,7 @@ async function render(ctx) {
       return handleResult(await poll(site, path, deviceType, lock), 'MISS')
     } else if (error) {
       if (retryLimitReached) {
-        throw new CustomError(
+        throw new RESTError(
           'SERVER_RENDER_ERROR',
           `Fetching ${url} failed 3 times in one minute.`
         )
@@ -169,7 +169,7 @@ async function render(ctx) {
   function handleResult({ html, staticHTML, error, ...doc }, cacheStatus) {
     // has error
     if (error) {
-      throw new CustomError(JSON.parse(error))
+      throw new RESTError(JSON.parse(error))
     }
 
     doc = {
@@ -208,7 +208,7 @@ async function render(ctx) {
       nsqWriter.publish(topic, msg, e => {
         if (e) {
           const { timestamp, eventId } = logger.error(e)
-          reject(new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+          reject(new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId))
         } else {
           if (callbackURL || noWait) {
             resolve()

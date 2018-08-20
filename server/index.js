@@ -4,7 +4,7 @@
   await require('../install')
 
   const config = require('../shared/config')
-  const CustomError = require('../shared/CustomError')
+  const RESTError = require('../shared/RESTError')
   const logger = require('../shared/logger')
 
   const mongodb = require('../shared/db')
@@ -31,14 +31,13 @@
       await next()
       ctx.set('Kasha-Code', 'OK')
     } catch (e) {
-      let err = e
-      if (!(e instanceof CustomError)) {
+      if (!(e instanceof RESTError)) {
         const { timestamp, eventId } = logger.error(e)
-        err = new CustomError('SERVER_INTERNAL_ERROR', timestamp, eventId)
+        e = new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId)
       }
-      ctx.set('Kasha-Code', err.code)
-      ctx.status = err.status
-      ctx.body = err.toJSON()
+      ctx.set('Kasha-Code', e.code)
+      ctx.status = e.httpStatus
+      ctx.body = e.toJSON()
     }
   })
 
@@ -72,6 +71,10 @@
   }, render)
 
   app.use(router.routes())
+
+  app.use(ctx => {
+    throw new RESTError('CLIENT_RESOURCE_NOT_FOUND')
+  })
 
   const server = stoppable(app.listen(config.port))
 

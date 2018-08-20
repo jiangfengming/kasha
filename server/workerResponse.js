@@ -1,4 +1,4 @@
-const CustomError = require('../shared/CustomError')
+const RESTError = require('../shared/RESTError')
 
 const { Reader } = require('nsqjs')
 const { hostname } = require('os')
@@ -23,7 +23,7 @@ const interval = setInterval(() => {
     } else if (req.date + TIMEOUT > now) {
       break
     } else { // timed out
-      req.reject(new CustomError('SERVER_WORKER_TIMEOUT'))
+      req.reject(new RESTError('SERVER_WORKER_TIMEOUT'))
       queue.shift()
     }
   }
@@ -51,7 +51,7 @@ reader.on('message', async msg => {
 
   const { ctx, resolve, reject, type, followRedirect } = req
 
-  if (data.error) return reject(new CustomError(data.error))
+  if (data.error) return reject(new RESTError(data.error))
 
   data.result.privateExpires = new Date(data.result.privateExpires)
   data.result.sharedExpires = new Date(data.result.sharedExpires)

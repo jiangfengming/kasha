@@ -1,7 +1,7 @@
 const { db } = require('../shared/db')
 const sitemaps = db.collection('sitemaps')
 const { URL } = require('url')
-const CustomError = require('../shared/CustomError')
+const RESTError = require('../shared/RESTError')
 const { PassThrough } = require('stream')
 const { XmlEntities } = require('html-entities')
 
@@ -14,7 +14,7 @@ function parseSiteParam(site) {
   try {
     return new URL(site).origin
   } catch (e) {
-    throw new CustomError('CLIENT_INVALID_PARAM', 'site')
+    throw new RESTError('CLIENT_INVALID_PARAM', 'site')
   }
 }
 
@@ -22,7 +22,7 @@ function parseLimitParam(limit, max) {
   if (limit) {
     limit = parseInt(limit)
     if (isNaN(limit) || limit <= 0 || limit > max) {
-      throw new CustomError('CLIENT_INVALID_PARAM', 'limit')
+      throw new RESTError('CLIENT_INVALID_PARAM', 'limit')
     } else {
       return limit
     }
@@ -35,7 +35,7 @@ function parsePageParam(page) {
   if (page) {
     page = parseInt(page)
     if (isNaN(page) || page <= 0) {
-      throw new CustomError('CLIENT_INVALID_PARAM', 'page')
+      throw new RESTError('CLIENT_INVALID_PARAM', 'page')
     } else {
       return page
     }
