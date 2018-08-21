@@ -4,8 +4,8 @@ module.exports = {
     httpStatus: 400
   },
 
-  CLIENT_RESOURCE_NOT_FOUND: {
-    message: 'Resouce not found.',
+  CLIENT_NO_SUCH_API: {
+    message: 'No such API endpoint exists.',
     httpStatus: 404
   },
 

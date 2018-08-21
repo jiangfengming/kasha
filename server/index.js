@@ -73,7 +73,7 @@
   app.use(router.routes())
 
   app.use(ctx => {
-    throw new RESTError('CLIENT_RESOURCE_NOT_FOUND')
+    throw new RESTError('CLIENT_NO_SUCH_API')
   })
 
   const server = stoppable(app.listen(config.port))
