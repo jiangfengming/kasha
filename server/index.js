@@ -28,6 +28,7 @@
 
   app.use(async(ctx, next) => {
     try {
+      logger.debug(`${ctx.method} ${ctx.url}`)
       await next()
       ctx.set('Kasha-Code', 'OK')
     } catch (e) {
