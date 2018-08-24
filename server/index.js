@@ -74,7 +74,7 @@
 
   app.use(router.routes())
 
-  app.use(ctx => {
+  app.use(() => {
     throw new RESTError('CLIENT_NO_SUCH_API')
   })
 
