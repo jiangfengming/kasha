@@ -32,13 +32,14 @@
       await next()
       ctx.set('Kasha-Code', 'OK')
     } catch (e) {
+      let err = e
       if (!(e instanceof RESTError)) {
         const { timestamp, eventId } = logger.error(e)
-        e = new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId)
+        err = new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId)
       }
-      ctx.set('Kasha-Code', e.code)
-      ctx.status = e.httpStatus
-      ctx.body = e.toJSON()
+      ctx.set('Kasha-Code', err.code)
+      ctx.status = err.httpStatus
+      ctx.body = err.toJSON()
     }
   })
 
