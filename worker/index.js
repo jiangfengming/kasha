@@ -279,65 +279,62 @@
         }, { upsert: true })
 
         // sitemap
+        let canonicalURL
+        const currentURL = new URL(url)
+
         if (meta && meta.canonicalURL) {
-          let u
           try {
-            u = new URL(meta.canonicalURL)
+            canonicalURL = new URL(meta.canonicalURL)
           } catch (e) {
-            // do nothing
+            // nop
           }
+        }
 
-          if (u) {
-            const u2 = new URL(url)
+        if (canonicalURL && canonicalURL.origin === currentURL.origin) {
+          let sitemap = {}
 
-            if (u.origin === u2.origin) {
-              let sitemap = {}
+          if (openGraph) {
+            if (openGraph.sitemap) sitemap = openGraph.sitemap
 
-              if (openGraph) {
-                if (openGraph.sitemap) sitemap = openGraph.sitemap
-
-                if (sitemap.news) {
-                  const date = new Date(sitemap.news.publication_date)
-                  if (isNaN(date.getTime())) {
-                    delete sitemap.news
-                  } else {
-                    sitemap.news.publication_date = date
-                  }
-                }
-
-                if (!sitemap.image && openGraph.og && openGraph.og.image) {
-                  sitemap.image = []
-                  for (const img of openGraph.og.image) {
-                    sitemap.image.push({
-                      loc: img.secure_url || img.url
-                    })
-                  }
-                }
+            if (sitemap.news) {
+              const date = new Date(sitemap.news.publication_date)
+              if (isNaN(date.getTime())) {
+                delete sitemap.news
+              } else {
+                sitemap.news.publication_date = date
               }
+            }
 
-              if (!sitemap.lastmod && meta.lastModified) {
-                const date = new Date(meta.lastModified)
-                if (!isNaN(date.getTime())) {
-                  sitemap.lastmod = date.toISOString()
-                }
+            if (!sitemap.image && openGraph.og && openGraph.og.image) {
+              sitemap.image = []
+              for (const img of openGraph.og.image) {
+                sitemap.image.push({
+                  loc: img.secure_url || img.url
+                })
               }
-
-              await sitemaps.updateOne({
-                site: u.origin,
-                path: u.pathname + u.search
-              }, {
-                $set: {
-                  ...sitemap,
-                  updatedAt
-                }
-              }, { upsert: true })
             }
           }
+
+          if (!sitemap.lastmod && meta.lastModified) {
+            const date = new Date(meta.lastModified)
+            if (!isNaN(date.getTime())) {
+              sitemap.lastmod = date.toISOString()
+            }
+          }
+
+          await sitemaps.updateOne({
+            site: canonicalURL.origin,
+            path: canonicalURL.pathname + canonicalURL.search
+          }, {
+            $set: {
+              ...sitemap,
+              updatedAt
+            }
+          }, { upsert: true })
         } else {
-          const u = new URL(url)
           await sitemaps.deleteOne({
-            site: u.origin,
-            path: u.pathname + u.search
+            site: currentURL.origin,
+            path: currentURL.pathname + currentURL.search
           })
         }
       } catch (e) {
