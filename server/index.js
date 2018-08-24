@@ -69,6 +69,7 @@
       url: ctx.url.slice(1),
       deviceType: ctx.headers['x-device-type'] || 'desktop'
     }
+    ctx.path = '/'
     return next()
   }, render)
 

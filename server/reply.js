@@ -17,7 +17,7 @@ function reply(ctx, type, followRedirect, doc, cacheStatus) {
       ctx.redirect(redirect)
     } else {
       ctx.status = status
-      ctx.body = type === 'html' ? html : staticHTML
+      ctx.body = (type === 'html' ? html : staticHTML) || ''
     }
   }
 }
