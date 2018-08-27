@@ -228,11 +228,11 @@
       }
 
       if (!privateExpires) {
-        privateExpires = new Date(now.getTime() + config.cache.maxAge * 1000)
+        privateExpires = new Date(now.getTime() + config.cache.maxage * 1000)
       }
 
       if (!sharedExpires) {
-        sharedExpires = new Date(privateExpires.getTime() + config.cache.maxStale * 1000)
+        sharedExpires = new Date(now.getTime() + config.cache.sMaxage * 1000)
       }
     } catch (e) {
       error = new RESTError('SERVER_RENDER_ERROR', e.message)

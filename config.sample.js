@@ -29,8 +29,24 @@ module.exports = {
   },
 
   cache: {
-    maxAge: 3 * 60, // 3 minutes
-    maxStale: 24 * 60 * 60 // 1 day
+    // in seconds
+
+    // default max-age header of the resources.
+    maxage: 3 * 60,
+
+    // how long to cache the resources by default.
+    // if a resource exceeds maxage but in sMaxage, it will be returned as stale resource.
+    // and the resource will be refreshed in background.
+    sMaxage: 24 * 60 * 60,
+
+    // max-age header of the stale resources
+    maxStale: 60,
+
+    // max-age of robots.txt file
+    robotsTxt: 24 * 60 * 60, // 1 day
+
+    // max-age of sitemaps
+    sitemap: 60 * 60 // 1 hour
   },
 
   sentry: {

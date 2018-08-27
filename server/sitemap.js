@@ -4,6 +4,7 @@ const { URL } = require('url')
 const RESTError = require('../shared/RESTError')
 const { PassThrough } = require('stream')
 const { XmlEntities } = require('html-entities')
+const config = require('../shared/config')
 
 const PAGE_LIMIT = 50000
 const GOOGLE_LIMIT = 1000
@@ -186,6 +187,7 @@ async function respond(ctx, result, gen) {
   ctx.set('Content-Type', 'text/xml; charset=utf-8')
   const count = await result.count()
   if (count) {
+    ctx.set('Cache-Control', `max-age=${config.cache.sitemap}`)
     const stream = new PassThrough()
     ctx.body = stream
     gen(stream, result)
@@ -284,6 +286,7 @@ async function robotsTxt(ctx) {
   const imageSitemapIndexCount = Math.ceil(imageCount / googleLimit / PAGE_LIMIT)
   const videoSitemapIndexCount = Math.ceil(videoCount / googleLimit / PAGE_LIMIT)
 
+  ctx.set('Cache-Control', `max-age=${config.cache.robotsTxt}`)
   ctx.body = ''
 
   for (let n = 1; n <= normalSitemapIndexCount; n++) {
@@ -337,6 +340,7 @@ async function _sitemapIndex(ctx, type) {
   if (docCount) {
     ctx.set('Content-Type', 'text/xml; charset=utf-8')
 
+    ctx.set('Cache-Control', `max-age=${config.cache.sitemap}`)
     const stream = new PassThrough()
     ctx.body = stream
 

@@ -1,15 +1,16 @@
+const config = require('../shared/config')
+
 function reply(ctx, type, followRedirect, doc, cacheStatus) {
   if (type === 'json') {
     ctx.body = doc
   } else {
     const { status, redirect, html, staticHTML } = doc
-    let { privateExpires } = doc
+    const { privateExpires } = doc
 
-    if (privateExpires.getTime() < Date.now()) {
-      privateExpires = new Date(Date.now() + 60 * 1000)
-    }
+    let maxage = Math.round((privateExpires.getTime() - Date.now()) / 1000)
+    if (maxage < config.cache.maxStale) maxage = config.cache.maxStale
 
-    ctx.set('Expires', privateExpires.toGMTString())
+    ctx.set('Cache-Control', `max-age=${maxage}`)
     ctx.set('kasha-Cache-Status', cacheStatus)
 
     if (redirect && !followRedirect) {
