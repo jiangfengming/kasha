@@ -226,17 +226,19 @@ async function googleNewsSitemap(ctx) {
   const limit = parseLimitParam(ctx.query.limit, GOOGLE_LIMIT)
   const page = parsePageParam(ctx.params.page)
 
-  const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
-
   const result = await sitemaps.find({
     site,
-    'news.publication_date': { $gte: twoDaysAgo }
+    'news.publication_date': { $gte: twoDaysAgo() }
   }, {
     skip: (page - 1) * limit,
     limit
   })
 
   await respond(ctx, result, genGoogleNewsSitemap)
+}
+
+function twoDaysAgo() {
+  return new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
 }
 
 async function googleImageSitemap(ctx) {
@@ -278,7 +280,7 @@ async function robotsTxt(ctx) {
 
   const [allCount, newsCount, imageCount, videoCount, rules] = await Promise.all([
     sitemaps.countDocuments({ site }),
-    sitemaps.countDocuments({ site, news: { $exists: true } }),
+    sitemaps.countDocuments({ site, 'news.publication_date': { $gte: twoDaysAgo() } }),
     sitemaps.countDocuments({ site, image: { $exists: true } }),
     sitemaps.countDocuments({ site, video: { $exists: true } }),
 
@@ -362,7 +364,9 @@ async function _sitemapIndex(ctx, type) {
   const page = parsePageParam(ctx.params.page)
 
   const query = { site }
-  if (['news', 'image', 'video'].includes(type)) {
+  if (type === 'news') {
+    query['news.publication_date'] = { $gte: twoDaysAgo() }
+  } else if (['image', 'video'].includes(type)) {
     query[type] = { $exists: true }
   }
 
