@@ -1,4 +1,14 @@
-const argv = require('yargs').argv
+const argv = require('yargs')
+  .usage('$0 --config=<config>')
+  .options({
+    config: {
+      alias: 'c',
+      describe: 'path to the config file',
+      demandOption: true
+    }
+  })
+  .argv
+
 const { resolve } = require('path')
 
 const configFile = resolve(argv.config)
