@@ -1,4 +1,4 @@
-const { db } = require('../shared/db')
+const { db } = require('../shared/mongo')
 const sitemaps = db.collection('sitemaps')
 const { URL } = require('url')
 const RESTError = require('../shared/RESTError')

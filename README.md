@@ -1,5 +1,13 @@
 # kasha - Prerender service for SPA
 
+## Features
+* Prerender the Single-Page Application.
+* Automatically collect sitemap data from `<meta>`s.
+* Generate `robots.txt` file with sitemap directives.
+* Sync prerendering.
+* Async prerendering with callback url.
+* Caching.
+
 ## Requirements
 * [MongoDB](https://www.mongodb.com/)
 * [nsq](http://nsq.io/)
@@ -41,7 +49,6 @@ Prerenders the page.
 `callbackURL`: Don't wait the result. Once the job is done, `POST` the result to the given url with `json` format.  
 `metaOnly`: Only returns meta data without html content.  
 `followRedirect`: Follows the redirects if the page return `301`/`302`.  
-`ignoreRobotsTxt`: Still crawl the page even if `robots.txt` of the site disallowed.  
 `refresh`: Forces to refresh the cache.  
 
 To the boolean parameters, if the param is absent or set to `0`, it means `false`.
@@ -106,3 +113,91 @@ Notice: the `hash` of the url won't be sent to server. If you need the `hash` to
 
 ### GET /cache?url=URL
 Alias of `/render?url=URL&nowait`
+
+### GET /:site/robots.txt
+Get `robots.txt` file with sitemaps collected by kasha. e.g.:
+
+```
+http://localhost:3000/https://www.example.com/robots.txt
+```
+
+It will fetch the `https://www.example.com/robots.txt` file, then append sitemap directives at the end. The result example:
+
+```txt
+User-agent: *
+Disallow: /cgi-bin/
+Disallow: /tmp/
+Disallow: /private/
+
+Sitemap: https://www.example.com/sitemaps/index/1.xml
+Sitemap: https://www.example.com/sitemaps/index/google/1.xml
+Sitemap: https://www.example.com/sitemaps/index/google/news/1.xml
+Sitemap: https://www.example.com/sitemaps/index/google/image/1.xml
+Sitemap: https://www.example.com/sitemaps/index/google/video/1.xml
+```
+
+In order to access the sitemap files, you need to use [kasha-proxy](https://github.com/kasha-io/kasha-proxy) to pass `/sitemaps/*` urls to kasha.
+
+### GET /:site/sitemaps/:page.xml
+Get [sitemap](https://www.sitemaps.org/protocol.html) of page N. e.g.:
+
+```
+http://localhost:3000/https://www.example.com/sitemaps/1.xml
+```
+
+### GET /:site/sitemaps/google/:page.xml
+Get [Google sitemap](https://support.google.com/webmasters/answer/183668) of page N.
+
+### GET /:site/sitemaps/google/news/:page.xml
+Get [Google news sitemap](https://support.google.com/webmasters/answer/74288) of page N.
+
+### GET /:site/sitemaps/google/image/:page.xml
+Get [Google image sitemap](https://support.google.com/webmasters/answer/178636) of page N.
+
+### GET /:site/sitemaps/google/video/:page.xml
+Get [Google video sitemap](https://support.google.com/webmasters/answer/80471) of page N.
+
+### GET /:site/sitemaps/index/:page.xml
+Get [sitemap index file](https://www.sitemaps.org/protocol.html#index) of page N.
+
+### GET /:site/sitemaps/index/google/:page.xml
+Get Google sitemap index file of page N.
+
+### GET /:site/sitemaps/index/google/news/:page.xml
+Get Google news sitemap index file of Page N.
+
+### GET /:site/sitemaps/index/google/image/:page.xml
+Get Google image sitemap index file of Page N.
+
+### GET /:site/sitemaps/index/google/video/:page.xml
+Get Google video sitemap index file of page N.
+
+
+## Collecting sitemap data
+kasha can collect sitemap data from custom Open Graph `<meta>` tags. For example:
+
+```html
+<head prefix="og: http://ogp.me/ns# sitemap: https://kasha-io.github.io/kasha/ns/sitemap#">
+
+<!--
+canonical url is used as <loc> tag of sitemap xml.
+<meta property="og:url" content="..."> can be used also.
+-->
+
+<link rel="canonical" href="https://www.example.com/test.html">
+
+<meta property="sitemap:changefreq" content="hourly">
+<meta property="sitemap:priority" content="1">
+<meta property="sitemap:news:publication:name" content="The Example Times">
+<meta property="sitemap:news:publication:language" content="en">
+<meta property="sitemap:news:publication_date" content="2018-05-25T09:19:54.000Z">
+<meta property="sitemap:news:title" content="Page Title">
+<meta property="sitemap:image:loc" content="http://examples.opengraphprotocol.us/media/images/train.jpg">
+<meta property="sitemap:image:caption" content="The caption of the image.">
+<meta property="sitemap:image:geo_location" content="Limerick, Ireland">
+</head>
+```
+
+Sitemap data will be collected only if `origin` of canonical URL is the same as current page.
+
+See here for available tags: [sitemap protocol](https://www.sitemaps.org/protocol.html) and [Google sitemap extensions](https://support.google.com/webmasters/answer/183668)

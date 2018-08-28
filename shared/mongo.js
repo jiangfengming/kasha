@@ -2,9 +2,9 @@ const { MongoClient } = require('mongodb')
 
 const me = {
   // after the entry point function has initialized the db connection via:
-  // const db = await require('./db').connect(url, database, options)
+  // const db = await require('./mongo').connect(url, database, options)
   // other modules can import db instance without await:
-  // const { db } = require('./db')
+  // const { db } = require('./mongo')
   mongoClient: null,
   db: null,
 

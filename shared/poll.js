@@ -1,6 +1,6 @@
 const RESTError = require('./RESTError')
 const logger = require('./logger')
-const { db } = require('./db')
+const { db } = require('./mongo')
 const collection = db.collection('snapshots')
 
 function poll(site, path, deviceType, lock) {

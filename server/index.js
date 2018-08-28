@@ -7,8 +7,8 @@
   const RESTError = require('../shared/RESTError')
   const logger = require('../shared/logger')
 
-  const mongodb = require('../shared/db')
-  await mongodb.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
+  const mongo = require('../shared/mongo')
+  await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
 
   const nsqWriter = await require('../shared/nsqWriter').connect()
   const workerResponse = require('./workerResponse')
@@ -93,7 +93,7 @@
       clearInterval(workerResponse.interval)
       workerResponse.reader.close()
       nsqWriter.close()
-      await mongodb.close()
+      await mongo.close()
     })
   })
 
