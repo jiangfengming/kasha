@@ -5,6 +5,7 @@ const RESTError = require('../shared/RESTError')
 const { PassThrough } = require('stream')
 const { XmlEntities } = require('html-entities')
 const config = require('../shared/config')
+const request = require('request')
 
 const PAGE_LIMIT = 50000
 const GOOGLE_LIMIT = 1000
@@ -275,10 +276,43 @@ async function robotsTxt(ctx) {
   const limit = parseLimitParam(ctx.query.limit, PAGE_LIMIT)
   const googleLimit = parseLimitParam(ctx.query.googleLimit, GOOGLE_LIMIT)
 
-  const allCount = await sitemaps.countDocuments({ site })
-  const newsCount = await sitemaps.countDocuments({ site, news: { $exists: true } })
-  const imageCount = await sitemaps.countDocuments({ site, image: { $exists: true } })
-  const videoCount = await sitemaps.countDocuments({ site, video: { $exists: true } })
+  const [allCount, newsCount, imageCount, videoCount, rules] = await Promise.all([
+    sitemaps.countDocuments({ site }),
+    sitemaps.countDocuments({ site, news: { $exists: true } }),
+    sitemaps.countDocuments({ site, image: { $exists: true } }),
+    sitemaps.countDocuments({ site, video: { $exists: true } }),
+
+    new Promise((resolve, reject) => {
+      const url = site + '/robots.txt?_no_prerender=1'
+      const req = request({
+        url,
+        headers: {
+          accept: 'text/plain',
+          'User-Agent': 'kasha'
+        },
+        gzip: true,
+        timeout: 20 * 1000,
+        followRedirect: false
+      }, (e, res, body) => {
+        if (e) {
+          reject(new RESTError('SERVER_FETCH_ERROR', url, e.message))
+        } else {
+          resolve(body)
+        }
+      }).on('response', res => {
+        if (res.statusCode === 404) {
+          req.abort()
+          resolve('')
+        } else if (res.statusCode < 200 || res.statusCode >= 300) {
+          req.abort()
+          reject(new Error('SERVER_FETCH_ERROR', url, 'HTTP ' + res.statusCode))
+        } else if (!res.headers['content-type'].includes('text/plain')) {
+          req.abort()
+          reject(new Error('SERVER_FETCH_ERROR', url, 'Content-Type should be text/plain'))
+        }
+      })
+    })
+  ])
 
   const normalSitemapIndexCount = Math.ceil(allCount / limit / PAGE_LIMIT)
   const googleSitemapIndexCount = Math.ceil(allCount / googleLimit / PAGE_LIMIT)
@@ -287,7 +321,7 @@ async function robotsTxt(ctx) {
   const videoSitemapIndexCount = Math.ceil(videoCount / googleLimit / PAGE_LIMIT)
 
   ctx.set('Cache-Control', `max-age=${config.cache.robotsTxt}`)
-  ctx.body = ''
+  ctx.body = rules + '\n'
 
   for (let n = 1; n <= normalSitemapIndexCount; n++) {
     ctx.body += `Sitemap: ${site}/sitemaps/index/${n}.xml`

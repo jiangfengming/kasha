@@ -62,7 +62,7 @@
   router.get(`/${siteRegex}/sitemaps/index/google/news/:page.xml`, sitemap.googleNewsSitemapIndex)
   router.get(`/${siteRegex}/sitemaps/index/google/image/:page.xml`, sitemap.googleImageSitemapIndex)
   router.get(`/${siteRegex}/sitemaps/index/google/video/:page.xml`, sitemap.googleVideoSitemapIndex)
-  router.get(`/${siteRegex}/sitemaps/robots.txt`, sitemap.robotsTxt)
+  router.get(`/${siteRegex}/robots.txt`, sitemap.robotsTxt)
 
   router.get('/(http.+)', (ctx, next) => {
     ctx.query = {

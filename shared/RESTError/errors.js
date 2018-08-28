@@ -27,5 +27,10 @@ module.exports = {
   SERVER_CACHE_LOCK_TIMEOUT: {
     message: 'Waiting for cache lock timed out (%s).',
     httpStatus: 500
+  },
+
+  SERVER_FETCH_ERROR: {
+    message: 'Unable to fetch resource from %s (%s)',
+    httpStatus: 500
   }
 }
