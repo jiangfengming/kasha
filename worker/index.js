@@ -49,7 +49,11 @@
   const prerendererOpts = {
     timeout: 24 * 1000,
     puppeteerLaunchOptions: {
-      handleSIGINT: false
+      handleSIGINT: false,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox'
+      ]
     },
     parseOpenGraphOptions: {
       // these tag has attributes
