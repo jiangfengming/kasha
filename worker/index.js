@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 (async function() {
   const { URL } = require('url')
   const RESTError = require('../shared/RESTError')

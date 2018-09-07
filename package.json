@@ -4,8 +4,8 @@
   "description": "prerender service",
   "main": "index.js",
   "bin": {
-    "kasha-server": "./server/index.js",
-    "kasha-worker": "./worker/index.js"
+    "kasha-server": "bin/kasha-server",
+    "kasha-worker": "bin/kasha-worker"
   },
   "dependencies": {
     "html-entities": "^1.2.1",
