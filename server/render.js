@@ -127,6 +127,8 @@ async function render(ctx) {
     const retryLimitReached = error && times % 4 === 3 && updatedAt.getTime() + ERROR_EXPIRE > now
 
     if (sharedExpires && sharedExpires.getTime() >= now) {
+      doc.error = null // ignore last error if we have cache served.
+
       if (privateExpires.getTime() <= now) {
         handleResult(doc, 'UPDATING')
 
