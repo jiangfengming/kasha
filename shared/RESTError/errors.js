@@ -14,6 +14,11 @@ module.exports = {
     httpStatus: 500
   },
 
+  SERVER_WORKER_BUSY: {
+    message: 'Worker is too busy to handle the request.',
+    httpStatus: 500
+  },
+
   SERVER_INTERNAL_ERROR: {
     message: 'Server Internal Error (EVENT_ID: %s-%s).',
     httpStatus: 500

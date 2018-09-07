@@ -95,13 +95,16 @@
   const nsqWriter = await require('../shared/nsqWriter').connect()
   const poll = require('../shared/poll')
 
+  const TIMEOUT = 27 * 1000
+
   let jobCounter = 0
 
   reader.on('message', async msg => {
     jobCounter++
 
+    const now = new Date()
     const req = msg.json()
-    logger.debug(req)
+    logger.debug('receive job:', req)
 
     const {
       replyTo,
@@ -116,8 +119,16 @@
 
     const url = site + path
 
+    if (replyTo) {
+      const time = msg.timestamp.dividedBy(1000000).integerValue().toNumber()
+      logger.debug(time)
+      if (time + TIMEOUT < now.getTime()) {
+        logger.debug('drop job:', req)
+        return handleResult(new RESTError('SERVER_WORKER_BUSY'))
+      }
+    }
+
     let status, redirect, meta, openGraph, links, html, staticHTML, error, privateExpires, sharedExpires
-    const now = new Date()
     let updatedAt = now
 
     // lock
