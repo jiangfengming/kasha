@@ -114,7 +114,7 @@
       deviceType,
       callbackURL,
       metaOnly,
-      cacheStatus
+      cache
     } = req
 
     const url = site + path
@@ -139,16 +139,12 @@
       path,
       deviceType,
       lock: false,
-      $or: [
-        { error: { $ne: null } }, // error
-        { privateExpires: { $lt: now } } // expired
-      ]
+      privateExpires: { $lt: now } // expired
     }
 
     try {
       await collection.updateOne(lockQuery, {
         $set: {
-          error,
           updatedAt,
           lock
         },
@@ -160,21 +156,22 @@
       // don't block the queue
       msg.finish()
 
+      // 11000: duplicate key on upsert
       if (e.code !== 11000) {
         const { timestamp, eventId } = logger.error(e)
         return handleResult(new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId))
       }
 
-      // duplicate key on upsert
       // the document maybe locked by others, or is valid
+      let doc
       try {
-        ({ status, redirect, meta, openGraph, links, html, staticHTML, privateExpires, sharedExpires, error, updatedAt } = await poll(site, path, deviceType))
+        doc = await poll(site, path, deviceType))
       } catch (e) {
         return handleResult(e)
       }
 
       if (error) {
-        return handleResult(new RESTError(JSON.parse(error)))
+        return handleResult(new RESTError(error))
       }
 
       return handleResult(null, {
@@ -190,7 +187,7 @@
         privateExpires,
         sharedExpires,
         updatedAt
-      }, cacheStatus)
+      })
     }
 
     // render the page
@@ -255,7 +252,7 @@
       try {
         await collection.updateOne({ site, path, deviceType, lock }, {
           $set: {
-            error: JSON.stringify(error),
+            error: error.toJSON(),
             updatedAt,
             lock: false
           },
@@ -368,18 +365,17 @@
         privateExpires,
         sharedExpires,
         updatedAt
-      }, cacheStatus)
+      })
     }
 
-    function handleResult(error, result, cacheStatus) {
+    function handleResult(error, result) {
       if (callbackURL) {
-        callback(callbackURL, error, result, cacheStatus)
+        callback(callbackURL, error, result || cache)
       } else if (replyTo) {
         nsqWriter.publish(replyTo, {
           correlationId,
           error,
-          result,
-          cacheStatus
+          result: result || cache
         })
       }
 

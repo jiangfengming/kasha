@@ -43,7 +43,7 @@ function poll(site, path, deviceType, lock) {
                 lock
               }, {
                 $set: {
-                  error: JSON.stringify(error),
+                  error: error.toJSON(),
                   date: new Date(),
                   lock: false
                 }

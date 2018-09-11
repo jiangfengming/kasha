@@ -89,9 +89,11 @@ async function render(ctx) {
   })
 
   async function handler() {
-    // to refresh the page, we make the cache expired.
+    // to refresh the page, we make the cache expires.
     if (refresh) {
       try {
+        const expires = new Date(0)
+
         await db.collection('snapshots').updateOne({
           site,
           path,
@@ -99,18 +101,18 @@ async function render(ctx) {
           lock: false
         }, {
           $set: {
-            updatedAt: new Date(0)
+            privateExpires: expires,
+            sharedExpires: expires
           }
         })
       } catch (e) {
         const { timestamp, eventId } = logger.error(e)
         throw new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId)
       }
-
-      return sendToWorker('MISS')
     }
 
     let doc
+
     try {
       doc = await db.collection('snapshots').findOne({ site, path, deviceType })
     } catch (e) {
@@ -124,11 +126,7 @@ async function render(ctx) {
 
     const { error, times, updatedAt, sharedExpires, privateExpires, lock } = doc
 
-    const retryLimitReached = error && times % 4 === 3 && updatedAt.getTime() + ERROR_EXPIRE > now
-
     if (sharedExpires && sharedExpires.getTime() >= now) {
-      doc.error = null // ignore last error if we have cache served.
-
       if (privateExpires.getTime() <= now) {
         handleResult(doc, 'UPDATING')
 
@@ -171,7 +169,7 @@ async function render(ctx) {
   function handleResult({ html, staticHTML, error, ...doc }, cacheStatus) {
     // has error
     if (error) {
-      throw new RESTError(JSON.parse(error))
+      throw new RESTError(error)
     }
 
     doc = {
