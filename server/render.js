@@ -10,8 +10,6 @@ const callback = require('../shared/callback')
 const poll = require('../shared/poll')
 const reply = require('./reply')
 
-const ERROR_EXPIRE = 60 * 1000
-
 async function render(ctx) {
   const now = Date.now()
   const { deviceType = 'desktop' } = ctx.query
@@ -88,29 +86,18 @@ async function render(ctx) {
     }
   })
 
+  if (noWait || callbackURL) {
+    ctx.body = { queued: true }
+
+    // don't let handler() block the request
+    handler().catch(e => {
+      if (callbackURL) callback(callbackURL, e)
+    })
+  } else {
+    return handler()
+  }
+
   async function handler() {
-    // to refresh the page, we make the cache expires.
-    if (refresh) {
-      try {
-        const expires = new Date(0)
-
-        await db.collection('snapshots').updateOne({
-          site,
-          path,
-          deviceType,
-          lock: false
-        }, {
-          $set: {
-            privateExpires: expires,
-            sharedExpires: expires
-          }
-        })
-      } catch (e) {
-        const { timestamp, eventId } = logger.error(e)
-        throw new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId)
-      }
-    }
-
     let doc
 
     try {
@@ -121,83 +108,79 @@ async function render(ctx) {
     }
 
     if (!doc) {
-      return sendToWorker('MISS')
+      return sendToWorker(null, refresh ? 'BYPASS' : 'MISS')
     }
 
-    const { error, times, updatedAt, sharedExpires, privateExpires, lock } = doc
+    const { sharedExpires, privateExpires, lock } = doc
 
-    if (sharedExpires && sharedExpires.getTime() >= now) {
-      if (privateExpires.getTime() <= now) {
-        handleResult(doc, 'UPDATING')
+    if (lock) {
+      try {
+        doc = await poll(site, path, deviceType, lock)
+        return handleResult(doc, refresh ? 'BYPASS' : privateExpires ? 'EXPIRED' : 'MISS')
+      } catch (error) {
+        // something went wrong when updating the document.
+        // we still use the stale doc.
 
-        if (!lock && !retryLimitReached) {
-          callbackURL = null
-          noWait = true
-          sendToWorker()
+        // but don't give cache response if 'refresh' is set.
+        if (refresh) {
+          return handleResult({ error }, 'BYPASS')
         }
-
-        return
-      } else {
-        return handleResult(doc, 'HIT')
       }
-    } else if (lock) {
-      // updating and no stale content available
-      return handleResult(await poll(site, path, deviceType, lock), 'MISS')
-    } else if (error) {
-      if (retryLimitReached) {
-        throw new RESTError(
-          'SERVER_RENDER_ERROR',
-          `Fetching ${url} failed 3 times in one minute.`
-        )
-      } else {
-        return sendToWorker('MISS')
+    }
+
+    if (refresh) {
+      return sendToWorker(doc, 'BYPASS')
+    }
+
+    if (privateExpires >= now) {
+      return handleResult(doc, 'HIT')
+    }
+
+    if (sharedExpires >= now) {
+      if (!lock) {
+        sendToWorker(null, null, { noWait: true, callbackURL: null })
+      }
+
+      return handleResult(doc, 'UPDATING')
+    }
+
+    return sendToWorker(doc, 'EXPIRED')
+  }
+
+  function handleResult({ status, html, staticHTML, error, ...doc }, cacheStatus) {
+    if (status) {
+      doc = {
+        ...doc,
+        html: metaOnly ? undefined : html,
+        staticHTML: metaOnly ? undefined : staticHTML
+      }
+
+      if (callbackURL) {
+        callback(callbackURL, null, doc, cacheStatus)
+      } else if (!noWait) {
+        reply(ctx, type, followRedirect, doc, cacheStatus)
       }
     } else {
-      return sendToWorker('EXPIRED')
-    }
-  }
-
-  if (noWait || callbackURL) {
-    ctx.body = { queued: true }
-    handler().catch(e => {
-      if (callbackURL) callback(callbackURL, e)
-    })
-  } else {
-    return handler()
-  }
-
-  function handleResult({ html, staticHTML, error, ...doc }, cacheStatus) {
-    // has error
-    if (error) {
       throw new RESTError(error)
     }
-
-    doc = {
-      ...doc,
-      html: metaOnly ? undefined : html,
-      staticHTML: metaOnly ? undefined : staticHTML
-    }
-
-    if (callbackURL) {
-      callback(callbackURL, null, doc, cacheStatus)
-    } else if (!noWait) {
-      reply(ctx, type, followRedirect, doc, cacheStatus)
-    }
   }
 
-  function sendToWorker(cacheStatus) {
+  function sendToWorker(cacheDoc, cacheStatus, options = {}) {
+    options = { noWait, callbackURL, ...options }
+
     return new Promise((resolve, reject) => {
       const msg = {
         site,
         path,
         deviceType,
-        callbackURL,
+        callbackURL: options.callbackURL,
         metaOnly,
+        cacheDoc,
         cacheStatus
       }
 
       let topic
-      if (callbackURL || noWait) {
+      if (options.callbackURL || options.noWait) {
         topic = 'kasha-async-queue'
       } else {
         topic = 'kasha-sync-queue'

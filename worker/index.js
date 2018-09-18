@@ -165,7 +165,7 @@
       // the document maybe locked by others, or is valid
       let doc
       try {
-        doc = await poll(site, path, deviceType))
+        doc = await poll(site, path, deviceType)
       } catch (e) {
         return handleResult(e)
       }
