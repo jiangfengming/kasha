@@ -89,10 +89,8 @@ async function render(ctx) {
   if (noWait || callbackURL) {
     ctx.body = { queued: true }
 
-    // don't let handler() block the request
-    handler().catch(e => {
-      if (callbackURL) callback(callbackURL, e)
-    })
+    // don't await handler() to block the request
+    handler()
   } else {
     return handler()
   }
@@ -161,7 +159,11 @@ async function render(ctx) {
         reply(ctx, type, followRedirect, doc, cacheStatus)
       }
     } else {
-      throw new RESTError(error)
+      const e = new RESTError(error)
+
+      if (callbackURL) {
+        callback(callbackURL, e, null, cacheStatus)
+      }
     }
   }
 
