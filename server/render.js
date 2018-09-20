@@ -89,8 +89,10 @@ async function render(ctx) {
   if (noWait || callbackURL) {
     ctx.body = { queued: true }
 
-    // don't await handler() to block the request
-    handler()
+    // don't let handler() block the request
+    handler().catch(e => {
+      if (callbackURL) callback(callbackURL, e)
+    })
   } else {
     return handler()
   }
@@ -115,13 +117,13 @@ async function render(ctx) {
       try {
         doc = await poll(site, path, deviceType, lock)
         return handleResult(doc, refresh ? 'BYPASS' : privateExpires ? 'EXPIRED' : 'MISS')
-      } catch (error) {
+      } catch (e) {
         // something went wrong when updating the document.
         // we still use the stale doc.
 
         // but don't give cache response if 'refresh' is set.
         if (refresh) {
-          return handleResult({ error }, 'BYPASS')
+          throw e
         }
       }
     }
@@ -145,12 +147,11 @@ async function render(ctx) {
     return sendToWorker(doc, 'EXPIRED')
   }
 
-  function handleResult({ status, html, staticHTML, error, ...doc }, cacheStatus) {
-    if (status) {
-      doc = {
-        ...doc,
-        html: metaOnly ? undefined : html,
-        staticHTML: metaOnly ? undefined : staticHTML
+  function handleResult(doc, cacheStatus) {
+    if (doc.status) {
+      if (metaOnly) {
+        delete doc.html
+        delete doc.staticHTML
       }
 
       if (callbackURL) {
@@ -159,11 +160,7 @@ async function render(ctx) {
         reply(ctx, type, followRedirect, doc, cacheStatus)
       }
     } else {
-      const e = new RESTError(error)
-
-      if (callbackURL) {
-        callback(callbackURL, e, null, cacheStatus)
-      }
+      throw new RESTError(doc.error)
     }
   }
 
