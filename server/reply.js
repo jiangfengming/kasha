@@ -11,6 +11,7 @@ function reply(ctx, type, followRedirect, doc, cacheStatus) {
     if (maxage < config.cache.maxStale) maxage = config.cache.maxStale
 
     ctx.set('Cache-Control', `max-age=${maxage}`)
+    ctx.set('Kasha-Code', 'OK')
     ctx.set('kasha-Cache-Status', cacheStatus)
 
     if (redirect && !followRedirect) {

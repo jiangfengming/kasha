@@ -28,7 +28,6 @@
     try {
       logger.debug(`${ctx.method} ${ctx.url}`)
       await next()
-      ctx.set('Kasha-Code', 'OK')
     } catch (e) {
       let err = e
       if (!(e instanceof RESTError)) {

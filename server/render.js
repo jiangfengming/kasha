@@ -12,8 +12,8 @@ const reply = require('./reply')
 
 async function render(ctx) {
   const now = Date.now()
-  const { deviceType = 'desktop' } = ctx.query
-  let { url, type = 'html', callbackURL, noWait, metaOnly, followRedirect, refresh } = ctx.query
+  const { deviceType = 'desktop', callbackURL } = ctx.query
+  let { url, type = 'html', noWait, metaOnly, followRedirect, refresh } = ctx.query
 
   let site, path
   try {
@@ -121,7 +121,7 @@ async function render(ctx) {
         // something went wrong when updating the document.
         // we still use the stale doc.
 
-        // but don't give cache response if 'refresh' is set.
+        // but don't give cache response if 'refresh' param is set.
         if (refresh) {
           throw e
         }
@@ -129,7 +129,7 @@ async function render(ctx) {
     }
 
     if (refresh) {
-      return sendToWorker(doc, 'BYPASS')
+      return sendToWorker(null, 'BYPASS')
     }
 
     if (privateExpires >= now) {
@@ -137,6 +137,7 @@ async function render(ctx) {
     }
 
     if (sharedExpires >= now) {
+      // refresh cache in background
       if (!lock) {
         sendToWorker(null, null, { noWait: true, callbackURL: null })
       }
@@ -168,6 +169,11 @@ async function render(ctx) {
     options = { noWait, callbackURL, ...options }
 
     return new Promise((resolve, reject) => {
+      if (metaOnly) {
+        delete cacheDoc.html
+        delete cacheDoc.staticHTML
+      }
+
       const msg = {
         site,
         path,
@@ -192,7 +198,7 @@ async function render(ctx) {
           const { timestamp, eventId } = logger.error(e)
           reject(new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId))
         } else {
-          if (callbackURL || noWait) {
+          if (options.callbackURL || options.noWait) {
             resolve()
           } else {
             resolve(addToQueue({

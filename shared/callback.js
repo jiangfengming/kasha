@@ -4,15 +4,20 @@ const RETRY = 3
 const TIMEOUT = 10
 
 async function callback(callbackURL, error, result, cacheStatus) {
+  const headers = {
+    'Content-Type': 'application/json',
+    'User-Agent': 'kasha',
+    'Kasha-Code': error ? error.code : 'OK'
+  }
+
+  if (cacheStatus) {
+    headers['Kasha-Cache-Status'] = cacheStatus
+  }
+
   const init = {
     method: 'POST',
     body: JSON.stringify(error || result),
-    headers: {
-      'Content-Type': 'application/json',
-      'User-Agent': 'kasha',
-      'Kasha-Code': error ? error.code : 'OK',
-      'Kasha-Cache-Status': cacheStatus
-    },
+    headers,
     timeout: TIMEOUT
   }
 

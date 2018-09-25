@@ -102,7 +102,6 @@
   reader.on('message', async msg => {
     jobCounter++
 
-    const now = new Date()
     const req = msg.json()
     logger.debug('receive job:', req)
 
@@ -114,38 +113,34 @@
       deviceType,
       callbackURL,
       metaOnly,
-      cache
+      cacheDoc
     } = req
+
+    let { cacheStatus } = req
 
     const url = site + path
 
     if (replyTo) {
       const time = msg.timestamp.dividedBy(1000000).integerValue().toNumber()
-      logger.debug(time)
-      if (time + TIMEOUT < now.getTime()) {
+      if (time + TIMEOUT < Date.now()) {
         logger.debug('drop job:', req)
         return handleResult(new RESTError('SERVER_WORKER_BUSY'))
       }
     }
 
-    let status, redirect, meta, openGraph, links, html, staticHTML, error, privateExpires, sharedExpires
-    let updatedAt = now
-
-    // lock
     const lock = uid()
-
     const lockQuery = {
       site,
       path,
       deviceType,
       lock: false,
-      privateExpires: { $lt: now } // expired
+      privateExpires: { $lt: new Date() } // expired
     }
 
     try {
       await collection.updateOne(lockQuery, {
         $set: {
-          updatedAt,
+          updatedAt: new Date(),
           lock
         },
         $setOnInsert: {
@@ -170,29 +165,18 @@
         return handleResult(e)
       }
 
-      if (error) {
-        return handleResult(new RESTError(error))
+      if (doc.error) {
+        return handleResult(new RESTError(doc.error))
       }
 
-      return handleResult(null, {
-        url,
-        deviceType,
-        status,
-        redirect,
-        meta,
-        openGraph,
-        links,
-        html: metaOnly ? undefined : html,
-        staticHTML: metaOnly ? undefined : staticHTML,
-        privateExpires,
-        sharedExpires,
-        updatedAt
-      })
+      return handleResult(null, { url, ...doc })
     }
 
     // render the page
+    let doc, error, privateExpires, sharedExpires
+
     try {
-      ({ status, redirect, meta, openGraph, links, html, staticHTML } = await prerenderer.render(url, {
+      doc = await prerenderer.render(url, {
         userAgent: userAgents[deviceType],
         // always followRedirect when caching pages
         // in case of a request with followRedirect=true waits a cache lock of request with followRedirect=false
@@ -203,46 +187,50 @@
           cacheControl: { selector: 'meta[http-equiv="Cache-Control" i]', property: 'content' },
           expires: { selector: 'meta[http-equiv="Expires" i]', property: 'content' }
         }
-      }))
+      })
 
-      if (meta) {
-        if (meta.status) {
-          const s = parseInt(meta.status)
-          if (!isNaN(s) && s >= 100 && s < 600) {
-            status = s
-          }
-        }
-
-        if (meta.cacheControl) {
-          let maxage = meta.cacheControl.match(/max-age=(\d+)/)
-          if (maxage) {
-            maxage = parseInt(maxage[1])
-            if (maxage >= 0) privateExpires = new Date(now.getTime() + maxage * 1000)
-            else maxage = null
-          }
-
-          let sMaxage = meta.cacheControl.match(/s-maxage=(\d+)/)
-          if (sMaxage) {
-            sMaxage = parseInt(sMaxage[1])
-            if (sMaxage >= 0) sharedExpires = new Date(now.getTime() + sMaxage * 1000)
-            else sMaxage = null
-          }
-        }
-
-        if (!privateExpires && meta.expires) {
-          const d = new Date(meta.expires)
-          if (!isNaN(d.getTime())) {
-            privateExpires = d
-          }
+      if (doc.meta && doc.meta.status) {
+        const s = parseInt(doc.meta.status)
+        if (!isNaN(s) && s >= 100 && s < 600) {
+          doc.status = s
         }
       }
 
-      if (!privateExpires) {
-        privateExpires = new Date(now.getTime() + config.cache.maxage * 1000)
-      }
+      if (doc.status >= 400) {
+        error = new RESTError('SERVER_FETCH_ERROR', url, 'HTTP ' + doc.status)
+      } else {
+        if (doc.meta) {
+          if (doc.meta.cacheControl) {
+            let maxage = doc.meta.cacheControl.match(/max-age=(\d+)/)
+            if (maxage) {
+              maxage = parseInt(maxage[1])
+              if (maxage >= 0) privateExpires = new Date(Date.now() + maxage * 1000)
+              else maxage = null
+            }
 
-      if (!sharedExpires) {
-        sharedExpires = new Date(now.getTime() + config.cache.sMaxage * 1000)
+            let sMaxage = doc.meta.cacheControl.match(/s-maxage=(\d+)/)
+            if (sMaxage) {
+              sMaxage = parseInt(sMaxage[1])
+              if (sMaxage >= 0) sharedExpires = new Date(Date.now() + sMaxage * 1000)
+              else sMaxage = null
+            }
+          }
+
+          if (!privateExpires && doc.meta.expires) {
+            const d = new Date(doc.meta.expires)
+            if (!isNaN(d.getTime())) {
+              privateExpires = d
+            }
+          }
+        }
+
+        if (!privateExpires) {
+          privateExpires = new Date(Date.now() + config.cache.maxage * 1000)
+        }
+
+        if (!sharedExpires) {
+          sharedExpires = new Date(Date.now() + config.cache.sMaxage * 1000)
+        }
       }
     } catch (e) {
       error = new RESTError('SERVER_RENDER_ERROR', e.message)
@@ -253,7 +241,7 @@
         await collection.updateOne({ site, path, deviceType, lock }, {
           $set: {
             error: error.toJSON(),
-            updatedAt,
+            updatedAt: new Date(),
             lock: false
           },
           $inc: {
@@ -270,15 +258,9 @@
       try {
         await collection.updateOne({ site, path, deviceType }, {
           $set: {
-            status,
-            redirect,
-            meta,
-            openGraph,
-            links,
-            html,
-            staticHTML,
+            ...doc,
             error: null,
-            updatedAt,
+            updatedAt: new Date(),
             privateExpires,
             sharedExpires,
             lock: false
@@ -292,9 +274,9 @@
         let canonicalURL
         const currentURL = new URL(url)
 
-        if (meta && meta.canonicalURL) {
+        if (doc.meta && doc.meta.canonicalURL) {
           try {
-            canonicalURL = new URL(meta.canonicalURL)
+            canonicalURL = new URL(doc.meta.canonicalURL)
           } catch (e) {
             // nop
           }
@@ -303,8 +285,8 @@
         if (canonicalURL && canonicalURL.origin === currentURL.origin) {
           let sitemap = {}
 
-          if (openGraph) {
-            if (openGraph.sitemap) sitemap = openGraph.sitemap
+          if (doc.openGraph) {
+            if (doc.openGraph.sitemap) sitemap = doc.openGraph.sitemap
 
             if (sitemap.news) {
               const date = new Date(sitemap.news.publication_date)
@@ -315,9 +297,9 @@
               }
             }
 
-            if (!sitemap.image && openGraph.og && openGraph.og.image) {
+            if (!sitemap.image && doc.openGraph.og && doc.openGraph.og.image) {
               sitemap.image = []
-              for (const img of openGraph.og.image) {
+              for (const img of doc.openGraph.og.image) {
                 sitemap.image.push({
                   loc: img.secure_url || img.url
                 })
@@ -325,8 +307,8 @@
             }
           }
 
-          if (!sitemap.lastmod && meta.lastModified) {
-            const date = new Date(meta.lastModified)
+          if (!sitemap.lastmod && doc.meta.lastModified) {
+            const date = new Date(doc.meta.lastModified)
             if (!isNaN(date.getTime())) {
               sitemap.lastmod = date.toISOString()
             }
@@ -355,13 +337,7 @@
       return handleResult(null, {
         url,
         deviceType,
-        status,
-        redirect,
-        meta,
-        openGraph,
-        links,
-        html: metaOnly ? undefined : html,
-        staticHTML: metaOnly ? undefined : staticHTML,
+        ...doc,
         privateExpires,
         sharedExpires,
         updatedAt
@@ -369,13 +345,27 @@
     }
 
     function handleResult(error, result) {
+      if (result && metaOnly) {
+        delete result.html
+        delete result.staticHTML
+      }
+
+      if (error && cacheDoc) {
+        error = null
+        result = cacheDoc
+        if (cacheStatus === 'EXPIRED') {
+          cacheStatus = 'STALE'
+        }
+      }
+
       if (callbackURL) {
-        callback(callbackURL, error, result || cache)
+        callback(callbackURL, error, result, cacheStatus)
       } else if (replyTo) {
         nsqWriter.publish(replyTo, {
           correlationId,
           error,
-          result: result || cache
+          result,
+          cacheStatus
         })
       }
 
