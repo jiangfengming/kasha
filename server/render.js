@@ -9,6 +9,7 @@ const uid = require('../shared/uid')
 const callback = require('../shared/callback')
 const poll = require('../shared/poll')
 const reply = require('./reply')
+const normalizeDoc = require('../shared/normalizeDoc')
 
 async function render(ctx) {
   const now = Date.now()
@@ -108,7 +109,7 @@ async function render(ctx) {
     }
 
     if (!doc) {
-      return sendToWorker(null, refresh ? 'BYPASS' : 'MISS')
+      return sendToWorker(refresh ? 'BYPASS' : 'MISS')
     }
 
     const { sharedExpires, privateExpires, lock } = doc
@@ -119,41 +120,39 @@ async function render(ctx) {
         return handleResult(doc, refresh ? 'BYPASS' : privateExpires ? 'EXPIRED' : 'MISS')
       } catch (e) {
         // something went wrong when updating the document.
-        // we still use the stale doc.
-
+        // we still use the stale doc if available.
         // but don't give cache response if 'refresh' param is set.
-        if (refresh) {
+        if (doc.status || !refresh) {
+          return handleResult(doc, privateExpires && privateExpires >= now ? 'HIT' : 'STALE')
+        } else {
           throw e
         }
       }
-    }
-
-    if (refresh) {
-      return sendToWorker(null, 'BYPASS')
-    }
-
-    if (privateExpires >= now) {
-      return handleResult(doc, 'HIT')
-    }
-
-    if (sharedExpires >= now) {
-      // refresh cache in background
-      if (!lock) {
-        sendToWorker(null, null, { noWait: true, callbackURL: null })
+    } else {
+      if (refresh) {
+        return sendToWorker('BYPASS')
       }
 
-      return handleResult(doc, 'UPDATING')
-    }
+      if (privateExpires && privateExpires >= now) {
+        return handleResult(doc, 'HIT')
+      }
 
-    return sendToWorker(doc, 'EXPIRED')
+      if (sharedExpires && sharedExpires >= now) {
+        // refresh cache in background
+        if (!lock) {
+          sendToWorker(null, { noWait: true, callbackURL: null })
+        }
+
+        return handleResult(doc, 'UPDATING')
+      }
+
+      return sendToWorker('EXPIRED')
+    }
   }
 
   function handleResult(doc, cacheStatus) {
     if (doc.status) {
-      if (metaOnly) {
-        delete doc.html
-        delete doc.staticHTML
-      }
+      doc = normalizeDoc(doc, metaOnly)
 
       if (callbackURL) {
         callback(callbackURL, null, doc, cacheStatus)
@@ -165,22 +164,16 @@ async function render(ctx) {
     }
   }
 
-  function sendToWorker(cacheDoc, cacheStatus, options = {}) {
+  function sendToWorker(cacheStatus, options = {}) {
     options = { noWait, callbackURL, ...options }
 
     return new Promise((resolve, reject) => {
-      if (metaOnly) {
-        delete cacheDoc.html
-        delete cacheDoc.staticHTML
-      }
-
       const msg = {
         site,
         path,
         deviceType,
         callbackURL: options.callbackURL,
         metaOnly,
-        cacheDoc,
         cacheStatus
       }
 

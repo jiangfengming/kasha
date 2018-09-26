@@ -8,7 +8,7 @@ function poll(site, path, deviceType, lock) {
     let tried = 0
 
     async function p() {
-      logger.debug('polling ' + site + path)
+      logger.debug(`polling ${site}${path}. lock: ${lock}`)
 
       tried++
 
@@ -21,7 +21,7 @@ function poll(site, path, deviceType, lock) {
         return reject(new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId))
       }
 
-      if (!doc.lock) { // unlocked
+      if (!doc.lock || (lock && lock !== doc.lock)) {
         clearInterval(intervalId)
         resolve(doc)
       } else {
@@ -34,25 +34,20 @@ function poll(site, path, deviceType, lock) {
 
           // if the same lock lasts 25s, the other worker may went wrong
           // we remove the lock
-          if (lock === doc.lock) {
-            try {
-              await collection.updateOne({
-                site,
-                path,
-                deviceType,
-                lock
-              }, {
-                $set: {
-                  error: error.toJSON(),
-                  date: new Date(),
-                  lock: false
-                }
-              })
-            } catch (e) {
-              const { timestamp, eventId } = logger.error(e)
-              return reject(new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+          collection.updateOne({
+            site,
+            path,
+            deviceType,
+            lock
+          }, {
+            $set: {
+              error: error.toJSON(),
+              updatedAt: new Date(),
+              lock: false
             }
-          }
+          }).catch(e => {
+            logger.error(e)
+          })
 
           reject(error)
         }

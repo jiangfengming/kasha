@@ -3,11 +3,12 @@
   const RESTError = require('../shared/RESTError')
   const logger = require('../shared/logger')
   const config = require('../shared/config')
+  const normalizeDoc = require('../shared/normalizeDoc')
 
   const mongo = require('../shared/mongo')
   const db = await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.workerOptions)
 
-  const collection = db.collection('snapshots')
+  const snapshots = db.collection('snapshots')
   /*
   schema:
   site: String
@@ -21,7 +22,7 @@
   html: String
   staticHTML: String
   error: String
-  times: Number
+  renderTimes: Number
   updatedAt: Date
   privateExpires: Date
   sharedExpires: Date
@@ -112,10 +113,10 @@
       path,
       deviceType,
       callbackURL,
-      metaOnly,
-      cacheDoc
+      metaOnly
     } = req
 
+    let cacheDoc
     let { cacheStatus } = req
 
     const url = site + path
@@ -124,7 +125,7 @@
       const time = msg.timestamp.dividedBy(1000000).integerValue().toNumber()
       if (time + TIMEOUT < Date.now()) {
         logger.debug('drop job:', req)
-        return handleResult(new RESTError('SERVER_WORKER_BUSY'))
+        return handleResult({ error: new RESTError('SERVER_WORKER_BUSY').toJSON() })
       }
     }
 
@@ -133,18 +134,22 @@
       site,
       path,
       deviceType,
-      lock: false,
-      privateExpires: { $lt: new Date() } // expired
+      lock: false
+    }
+
+    if (cacheStatus !== 'BYPASS') {
+      // expired
+      lockQuery.privateExpires = { $lt: new Date() }
     }
 
     try {
-      await collection.updateOne(lockQuery, {
+      await snapshots.updateOne(lockQuery, {
         $set: {
           updatedAt: new Date(),
           lock
         },
         $setOnInsert: {
-          times: 0
+          renderTimes: 0
         }
       }, { upsert: true })
     } catch (e) {
@@ -154,7 +159,7 @@
       // 11000: duplicate key on upsert
       if (e.code !== 11000) {
         const { timestamp, eventId } = logger.error(e)
-        return handleResult(new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+        return handleResult({ error: new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId).toJSON() })
       }
 
       // the document maybe locked by others, or is valid
@@ -162,18 +167,21 @@
       try {
         doc = await poll(site, path, deviceType)
       } catch (e) {
-        return handleResult(e)
+        return handleResult({ error: e.toJSON() })
       }
 
-      if (doc.error) {
-        return handleResult(new RESTError(doc.error))
-      }
+      return handleResult(doc)
+    }
 
-      return handleResult(null, { url, ...doc })
+    try {
+      cacheDoc = await snapshots.findOne({ site, path, deviceType })
+    } catch (e) {
+      const { timestamp, eventId } = logger.error(e)
+      return handleResult({ error: new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId).toJSON() })
     }
 
     // render the page
-    let doc, error, privateExpires, sharedExpires
+    let doc
 
     try {
       doc = await prerenderer.render(url, {
@@ -196,177 +204,158 @@
         }
       }
 
-      if (doc.status >= 400) {
-        error = new RESTError('SERVER_FETCH_ERROR', url, 'HTTP ' + doc.status)
+      if (doc.status >= 500) {
+        doc.error = new RESTError('SERVER_FETCH_ERROR', url, 'HTTP ' + doc.status).toJSON()
+
+        // discard result if cacheDoc has valid stale resource
+        if (cacheDoc && cacheDoc.status < 500) {
+          doc = { error: doc.error }
+        }
       } else {
+        doc.error = null
+
         if (doc.meta) {
           if (doc.meta.cacheControl) {
             let maxage = doc.meta.cacheControl.match(/max-age=(\d+)/)
             if (maxage) {
               maxage = parseInt(maxage[1])
-              if (maxage >= 0) privateExpires = new Date(Date.now() + maxage * 1000)
+              if (maxage >= 0) doc.privateExpires = new Date(Date.now() + maxage * 1000)
               else maxage = null
             }
 
             let sMaxage = doc.meta.cacheControl.match(/s-maxage=(\d+)/)
             if (sMaxage) {
               sMaxage = parseInt(sMaxage[1])
-              if (sMaxage >= 0) sharedExpires = new Date(Date.now() + sMaxage * 1000)
+              if (sMaxage >= 0) doc.sharedExpires = new Date(Date.now() + sMaxage * 1000)
               else sMaxage = null
             }
           }
 
-          if (!privateExpires && doc.meta.expires) {
+          if (!doc.privateExpires && doc.meta.expires) {
             const d = new Date(doc.meta.expires)
             if (!isNaN(d.getTime())) {
-              privateExpires = d
+              doc.privateExpires = d
             }
           }
         }
 
-        if (!privateExpires) {
-          privateExpires = new Date(Date.now() + config.cache.maxage * 1000)
+        if (!doc.privateExpires) {
+          doc.privateExpires = new Date(Date.now() + (doc.status < 400 ? config.cache.maxage : config.cache.maxStale) * 1000)
         }
 
-        if (!sharedExpires) {
-          sharedExpires = new Date(Date.now() + config.cache.sMaxage * 1000)
+        if (!doc.sharedExpires) {
+          doc.sharedExpires = new Date(Date.now() + (doc.status < 400 ? config.cache.sMaxage : config.cache.maxStale) * 1000)
         }
       }
     } catch (e) {
-      error = new RESTError('SERVER_RENDER_ERROR', e.message)
+      doc = { error: new RESTError('SERVER_RENDER_ERROR', e.message).toJSON() }
     }
 
-    if (error) {
-      try {
-        await collection.updateOne({ site, path, deviceType, lock }, {
-          $set: {
-            error: error.toJSON(),
-            updatedAt: new Date(),
-            lock: false
-          },
-          $inc: {
-            times: 1
-          }
-        }, { upsert: true })
+    doc.updatedAt = new Date()
 
-        return handleResult(error)
-      } catch (e) {
-        const { timestamp, eventId } = logger.error(e)
-        return handleResult(new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+    const query = { site, path, deviceType, lock }
+
+    snapshots.updateOne(query, {
+      $set: {
+        ...doc,
+        lock: false
+      },
+      $inc: {
+        renderTimes: 1
       }
-    } else {
-      try {
-        await collection.updateOne({ site, path, deviceType }, {
-          $set: {
-            ...doc,
-            error: null,
-            updatedAt: new Date(),
-            privateExpires,
-            sharedExpires,
-            lock: false
-          },
-          $inc: {
-            times: 1
+    }).catch(e => {
+      logger.error(e)
+    })
+
+    handleSitemap(doc).catch(e => {
+      logger.error(e)
+    })
+
+    handleResult(doc)
+
+    function handleSitemap(doc) {
+      // sitemap
+      let canonicalURL
+      if (doc.meta && doc.meta.canonicalURL) {
+        try {
+          canonicalURL = new URL(doc.meta.canonicalURL)
+        } catch (e) {
+          // nop
+        }
+      }
+
+      if (canonicalURL && canonicalURL.origin === site) {
+        let sitemap = {}
+
+        if (doc.openGraph) {
+          if (doc.openGraph.sitemap) sitemap = doc.openGraph.sitemap
+
+          if (sitemap.news) {
+            const date = new Date(sitemap.news.publication_date)
+            if (isNaN(date.getTime())) {
+              delete sitemap.news
+            } else {
+              sitemap.news.publication_date = date
+            }
           }
-        }, { upsert: true })
 
-        // sitemap
-        let canonicalURL
-        const currentURL = new URL(url)
-
-        if (doc.meta && doc.meta.canonicalURL) {
-          try {
-            canonicalURL = new URL(doc.meta.canonicalURL)
-          } catch (e) {
-            // nop
+          if (!sitemap.image && doc.openGraph.og && doc.openGraph.og.image) {
+            sitemap.image = []
+            for (const img of doc.openGraph.og.image) {
+              sitemap.image.push({
+                loc: img.secure_url || img.url
+              })
+            }
           }
         }
 
-        if (canonicalURL && canonicalURL.origin === currentURL.origin) {
-          let sitemap = {}
-
-          if (doc.openGraph) {
-            if (doc.openGraph.sitemap) sitemap = doc.openGraph.sitemap
-
-            if (sitemap.news) {
-              const date = new Date(sitemap.news.publication_date)
-              if (isNaN(date.getTime())) {
-                delete sitemap.news
-              } else {
-                sitemap.news.publication_date = date
-              }
-            }
-
-            if (!sitemap.image && doc.openGraph.og && doc.openGraph.og.image) {
-              sitemap.image = []
-              for (const img of doc.openGraph.og.image) {
-                sitemap.image.push({
-                  loc: img.secure_url || img.url
-                })
-              }
-            }
+        if (!sitemap.lastmod && doc.meta.lastModified) {
+          const date = new Date(doc.meta.lastModified)
+          if (!isNaN(date.getTime())) {
+            sitemap.lastmod = date.toISOString()
           }
+        }
 
-          if (!sitemap.lastmod && doc.meta.lastModified) {
-            const date = new Date(doc.meta.lastModified)
-            if (!isNaN(date.getTime())) {
-              sitemap.lastmod = date.toISOString()
-            }
+        return sitemaps.updateOne({
+          site: canonicalURL.origin,
+          path: canonicalURL.pathname + canonicalURL.search
+        }, {
+          $set: {
+            ...sitemap,
+            updatedAt: new Date()
           }
+        }, { upsert: true })
+      } else {
+        return sitemaps.deleteOne({ site, path })
+      }
+    }
 
-          await sitemaps.updateOne({
-            site: canonicalURL.origin,
-            path: canonicalURL.pathname + canonicalURL.search
-          }, {
-            $set: {
-              ...sitemap,
-              updatedAt
-            }
-          }, { upsert: true })
+    function handleResult(doc) {
+      if (callbackURL || replyTo) {
+        if (cacheDoc && (!doc.status || doc.status >= 500 && cacheDoc.status < 500)) {
+          doc = cacheDoc
+          if (cacheStatus === 'EXPIRED') {
+            cacheStatus = 'STALE'
+          }
+        }
+
+        let error = null
+        if (doc.status) {
+          doc = normalizeDoc(doc, metaOnly)
         } else {
-          await sitemaps.deleteOne({
-            site: currentURL.origin,
-            path: currentURL.pathname + currentURL.search
+          error = doc.error
+        }
+
+        if (callbackURL) {
+          callback(callbackURL, error, doc, cacheStatus)
+        } else if (replyTo) {
+          nsqWriter.publish(replyTo, {
+            correlationId,
+            error,
+            doc,
+            cacheStatus
           })
         }
-      } catch (e) {
-        const { timestamp, eventId } = logger.error(e)
-        return handleResult(new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId))
-      }
-
-      return handleResult(null, {
-        url,
-        deviceType,
-        ...doc,
-        privateExpires,
-        sharedExpires,
-        updatedAt
-      })
-    }
-
-    function handleResult(error, result) {
-      if (result && metaOnly) {
-        delete result.html
-        delete result.staticHTML
-      }
-
-      if (error && cacheDoc) {
-        error = null
-        result = cacheDoc
-        if (cacheStatus === 'EXPIRED') {
-          cacheStatus = 'STALE'
-        }
-      }
-
-      if (callbackURL) {
-        callback(callbackURL, error, result, cacheStatus)
-      } else if (replyTo) {
-        nsqWriter.publish(replyTo, {
-          correlationId,
-          error,
-          result,
-          cacheStatus
-        })
       }
 
       if (!msg.hasResponded) msg.finish()
