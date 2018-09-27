@@ -174,7 +174,7 @@
     }
 
     try {
-      cacheDoc = await snapshots.findOne({ site, path, deviceType })
+      cacheDoc = await snapshots.findOne({ site, path, deviceType, status: { $type: 'int' } })
     } catch (e) {
       const { timestamp, eventId } = logger.error(e)
       return handleResult({ error: new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId).toJSON() })
@@ -332,7 +332,7 @@
 
     function handleResult(doc) {
       if (callbackURL || replyTo) {
-        if (cacheDoc && (!doc.status || doc.status >= 500 && cacheDoc.status < 500)) {
+        if (cacheStatus !== 'BYPASS' && cacheDoc && (!doc.status || doc.status >= 500 && cacheDoc.status < 500)) {
           doc = cacheDoc
           if (cacheStatus === 'EXPIRED') {
             cacheStatus = 'STALE'
