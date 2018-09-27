@@ -6,7 +6,7 @@
   const logger = require('../shared/logger')
 
   const mongo = require('../shared/mongo')
-  await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
+  const db = await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
 
   const nsqWriter = await require('../shared/nsqWriter').connect()
   const workerResponse = require('./workerResponse')
@@ -16,7 +16,7 @@
   const stoppable = require('stoppable')
 
   const app = new Koa()
-  const router = new Router()
+  const proxy = require('./proxy')
   const render = require('./render')
   const sitemap = require('./sitemap')
 
@@ -40,28 +40,46 @@
     }
   })
 
-  // routes
-  router.get('/render', render)
+  // proxy routes
+  const proxyRouter = new Router()
+  proxyRouter.get(`/sitemaps/:page.xml`, sitemap.sitemap)
+  proxyRouter.get(`/sitemaps/google/:page.xml`, sitemap.googleSitemap)
+  proxyRouter.get(`/sitemaps/google/news/:page.xml`, sitemap.googleNewsSitemap)
+  proxyRouter.get(`/sitemaps/google/image/:page.xml`, sitemap.googleImageSitemap)
+  proxyRouter.get(`/sitemaps/google/video/:page.xml`, sitemap.googleVideoSitemap)
+  proxyRouter.get(`/sitemaps/index/:page.xml`, sitemap.sitemapIndex)
+  proxyRouter.get(`/sitemaps/index/google/:page.xml`, sitemap.googleSitemapIndex)
+  proxyRouter.get(`/sitemaps/index/google/news/:page.xml`, sitemap.googleNewsSitemapIndex)
+  proxyRouter.get(`/sitemaps/index/google/image/:page.xml`, sitemap.googleImageSitemapIndex)
+  proxyRouter.get(`/sitemaps/index/google/video/:page.xml`, sitemap.googleVideoSitemapIndex)
+  proxyRouter.get(`/robots.txt`, sitemap.robotsTxt)
 
-  router.get('/cache', (ctx, next) => {
+  const proxyRoutes = proxyRouter.routes()
+
+  // api routes
+  const apiRouter = new Router()
+
+  apiRouter.get('/render', render)
+
+  apiRouter.get('/cache', (ctx, next) => {
     ctx.query.noWait = ''
     return next()
   }, render)
 
   const siteRegex = ':site(https?://[^/]+)'
-  router.get(`/${siteRegex}/sitemaps/:page.xml`, sitemap.sitemap)
-  router.get(`/${siteRegex}/sitemaps/google/:page.xml`, sitemap.googleSitemap)
-  router.get(`/${siteRegex}/sitemaps/google/news/:page.xml`, sitemap.googleNewsSitemap)
-  router.get(`/${siteRegex}/sitemaps/google/image/:page.xml`, sitemap.googleImageSitemap)
-  router.get(`/${siteRegex}/sitemaps/google/video/:page.xml`, sitemap.googleVideoSitemap)
-  router.get(`/${siteRegex}/sitemaps/index/:page.xml`, sitemap.sitemapIndex)
-  router.get(`/${siteRegex}/sitemaps/index/google/:page.xml`, sitemap.googleSitemapIndex)
-  router.get(`/${siteRegex}/sitemaps/index/google/news/:page.xml`, sitemap.googleNewsSitemapIndex)
-  router.get(`/${siteRegex}/sitemaps/index/google/image/:page.xml`, sitemap.googleImageSitemapIndex)
-  router.get(`/${siteRegex}/sitemaps/index/google/video/:page.xml`, sitemap.googleVideoSitemapIndex)
-  router.get(`/${siteRegex}/robots.txt`, sitemap.robotsTxt)
+  apiRouter.get(`/${siteRegex}/sitemaps/:page.xml`, sitemap.sitemap)
+  apiRouter.get(`/${siteRegex}/sitemaps/google/:page.xml`, sitemap.googleSitemap)
+  apiRouter.get(`/${siteRegex}/sitemaps/google/news/:page.xml`, sitemap.googleNewsSitemap)
+  apiRouter.get(`/${siteRegex}/sitemaps/google/image/:page.xml`, sitemap.googleImageSitemap)
+  apiRouter.get(`/${siteRegex}/sitemaps/google/video/:page.xml`, sitemap.googleVideoSitemap)
+  apiRouter.get(`/${siteRegex}/sitemaps/index/:page.xml`, sitemap.sitemapIndex)
+  apiRouter.get(`/${siteRegex}/sitemaps/index/google/:page.xml`, sitemap.googleSitemapIndex)
+  apiRouter.get(`/${siteRegex}/sitemaps/index/google/news/:page.xml`, sitemap.googleNewsSitemapIndex)
+  apiRouter.get(`/${siteRegex}/sitemaps/index/google/image/:page.xml`, sitemap.googleImageSitemapIndex)
+  apiRouter.get(`/${siteRegex}/sitemaps/index/google/video/:page.xml`, sitemap.googleVideoSitemapIndex)
+  apiRouter.get(`/${siteRegex}/robots.txt`, sitemap.robotsTxt)
 
-  router.get('/(http.+)', (ctx, next) => {
+  apiRouter.get('/(http.+)', (ctx, next) => {
     ctx.query = {
       url: ctx.url.slice(1),
       deviceType: ctx.headers['x-device-type'] || 'desktop'
@@ -70,10 +88,22 @@
     return next()
   }, render)
 
-  app.use(router.routes())
+  const apiRoutes = apiRouter.routes()
 
-  app.use(() => {
-    throw new RESTError('CLIENT_NO_SUCH_API')
+  app.use(async(ctx, next) => {
+    if (ctx.method !== 'GET') throw new RESTError('CLIENT_METHOD_NOT_ALLOWED', ctx.method)
+
+    const host = ctx.host
+    if (host) {
+      const site = await db.collection('sites').findOne({ host })
+      if (site) ctx.site = site
+    }
+
+    if (ctx.site) {
+      proxyRoutes(ctx, next)
+    } else {
+      apiRoutes(ctx, next)
+    }
   })
 
   const server = stoppable(app.listen(config.port))

@@ -1,4 +1,9 @@
 module.exports = {
+  CLIENT_METHOD_NOT_ALLOWED: {
+    message: 'Method %s not allowed.',
+    httpStatus: 400
+  },
+
   CLIENT_INVALID_PARAM: {
     message: 'Invalid parameter (%s).',
     httpStatus: 400
