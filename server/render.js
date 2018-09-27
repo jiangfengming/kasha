@@ -112,7 +112,26 @@ async function render(ctx) {
       return sendToWorker(refresh ? 'BYPASS' : 'MISS')
     }
 
-    const { sharedExpires, privateExpires, lock } = doc
+    const { privateExpires, sharedExpires, lock } = doc
+
+    if (refresh) {
+      if (!lock) {
+        return sendToWorker('BYPASS')
+      }
+    } else {
+      if (privateExpires && privateExpires >= now) {
+        return handleResult(doc, 'HIT')
+      }
+
+      if (sharedExpires && sharedExpires >= now) {
+        // refresh cache in background
+        if (!lock) {
+          sendToWorker(null, { noWait: true, callbackURL: null })
+        }
+
+        return handleResult(doc, doc.error ? 'STALE' : 'UPDATING')
+      }
+    }
 
     if (lock) {
       try {
@@ -128,26 +147,9 @@ async function render(ctx) {
           throw e
         }
       }
-    } else {
-      if (refresh) {
-        return sendToWorker('BYPASS')
-      }
-
-      if (privateExpires && privateExpires >= now) {
-        return handleResult(doc, 'HIT')
-      }
-
-      if (sharedExpires && sharedExpires >= now) {
-        // refresh cache in background
-        if (!lock) {
-          sendToWorker(null, { noWait: true, callbackURL: null })
-        }
-
-        return handleResult(doc, 'UPDATING')
-      }
-
-      return sendToWorker('EXPIRED')
     }
+
+    return sendToWorker('EXPIRED')
   }
 
   function handleResult(doc, cacheStatus) {
