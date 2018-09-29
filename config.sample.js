@@ -1,9 +1,15 @@
 module.exports = {
   port: 3000,
 
+  // request with this host header is served in API mode.
+  // if not set or set to falsy values, API mode is disabled.
+  apiHost: '127.0.0.1:3000',
+  // apiHost: ['127.0.0.1:3000', 'kasha.example.com']
+
   nsq: {
     reader: {
       // lookupdHTTPAddresses: '127.0.0.1:4161'
+      // lookupdHTTPAddresses: ['10.0.0.142:4161','10.0.0.155:4161','10.0.0.4:4161']
       nsqdTCPAddresses: '127.0.0.1:4150',
       maxInFlight: 10
     },

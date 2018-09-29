@@ -53,30 +53,31 @@
     .get('/sitemaps/index/google/image/:page.xml', sitemap.googleImageSitemapIndex)
     .get('/sitemaps/index/google/video/:page.xml', sitemap.googleVideoSitemapIndex)
     .get('/robots.txt', sitemap.robotsTxt)
-    .get('(.*)', (ctx, next) => {
+    .get('(.*)', ctx => {
       ctx.query = {
         url: ctx.siteConfig.protocol + '//' + ctx.siteConfig.host + ctx.url,
         deviceType: ctx.siteConfig.deviceType || 'desktop'
       }
-      return next()
-    }, render)
+      return render(ctx)
+    })
     .routes()
 
 
   // api routes
-  const siteRegex = ':site(https?://[^/]+)'
+
+  const siteParam = ':site(https?://[^/]+)'
   const apiRoutes = new Router()
-    .get(`/${siteRegex}/sitemaps/:page.xml`, sitemap.sitemap)
-    .get(`/${siteRegex}/sitemaps/google/:page.xml`, sitemap.googleSitemap)
-    .get(`/${siteRegex}/sitemaps/google/news/:page.xml`, sitemap.googleNewsSitemap)
-    .get(`/${siteRegex}/sitemaps/google/image/:page.xml`, sitemap.googleImageSitemap)
-    .get(`/${siteRegex}/sitemaps/google/video/:page.xml`, sitemap.googleVideoSitemap)
-    .get(`/${siteRegex}/sitemaps/index/:page.xml`, sitemap.sitemapIndex)
-    .get(`/${siteRegex}/sitemaps/index/google/:page.xml`, sitemap.googleSitemapIndex)
-    .get(`/${siteRegex}/sitemaps/index/google/news/:page.xml`, sitemap.googleNewsSitemapIndex)
-    .get(`/${siteRegex}/sitemaps/index/google/image/:page.xml`, sitemap.googleImageSitemapIndex)
-    .get(`/${siteRegex}/sitemaps/index/google/video/:page.xml`, sitemap.googleVideoSitemapIndex)
-    .get(`/${siteRegex}/robots.txt`, sitemap.robotsTxt)
+    .get(`/${siteParam}/sitemaps/:page.xml`, sitemap.sitemap)
+    .get(`/${siteParam}/sitemaps/google/:page.xml`, sitemap.googleSitemap)
+    .get(`/${siteParam}/sitemaps/google/news/:page.xml`, sitemap.googleNewsSitemap)
+    .get(`/${siteParam}/sitemaps/google/image/:page.xml`, sitemap.googleImageSitemap)
+    .get(`/${siteParam}/sitemaps/google/video/:page.xml`, sitemap.googleVideoSitemap)
+    .get(`/${siteParam}/sitemaps/index/:page.xml`, sitemap.sitemapIndex)
+    .get(`/${siteParam}/sitemaps/index/google/:page.xml`, sitemap.googleSitemapIndex)
+    .get(`/${siteParam}/sitemaps/index/google/news/:page.xml`, sitemap.googleNewsSitemapIndex)
+    .get(`/${siteParam}/sitemaps/index/google/image/:page.xml`, sitemap.googleImageSitemapIndex)
+    .get(`/${siteParam}/sitemaps/index/google/video/:page.xml`, sitemap.googleVideoSitemapIndex)
+    .get(`/${siteParam}/robots.txt`, sitemap.robotsTxt)
     .get('/render', render)
     .get('/cache', (ctx, next) => {
       ctx.query.noWait = ''
@@ -96,16 +97,16 @@
     if (ctx.method !== 'GET') throw new RESTError('CLIENT_METHOD_NOT_ALLOWED', ctx.method)
 
     const host = ctx.host
-    if (host) {
-      const siteConfig = await db.collection('sites').findOne({ host })
-      if (siteConfig) ctx.siteConfig = siteConfig
-    }
 
-    if (ctx.siteConfig) {
+    if (!host) throw new RESTError('CLIENT_EMPTY_HOST_HEADER')
+
+    if (config.apiHosts && config.apiHosts.includes(host)) {
+      return apiRoutes(ctx, next)
+    } else {
+      ctx.siteConfig = await db.collection('sites').findOne({ host })
+      if (!ctx.siteConfig) throw new RESTError('CLIENT_HOST_CONFIG_NOT_EXIST')
       ctx.params.site = ctx.siteConfig.protocol + '//' + ctx.siteConfig.host
       return proxyRoutes(ctx, next)
-    } else {
-      return apiRoutes(ctx, next)
     }
   })
 

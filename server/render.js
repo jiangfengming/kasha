@@ -18,14 +18,18 @@ async function render(ctx) {
 
   let site, path
   try {
-    const { origin, protocol, pathname, search, hash } = new URL(url)
-    assert(['http:', 'https:'].includes(protocol))
-    site = origin
-    path = pathname + search + hash
-    url = site + path
+    url = new URL(url)
+    assert(['http:', 'https:'].includes(url.protocol))
   } catch (e) {
     throw new RESTError('CLIENT_INVALID_PARAM', 'url')
   }
+
+  if (!ctx.siteConfig) {
+    ctx.siteConfig = await db.collection('sites').findOne({ host: url.host })
+  }
+
+  site = origin
+  path = pathname + search + hash
 
   if (!['mobile', 'desktop'].includes(deviceType)) {
     throw new RESTError('CLIENT_INVALID_PARAM', 'deviceType')
@@ -86,6 +90,10 @@ async function render(ctx) {
       params: { url, deviceType, callbackURL, type, noWait, metaOnly, followRedirect }
     }
   })
+
+  if (!ctx.siteConfig) {
+
+  }
 
   if (noWait || callbackURL) {
     ctx.body = { queued: true }

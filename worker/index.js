@@ -69,9 +69,6 @@
         'sitemap:video',
         'sitemap:video:tag'
       ]
-    },
-    appendSearchParams: {
-      _no_prerender: '1'
     }
   }
 
@@ -111,6 +108,7 @@
       correlationId,
       site,
       path,
+      rewrites,
       deviceType,
       callbackURL,
       metaOnly
@@ -194,7 +192,8 @@
           lastModified: { selector: 'meta[http-equiv="Last-Modified" i]', property: 'content' },
           cacheControl: { selector: 'meta[http-equiv="Cache-Control" i]', property: 'content' },
           expires: { selector: 'meta[http-equiv="Expires" i]', property: 'content' }
-        }
+        },
+        rewrites
       })
 
       if (doc.meta && doc.meta.status) {

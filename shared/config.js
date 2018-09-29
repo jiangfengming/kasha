@@ -15,4 +15,8 @@ const configFile = resolve(argv.config)
 
 // global logger hasn't been initialized, use console.log()
 console.log('load config file:', configFile) // eslint-disable-line
-module.exports = require(configFile)
+const config = require(configFile)
+
+if (config.apiHost) config.apiHost = [].concat(config.apiHost)
+
+module.exports = config

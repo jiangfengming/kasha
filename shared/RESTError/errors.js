@@ -4,6 +4,16 @@ module.exports = {
     httpStatus: 400
   },
 
+  CLIENT_EMPTY_HOST_HEADER: {
+    message: 'Host header is empty.',
+    httpStatus: 400
+  },
+
+  CLIENT_HOST_CONFIG_NOT_EXIST: {
+    message: 'Host config does not exist.',
+    httpStatus: 400
+  },
+
   CLIENT_INVALID_PARAM: {
     message: 'Invalid parameter (%s).',
     httpStatus: 400
