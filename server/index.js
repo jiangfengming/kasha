@@ -99,6 +99,9 @@
       ctx.path = '/render'
       return next()
     }, render)
+    .get('(.*)', () => {
+      throw new RESTError('CLIENT_NO_SUCH_API')
+    })
     .routes()
 
   app.use(async(ctx, next) => {

@@ -118,15 +118,17 @@ async function render(ctx) {
       }
     })
 
-    if (ctx.siteConfig && ctx.siteConfig.assetExtensions) {
-      const ext = extname(url.pathname)
-      const isAsset = ctx.siteConfig.assetExtensions.includes(ext)
-      if (isAsset) {
+    if (ctx.siteConfig && ctx.siteConfig.rewrites) {
+      url.href = urlRewrite(url.href, ctx.siteConfig.rewrites)
+      const isHTML = ['.html', '.htm'].includes(extname(url.pathname))
+
+      if (!isHTML) {
         if (ctx.mode === 'proxy') {
-          if (ctx.siteConfig.rewrites) {
-            url.href = urlRewrite(url.href, ctx.siteConfig.rewrites)
-          }
-          ctx.body = request(url.href)
+          request(url.href).on('response', res => {
+            ctx.status = res.statusCode
+            ctx.set(res.headers)
+            ctx.body = res
+          }).on('error', ctx.onerror)
           return
         } else {
           throw new RESTError('CLIENT_NOT_HTML', url.href)
