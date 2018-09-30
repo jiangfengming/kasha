@@ -108,16 +108,26 @@
       correlationId,
       site,
       path,
-      rewrites,
       deviceType,
       callbackURL,
       metaOnly
     } = req
 
-    let cacheDoc
-    let { cacheStatus } = req
-
     const url = site + path
+
+    let cacheDoc
+    let { rewrites, cacheStatus } = req
+
+    if (rewrites) {
+      rewrites = rewrites.map(([type, search, replace]) => {
+        if (type === 'regexp') {
+          const lastSlash = search.lastIndexOf('/')
+          search = new RegExp(search.slice(1, lastSlash), search.slice(lastSlash + 1))
+        }
+
+        return [search, replace]
+      })
+    }
 
     if (replyTo) {
       const time = msg.timestamp.dividedBy(1000000).integerValue().toNumber()
@@ -132,12 +142,12 @@
       site,
       path,
       deviceType,
-      lock: false
+      lock: null
     }
 
     if (cacheStatus !== 'BYPASS') {
       // expired
-      lockQuery.privateExpires = { $lt: new Date() }
+      lockQuery.$or = [{ privateExpires: null }, { privateExpires: { $lt: new Date() } }]
     }
 
     try {
@@ -257,7 +267,7 @@
     snapshots.updateOne(query, {
       $set: {
         ...doc,
-        lock: false
+        lock: null
       },
       $inc: {
         renderTimes: 1

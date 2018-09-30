@@ -1,35 +1,30 @@
 const { URL } = require('url')
 const assert = require('assert')
+const { extname } = require('path')
+const request = require('request')
+const { addToQueue, replyTo } = require('./workerResponse')
+const reply = require('./reply')
 const RESTError = require('../shared/RESTError')
 const logger = require('../shared/logger')
 const { db } = require('../shared/mongo')
 const { writer: nsqWriter } = require('../shared/nsqWriter')
-const { addToQueue, replyTo } = require('./workerResponse')
 const uid = require('../shared/uid')
 const callback = require('../shared/callback')
 const poll = require('../shared/poll')
-const reply = require('./reply')
 const normalizeDoc = require('../shared/normalizeDoc')
+const urlRewrite = require('../shared/urlRewrite')
 
 async function render(ctx) {
   const now = Date.now()
   const { deviceType = 'desktop', callbackURL } = ctx.query
   let { url, type = 'html', noWait, metaOnly, followRedirect, refresh } = ctx.query
 
-  let site, path
   try {
     url = new URL(url)
     assert(['http:', 'https:'].includes(url.protocol))
   } catch (e) {
     throw new RESTError('CLIENT_INVALID_PARAM', 'url')
   }
-
-  if (!ctx.siteConfig) {
-    ctx.siteConfig = await db.collection('sites').findOne({ host: url.host })
-  }
-
-  site = origin
-  path = pathname + search + hash
 
   if (!['mobile', 'desktop'].includes(deviceType)) {
     throw new RESTError('CLIENT_INVALID_PARAM', 'deviceType')
@@ -85,15 +80,8 @@ async function render(ctx) {
     )
   }
 
-  logger.debug(ctx.url, {
-    extra: {
-      params: { url, deviceType, callbackURL, type, noWait, metaOnly, followRedirect }
-    }
-  })
-
-  if (!ctx.siteConfig) {
-
-  }
+  const site = url.origin
+  let path = url.pathname
 
   if (noWait || callbackURL) {
     ctx.body = { queued: true }
@@ -107,6 +95,45 @@ async function render(ctx) {
   }
 
   async function handler() {
+    if (!ctx.siteConfig) {
+      try {
+        ctx.siteConfig = await db.collection('sites').findOne({ host: url.host })
+      } catch (e) {
+        const { timestamp, eventId } = logger.error(e)
+        throw new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId)
+      }
+    }
+
+    if (!ctx.siteConfig || !ctx.siteConfig.removeQueryString) {
+      path += url.search
+    }
+
+    if (!ctx.siteConfig || !ctx.siteConfig.removeHash) {
+      path += url.hash
+    }
+
+    logger.debug(ctx.url, {
+      extra: {
+        params: { site, path, deviceType, callbackURL, type, noWait, metaOnly, followRedirect }
+      }
+    })
+
+    if (ctx.siteConfig && ctx.siteConfig.assetExtensions) {
+      const ext = extname(url.pathname)
+      const isAsset = ctx.siteConfig.assetExtensions.includes(ext)
+      if (isAsset) {
+        if (ctx.mode === 'proxy') {
+          if (ctx.siteConfig.rewrites) {
+            url.href = urlRewrite(url.href, ctx.siteConfig.rewrites)
+          }
+          ctx.body = request(url.href)
+          return
+        } else {
+          throw new RESTError('CLIENT_NOT_HTML', url.href)
+        }
+      }
+    }
+
     let doc
 
     try {
@@ -182,6 +209,11 @@ async function render(ctx) {
         site,
         path,
         deviceType,
+        rewrites: ctx.siteConfig && ctx.siteConfig.rewrites
+          ? ctx.siteConfig.rewrites.map(
+            ([search, replace]) =>
+              search.constructor === RegExp ? ['regexp', search.toString(), replace] : ['string', search, replace]
+          ) : null,
         callbackURL: options.callbackURL,
         metaOnly,
         cacheStatus

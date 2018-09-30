@@ -9,6 +9,11 @@ module.exports = {
     httpStatus: 400
   },
 
+  CLIENT_NOT_HTML: {
+    message: '%s is not of type HTML.',
+    httpStatus: 400
+  },
+
   CLIENT_HOST_CONFIG_NOT_EXIST: {
     message: 'Host config does not exist.',
     httpStatus: 400
@@ -36,6 +41,11 @@ module.exports = {
 
   SERVER_INTERNAL_ERROR: {
     message: 'Server Internal Error (EVENT_ID: %s-%s).',
+    httpStatus: 500
+  },
+
+  SERVER_DOC_DELETED: {
+    message: 'The document has been deleted.',
     httpStatus: 500
   },
 

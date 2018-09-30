@@ -1,24 +1,17 @@
-const { db } = require('../shared/mongo')
-const sitemaps = db.collection('sitemaps')
-const { URL } = require('url')
-const RESTError = require('../shared/RESTError')
 const { PassThrough } = require('stream')
 const { XmlEntities } = require('html-entities')
-const config = require('../shared/config')
 const request = require('request')
+const { db } = require('../shared/mongo')
+const RESTError = require('../shared/RESTError')
+const config = require('../shared/config')
+const urlRewrite = require('../shared/urlRewrite')
+
+const sitemaps = db.collection('sitemaps')
 
 const PAGE_LIMIT = 50000
 const GOOGLE_LIMIT = 1000
 
 const entities = new XmlEntities()
-
-function parseSiteParam(site) {
-  try {
-    return new URL(site).origin
-  } catch (e) {
-    throw new RESTError('CLIENT_INVALID_PARAM', 'site')
-  }
-}
 
 function parseLimitParam(limit, max) {
   if (limit) {
@@ -196,7 +189,7 @@ async function respond(ctx, result, gen) {
 }
 
 async function sitemap(ctx) {
-  const site = parseSiteParam(ctx.params.site)
+  const site = ctx.site
   const limit = parseLimitParam(ctx.query.limit, PAGE_LIMIT)
   const page = parsePageParam(ctx.params.page)
 
@@ -209,7 +202,7 @@ async function sitemap(ctx) {
 }
 
 async function googleSitemap(ctx) {
-  const site = parseSiteParam(ctx.params.site)
+  const site = ctx.site
   const limit = parseLimitParam(ctx.query.limit, GOOGLE_LIMIT)
   const page = parsePageParam(ctx.params.page)
 
@@ -222,7 +215,7 @@ async function googleSitemap(ctx) {
 }
 
 async function googleNewsSitemap(ctx) {
-  const site = parseSiteParam(ctx.params.site)
+  const site = ctx.site
   const limit = parseLimitParam(ctx.query.limit, GOOGLE_LIMIT)
   const page = parsePageParam(ctx.params.page)
 
@@ -242,7 +235,7 @@ function twoDaysAgo() {
 }
 
 async function googleImageSitemap(ctx) {
-  const site = parseSiteParam(ctx.params.site)
+  const site = ctx.site
   const limit = parseLimitParam(ctx.query.limit, GOOGLE_LIMIT)
   const page = parsePageParam(ctx.params.page)
 
@@ -258,7 +251,7 @@ async function googleImageSitemap(ctx) {
 }
 
 async function googleVideoSitemap(ctx) {
-  const site = parseSiteParam(ctx.params.site)
+  const site = ctx.site
   const limit = parseLimitParam(ctx.query.limit, GOOGLE_LIMIT)
   const page = parsePageParam(ctx.params.page)
 
@@ -274,7 +267,7 @@ async function googleVideoSitemap(ctx) {
 }
 
 async function robotsTxt(ctx) {
-  const site = parseSiteParam(ctx.params.site)
+  const site = ctx.site
   const limit = parseLimitParam(ctx.query.limit, PAGE_LIMIT)
   const googleLimit = parseLimitParam(ctx.query.googleLimit, GOOGLE_LIMIT)
 
@@ -285,7 +278,11 @@ async function robotsTxt(ctx) {
     sitemaps.countDocuments({ site, video: { $exists: true } }),
 
     new Promise((resolve, reject) => {
-      const url = site + '/robots.txt?_no_prerender=1'
+      let url = site + '/robots.txt'
+      if (ctx.siteConfig && ctx.siteConfig.rewrites) {
+        url = urlRewrite(url, ctx.siteConfig.rewrites)
+      }
+
       const req = request({
         url,
         headers: {
@@ -359,7 +356,7 @@ async function robotsTxt(ctx) {
 async function _sitemapIndex(ctx, type) {
   const MAX = type === 'normal' ? PAGE_LIMIT : GOOGLE_LIMIT
 
-  const site = parseSiteParam(ctx.params.site)
+  const site = ctx.site
   const limit = parseLimitParam(ctx.query.limit, MAX)
   const page = parsePageParam(ctx.params.page)
 

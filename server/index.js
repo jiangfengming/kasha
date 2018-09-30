@@ -16,7 +16,6 @@
   const stoppable = require('stoppable')
 
   const app = new Koa()
-  const proxy = require('./proxy')
   const render = require('./render')
   const sitemap = require('./sitemap')
 
@@ -58,6 +57,7 @@
         url: ctx.siteConfig.protocol + '//' + ctx.siteConfig.host + ctx.url,
         deviceType: ctx.siteConfig.deviceType || 'desktop'
       }
+      ctx.path = '/render'
       return render(ctx)
     })
     .routes()
@@ -67,6 +67,14 @@
 
   const siteParam = ':site(https?://[^/]+)'
   const apiRoutes = new Router()
+    .param('site', (site, ctx, next) => {
+      try {
+        ctx.site = new URL(site).origin
+        return next()
+      } catch (e) {
+        throw new RESTError('CLIENT_INVALID_PARAM', 'site')
+      }
+    })
     .get(`/${siteParam}/sitemaps/:page.xml`, sitemap.sitemap)
     .get(`/${siteParam}/sitemaps/google/:page.xml`, sitemap.googleSitemap)
     .get(`/${siteParam}/sitemaps/google/news/:page.xml`, sitemap.googleNewsSitemap)
@@ -88,7 +96,7 @@
         url: ctx.url.slice(1),
         deviceType: ctx.headers['x-device-type'] || 'desktop'
       }
-      ctx.path = '/'
+      ctx.path = '/render'
       return next()
     }, render)
     .routes()
@@ -101,11 +109,13 @@
     if (!host) throw new RESTError('CLIENT_EMPTY_HOST_HEADER')
 
     if (config.apiHosts && config.apiHosts.includes(host)) {
+      ctx.mode = 'api'
       return apiRoutes(ctx, next)
     } else {
+      ctx.mode = 'proxy'
       ctx.siteConfig = await db.collection('sites').findOne({ host })
       if (!ctx.siteConfig) throw new RESTError('CLIENT_HOST_CONFIG_NOT_EXIST')
-      ctx.params.site = ctx.siteConfig.protocol + '//' + ctx.siteConfig.host
+      ctx.site = ctx.siteConfig.protocol + '//' + ctx.siteConfig.host
       return proxyRoutes(ctx, next)
     }
   })

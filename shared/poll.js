@@ -21,6 +21,10 @@ function poll(site, path, deviceType, lock) {
         return reject(new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId))
       }
 
+      if (!doc) {
+        return reject(new RESTError('SERVER_DOC_DELETED'))
+      }
+
       if (!doc.lock || (lock && lock !== doc.lock)) {
         clearInterval(intervalId)
         resolve(doc)
@@ -43,7 +47,7 @@ function poll(site, path, deviceType, lock) {
             $set: {
               error: error.toJSON(),
               updatedAt: new Date(),
-              lock: false
+              lock: null
             }
           }).catch(e => {
             logger.error(e)
