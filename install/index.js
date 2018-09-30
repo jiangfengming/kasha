@@ -19,6 +19,7 @@ async function main() {
   const schema = new Schema(db, appInfo.version)
 
   schema.version(1, async db => {
+    await db.collection('sites').createIndex({ host: 1 }, { unique: true })
     await db.collection('snapshots').createIndex({ site: 1, path: 1, deviceType: 1 }, { unique: true })
     const sitemap = db.collection('sitemaps')
     await sitemap.createIndex({ site: 1, path: 1 }, { unique: true })
