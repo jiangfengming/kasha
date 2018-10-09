@@ -117,7 +117,7 @@
 
     if (!host) throw new RESTError('CLIENT_EMPTY_HOST_HEADER')
 
-    if (config.apiHosts && config.apiHosts.includes(host)) {
+    if (config.apiHost && config.apiHost.includes(host)) {
       ctx.mode = 'api'
       return apiRoutes(ctx, next)
     } else {
