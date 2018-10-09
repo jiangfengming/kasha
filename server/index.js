@@ -25,7 +25,7 @@
 
   app.use(async(ctx, next) => {
     try {
-      logger.debug(`${ctx.method} ${ctx.url}`)
+      logger.debug(`${ctx.method} ${ctx.href}`)
       await next()
     } catch (e) {
       let err = e
