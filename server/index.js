@@ -105,7 +105,13 @@
     .routes()
 
   app.use(async(ctx, next) => {
-    if (ctx.method !== 'GET') throw new RESTError('CLIENT_METHOD_NOT_ALLOWED', ctx.method)
+    if (ctx.method === 'HEAD') {
+      // health check request
+      ctx.body = ''
+      return
+    } else if (ctx.method !== 'GET') {
+      throw new RESTError('CLIENT_METHOD_NOT_ALLOWED', ctx.method)
+    }
 
     const host = ctx.host
 
