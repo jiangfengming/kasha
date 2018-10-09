@@ -1,4 +1,3 @@
-const config = require('../shared/config')
 const { URL } = require('url')
 const assert = require('assert')
 const { extname } = require('path')
