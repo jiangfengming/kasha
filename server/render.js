@@ -1,7 +1,9 @@
+const config = require('../shared/config')
 const { URL } = require('url')
 const assert = require('assert')
 const { extname } = require('path')
-const request = require('request')
+const http = require('http')
+const https = require('https')
 const { addToQueue, replyTo } = require('./workerResponse')
 const reply = require('./reply')
 const RESTError = require('../shared/RESTError')
@@ -124,12 +126,18 @@ async function render(ctx) {
 
       if (!isHTML) {
         if (ctx.mode === 'proxy') {
-          request(url.href).on('response', res => {
-            ctx.status = res.statusCode
-            ctx.set(res.headers)
-            ctx.body = res
-          }).on('error', ctx.onerror)
-          return
+          return new Promise((resolve, reject) => {
+            const _http = url.protocol === 'http' ? http : https
+            const req = _http.request(url.href, res => {
+              delete res.headers.connection
+              ctx.set(res.headers)
+              ctx.body = res
+              resolve()
+            })
+
+            req.on('error', e => reject(new RESTError('SERVER_FETCH_ERROR', url.href, e.message)))
+            req.end()
+          })
         } else {
           throw new RESTError('CLIENT_NOT_HTML', url.href)
         }
