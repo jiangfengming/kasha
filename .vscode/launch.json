@@ -16,14 +16,14 @@
       "request": "launch",
       "name": "Launch Worker",
       "program": "${workspaceFolder}/worker/index.js",
-      "args": ["--config=config.sample.js"]
+      "args": ["--config=config.sample.js", "--no-headless"]
     },
     {
       "type": "node",
       "request": "launch",
       "name": "Launch Worker(async)",
       "program": "${workspaceFolder}/worker/index.js",
-      "args": ["--config=config.sample.js", "--async"]
+      "args": ["--config=config.sample.js", "--async", "--no-headless"]
     }
   ]
 }

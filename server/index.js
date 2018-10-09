@@ -1,9 +1,13 @@
 (async() => {
+  const argv = require('yargs').argv
+  const logger = require('../shared/logger')
+
+  logger.debug(argv)
+
   await require('../install')
 
   const config = require('../shared/config')
   const RESTError = require('../shared/RESTError')
-  const logger = require('../shared/logger')
 
   const mongo = require('../shared/mongo')
   const db = await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)

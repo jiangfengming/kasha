@@ -1,8 +1,12 @@
 (async function() {
-  const { URL } = require('url')
-  const RESTError = require('../shared/RESTError')
+  const argv = require('yargs').argv
   const logger = require('../shared/logger')
+
+  logger.debug(argv)
+
+  const { URL } = require('url')
   const config = require('../shared/config')
+  const RESTError = require('../shared/RESTError')
   const normalizeDoc = require('../shared/normalizeDoc')
 
   const mongo = require('../shared/mongo')
@@ -74,6 +78,9 @@
 
   if (config.loglevel === 'debug') {
     prerendererOpts.debug = true
+  }
+
+  if (argv.headless === false) {
     prerendererOpts.puppeteerLaunchOptions.headless = false
   }
 
@@ -84,7 +91,6 @@
   const uid = require('../shared/uid')
   const callback = require('../shared/callback')
 
-  const argv = require('yargs').argv
   const { Reader } = require('nsqjs')
   const topic = argv.async ? 'kasha-async-queue' : 'kasha-sync-queue'
   const reader = new Reader(topic, 'worker', config.nsq.reader)
