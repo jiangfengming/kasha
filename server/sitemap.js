@@ -304,10 +304,10 @@ async function robotsTxt(ctx) {
           resolve('')
         } else if (res.statusCode < 200 || res.statusCode >= 300) {
           req.abort()
-          reject(new Error('SERVER_FETCH_ERROR', url, 'HTTP ' + res.statusCode))
+          reject(new RESTError('SERVER_FETCH_ERROR', url, 'HTTP ' + res.statusCode))
         } else if (!res.headers['content-type'].includes('text/plain')) {
           req.abort()
-          reject(new Error('SERVER_FETCH_ERROR', url, 'Content-Type should be text/plain'))
+          reject(new RESTError('SERVER_FETCH_ERROR', url, 'Content-Type should be text/plain'))
         }
       })
     })
