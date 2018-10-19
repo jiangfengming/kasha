@@ -1,7 +1,7 @@
 module.exports = {
   CLIENT_METHOD_NOT_ALLOWED: {
     message: 'Method %s not allowed.',
-    httpStatus: 400
+    httpStatus: 405
   },
 
   CLIENT_EMPTY_HOST_HEADER: {
