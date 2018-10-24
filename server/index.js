@@ -68,12 +68,13 @@
 
 
   // api routes
-
   const siteParam = ':site(https?://[^/]+)'
   const apiRoutes = new Router()
-    .param('site', (site, ctx, next) => {
+    .param('site', async(site, ctx, next) => {
       try {
-        ctx.site = new URL(site).origin
+        const url = new URL(site)
+        ctx.site = url.origin
+        ctx.siteConfig = await db.collection('sites').findOne({ host: url.host })
         return next()
       } catch (e) {
         throw new RESTError('CLIENT_INVALID_PARAM', 'site')
