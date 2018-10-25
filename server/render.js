@@ -120,25 +120,31 @@ async function render(ctx) {
     })
 
     if (ctx.siteConfig && ctx.siteConfig.rewrites) {
-      url.href = urlRewrite(url.href, ctx.siteConfig.rewrites)
-      const isHTML = ['.html', '.htm'].includes(extname(url.pathname))
+      let rewrited = urlRewrite(url.href, ctx.siteConfig.rewrites)
+      try {
+        rewrited = new URL(rewrited)
+      } catch (e) {
+        throw new RESTError('SERVER_URL_REWRITE_ERROR', rewrited)
+      }
+
+      const isHTML = ['.html', '.htm'].includes(extname(rewrited.pathname))
 
       if (!isHTML) {
         if (ctx.mode === 'proxy') {
           return new Promise((resolve, reject) => {
-            const _http = url.protocol === 'http' ? http : https
-            const req = _http.request(url.href, res => {
+            const _http = rewrited.protocol === 'http' ? http : https
+            const req = _http.request(rewrited.href, res => {
               delete res.headers.connection
               ctx.set(res.headers)
               ctx.body = res
               resolve()
             })
 
-            req.on('error', e => reject(new RESTError('SERVER_FETCH_ERROR', url.href, e.message)))
+            req.on('error', e => reject(new RESTError('SERVER_FETCH_ERROR', rewrited.href, e.message)))
             req.end()
           })
         } else {
-          throw new RESTError('CLIENT_NOT_HTML', url.href)
+          throw new RESTError('CLIENT_NOT_HTML', rewrited.href)
         }
       }
     }

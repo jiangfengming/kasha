@@ -29,6 +29,11 @@ module.exports = {
     httpStatus: 404
   },
 
+  SERVER_URL_REWRITE_ERROR: {
+    message: 'URL rewrite error (invalid URL: %s).',
+    httpStatus: 500
+  },
+
   SERVER_WORKER_TIMEOUT: {
     message: 'Prerender worker timed out.',
     httpStatus: 500
