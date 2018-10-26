@@ -1,6 +1,5 @@
 const { URL } = require('url')
 const assert = require('assert')
-const { extname } = require('path')
 const http = require('http')
 const https = require('https')
 const { addToQueue, replyTo } = require('./workerResponse')
@@ -14,6 +13,7 @@ const callback = require('../shared/callback')
 const poll = require('../shared/poll')
 const normalizeDoc = require('../shared/normalizeDoc')
 const urlRewrite = require('../shared/urlRewrite')
+const inArray = require('../shared/inArray')
 
 async function render(ctx) {
   const now = Date.now()
@@ -127,25 +127,36 @@ async function render(ctx) {
         throw new RESTError('SERVER_URL_REWRITE_ERROR', rewrited)
       }
 
-      const isHTML = ['.html', '.htm'].includes(extname(rewrited.pathname))
+      // if pathname neither in includes list, nor in excludes list, then `includes` is true
+      let includes
+      if (ctx.siteConfig.includes && inArray(ctx.siteConfig.includes, url.pathname)) {
+        includes = true
+      }
 
-      if (!isHTML) {
-        if (ctx.mode === 'proxy') {
-          return new Promise((resolve, reject) => {
-            const _http = rewrited.protocol === 'http' ? http : https
-            const req = _http.request(rewrited.href, res => {
-              delete res.headers.connection
-              ctx.set(res.headers)
-              ctx.body = res
-              resolve()
-            })
-
-            req.on('error', e => reject(new RESTError('SERVER_FETCH_ERROR', rewrited.href, e.message)))
-            req.end()
-          })
+      if (includes === undefined) {
+        if (ctx.siteConfig.excludes && inArray(ctx.siteConfig.excludes, url.pathname)) {
+          includes = false
         } else {
-          throw new RESTError('CLIENT_NOT_HTML', rewrited.href)
+          includes = true
         }
+      }
+
+      if (!includes) {
+        return new Promise((resolve, reject) => {
+          const _http = rewrited.protocol === 'http' ? http : https
+          const req = _http.request(rewrited.href, res => {
+            delete res.headers.connection
+            if (res.headers['content-type'].includes('text/html')) {
+              delete res.headers['content-disposition']
+            }
+            ctx.set(res.headers)
+            ctx.body = res
+            resolve()
+          })
+
+          req.on('error', e => reject(new RESTError('SERVER_FETCH_ERROR', rewrited.href, e.message)))
+          req.end()
+        })
       }
     }
 
