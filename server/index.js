@@ -10,7 +10,8 @@
   const RESTError = require('../shared/RESTError')
 
   const mongo = require('../shared/mongo')
-  const db = await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
+  await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
+  const getSiteConfig = require('../shared/getSiteConfig')
 
   const nsqWriter = await require('../shared/nsqWriter').connect()
   const workerResponse = require('./workerResponse')
@@ -74,7 +75,7 @@
       try {
         const url = new URL(site)
         ctx.site = url.origin
-        ctx.siteConfig = await db.collection('sites').findOne({ host: url.host })
+        ctx.siteConfig = await getSiteConfig(url.host)
         return next()
       } catch (e) {
         throw new RESTError('CLIENT_INVALID_PARAM', 'site')
@@ -127,7 +128,7 @@
       return apiRoutes(ctx, next)
     } else {
       ctx.mode = 'proxy'
-      ctx.siteConfig = await db.collection('sites').findOne({ host })
+      ctx.siteConfig = await getSiteConfig(host)
       if (!ctx.siteConfig) throw new RESTError('CLIENT_HOST_CONFIG_NOT_EXIST')
       ctx.site = ctx.siteConfig.protocol + '//' + ctx.siteConfig.host
       return proxyRoutes(ctx, next)

@@ -7,6 +7,7 @@ const reply = require('./reply')
 const RESTError = require('../shared/RESTError')
 const logger = require('../shared/logger')
 const { db } = require('../shared/mongo')
+const getSiteConfig = require('../shared/getSiteConfig')
 const { writer: nsqWriter } = require('../shared/nsqWriter')
 const uid = require('../shared/uid')
 const callback = require('../shared/callback')
@@ -98,7 +99,7 @@ async function render(ctx) {
   async function handler() {
     if (!ctx.siteConfig) {
       try {
-        ctx.siteConfig = await db.collection('sites').findOne({ host: url.host })
+        ctx.siteConfig = await getSiteConfig(url.host)
       } catch (e) {
         const { timestamp, eventId } = logger.error(e)
         throw new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId)

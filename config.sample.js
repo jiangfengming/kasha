@@ -55,6 +55,16 @@ module.exports = {
     sitemap: 60 * 60 // 1 hour
   },
 
+  sites: [
+    {
+      host: 'localhost:3000',
+      protocol: 'https:',
+      rewrites: [
+        ['localhost:3000', 'www.example.com']
+      ]
+    }
+  ],
+
   sentry: {
     dsn: ''
   },
