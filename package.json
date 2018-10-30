@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "babel-eslint": "^10.0.1",
-    "eslint": "^5.7.0",
+    "eslint": "^5.8.0",
     "eslint-config-enough": "^0.3.4",
     "mocha": "^5.2.0"
   },
