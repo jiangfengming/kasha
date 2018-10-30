@@ -58,7 +58,7 @@ module.exports = {
   sites: [
     {
       host: 'localhost:3000',
-      protocol: 'https:',
+      protocol: 'https',
       rewrites: [
         ['localhost:3000', 'www.example.com']
       ]

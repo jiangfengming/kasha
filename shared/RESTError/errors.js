@@ -4,13 +4,13 @@ module.exports = {
     httpStatus: 405
   },
 
-  CLIENT_EMPTY_HOST_HEADER: {
-    message: 'Host header is empty.',
+  CLIENT_INVALID_HEADER: {
+    message: 'Invalid request header (%s).',
     httpStatus: 400
   },
 
-  CLIENT_NOT_HTML: {
-    message: '%s is not of type HTML.',
+  CLIENT_EMPTY_HOST_HEADER: {
+    message: 'Host header is empty.',
     httpStatus: 400
   },
 

@@ -99,7 +99,7 @@ async function render(ctx) {
   async function handler() {
     if (!ctx.siteConfig) {
       try {
-        ctx.siteConfig = await getSiteConfig(url.host)
+        ctx.siteConfig = await getSiteConfig({ host: url.host, protocol: url.protocol.slice(0, -1) })
       } catch (e) {
         const { timestamp, eventId } = logger.error(e)
         throw new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId)

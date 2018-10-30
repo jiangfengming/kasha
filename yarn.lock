@@ -920,6 +920,11 @@ form-data@~2.3.2:
     combined-stream "^1.0.6"
     mime-types "^2.1.12"
 
+forwarded-parse@^2.1.0:
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/forwarded-parse/-/forwarded-parse-2.1.0.tgz#1ae9d7a4be3af884f74d936d856f7d8c6abd0439"
+  integrity sha512-as9a7Xelt0CvdUy7/qxrY73dZq2vMx49F556fwjjFrUyzq5uHHfeLgD2cCq/6P4ZvusGZzjD6aL2NdgGdS5Cew==
+
 fresh@~0.5.2:
   version "0.5.2"
   resolved "https://registry.yarnpkg.com/fresh/-/fresh-0.5.2.tgz#3d8cadd90d976569fa835ab1f8e4b23a105605a7"

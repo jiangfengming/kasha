@@ -8,6 +8,7 @@
     "kasha-worker": "bin/kasha-worker"
   },
   "dependencies": {
+    "forwarded-parse": "^2.1.0",
     "html-entities": "^1.2.1",
     "koa": "^2.6.1",
     "koa-router": "7.4.0",

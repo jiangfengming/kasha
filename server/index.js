@@ -20,6 +20,8 @@
   const Router = require('koa-router')
   const stoppable = require('stoppable')
 
+  const parseForwardedHeader = require('forwarded-parse')
+
   const app = new Koa()
   const render = require('./render')
   const sitemap = require('./sitemap')
@@ -59,7 +61,7 @@
     .get('/robots.txt', sitemap.robotsTxt)
     .get('(.*)', ctx => {
       ctx.query = {
-        url: ctx.siteConfig.protocol + '//' + ctx.siteConfig.host + ctx.url,
+        url: ctx.siteConfig.protocol + '://' + ctx.siteConfig.host + ctx.url,
         deviceType: ctx.siteConfig.deviceType || 'desktop'
       }
       ctx.path = '/render'
@@ -119,8 +121,7 @@
       throw new RESTError('CLIENT_METHOD_NOT_ALLOWED', ctx.method)
     }
 
-    const host = ctx.host
-
+    let host = ctx.host
     if (!host) throw new RESTError('CLIENT_EMPTY_HOST_HEADER')
 
     if (config.apiHost && config.apiHost.includes(host)) {
@@ -128,9 +129,36 @@
       return apiRoutes(ctx, next)
     } else {
       ctx.mode = 'proxy'
-      ctx.siteConfig = await getSiteConfig(host)
-      if (!ctx.siteConfig) throw new RESTError('CLIENT_HOST_CONFIG_NOT_EXIST')
-      ctx.site = ctx.siteConfig.protocol + '//' + ctx.siteConfig.host
+
+      let protocol
+      if (ctx.headers.forwarded) {
+        try {
+          const forwarded = parseForwardedHeader(ctx.headers.forwarded)[0]
+          if (forwarded.host) host = forwarded.host
+          if (forwarded.proto) protocol = forwarded.proto
+        } catch (e) {
+          throw new RESTError('CLIENT_INVALID_HEADER', 'Forwarded')
+        }
+      } else if (ctx.headers['x-forwarded-host']) {
+        host = ctx.headers['x-forwarded-host']
+      }
+
+      if (!protocol && ctx.headers['x-forwarded-proto']) {
+        protocol = ctx.headers['x-forwarded-proto']
+      }
+
+      const query = { host }
+      if (protocol) {
+        query.protocol = protocol
+      }
+
+      ctx.siteConfig = await getSiteConfig(query)
+
+      if (!ctx.siteConfig) {
+        throw new RESTError('CLIENT_HOST_CONFIG_NOT_EXIST')
+      }
+
+      ctx.site = ctx.siteConfig.protocol + '://' + ctx.siteConfig.host
       return proxyRoutes(ctx, next)
     }
   })
