@@ -3,7 +3,7 @@ const { db } = require('./mongo')
 
 if (config.sites) {
   module.exports = function({ host, protocol }) {
-    return config.sites.find(site => site.host === host && protocol ? site.protocol === protocol : true)
+    return config.sites.find(site => site.host === host && (protocol ? site.protocol === protocol : true))
   }
 } else {
   module.exports = function(query) {
