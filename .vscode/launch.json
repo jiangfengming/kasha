@@ -9,21 +9,21 @@
       "request": "launch",
       "name": "Launch Server",
       "program": "${workspaceFolder}/server/index.js",
-      "args": ["--config=config.sample.js"]
+      "args": ["--config=config.dev.js"]
     },
     {
       "type": "node",
       "request": "launch",
       "name": "Launch Worker",
       "program": "${workspaceFolder}/worker/index.js",
-      "args": ["--config=config.sample.js", "--no-headless"]
+      "args": ["--config=config.dev.js", "--no-headless"]
     },
     {
       "type": "node",
       "request": "launch",
       "name": "Launch Worker(async)",
       "program": "${workspaceFolder}/worker/index.js",
-      "args": ["--config=config.sample.js", "--async", "--no-headless"]
+      "args": ["--config=config.dev.js", "--async", "--no-headless"]
     }
   ]
 }
