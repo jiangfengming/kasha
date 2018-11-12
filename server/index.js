@@ -1,9 +1,8 @@
-(async() => {
-  const argv = require('yargs').argv
-  const logger = require('../shared/logger')
+const argv = require('yargs').argv
+const logger = require('../shared/logger')
+logger.debug(argv)
 
-  logger.debug(argv)
-
+async function main() {
   await require('../install')
 
   const config = require('../shared/config')
@@ -13,8 +12,10 @@
   await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
   const getSiteConfig = require('../shared/getSiteConfig')
 
-  const nsqWriter = await require('../shared/nsqWriter').connect()
-  const workerResponse = require('./workerResponse')
+  const nsqWriter = await require('../shared/nsqWriter')
+  await nsqWriter.connect()
+  const workerResponder = require('./workerResponder')
+  await workerResponder.connect()
 
   const Koa = require('koa')
   const Router = require('koa-router')
@@ -171,15 +172,26 @@
     if (stopping) return
 
     stopping = true
-    logger.info('Closing the server. Please wait for finishing the pending requests.')
+    logger.info('Closing the server. Please wait for finishing the pending requests...')
 
     server.stop(async() => {
-      clearInterval(workerResponse.interval)
-      workerResponse.reader.close()
-      nsqWriter.close()
+      logger.info('Closing worker responder connection...')
+      await workerResponder.close()
+      logger.info('Closing NSQ writer connection...')
+      await nsqWriter.close()
+      logger.info('Closing MongoDB connection...')
       await mongo.close()
     })
   })
 
   logger.info(`http server started at port ${config.port}`)
+}
+
+(async() => {
+  try {
+    await main()
+  } catch (e) {
+    logger.error(e)
+    process.exit(1)
+  }
 })()

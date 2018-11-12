@@ -2,13 +2,13 @@ const { URL } = require('url')
 const assert = require('assert')
 const http = require('http')
 const https = require('https')
-const { addToQueue, replyTo } = require('./workerResponse')
+const workerResponder = require('./workerResponder')
+const nsqWriter = require('../shared/nsqWriter')
 const reply = require('./reply')
 const RESTError = require('../shared/RESTError')
 const logger = require('../shared/logger')
 const { db } = require('../shared/mongo')
 const getSiteConfig = require('../shared/getSiteConfig')
-const { writer: nsqWriter } = require('../shared/nsqWriter')
 const uid = require('../shared/uid')
 const callback = require('../shared/callback')
 const poll = require('../shared/poll')
@@ -251,11 +251,11 @@ async function render(ctx) {
         topic = 'kasha-async-queue'
       } else {
         topic = 'kasha-sync-queue'
-        msg.replyTo = replyTo
+        msg.replyTo = workerResponder.topic
         msg.correlationId = uid()
       }
 
-      nsqWriter.publish(topic, msg, e => {
+      nsqWriter.writer.publish(topic, msg, e => {
         if (e) {
           const { timestamp, eventId } = logger.error(e)
           reject(new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId))
@@ -263,7 +263,7 @@ async function render(ctx) {
           if (options.callbackURL || options.noWait) {
             resolve()
           } else {
-            resolve(addToQueue({
+            resolve(workerResponder.addToQueue({
               correlationId: msg.correlationId,
               ctx,
               type,
