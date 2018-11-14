@@ -5,104 +5,105 @@ const logger = require('../shared/logger')
 const { nsq: { reader: options } } = require('../shared/config')
 const reply = require('./reply')
 
-module.exports = {
-  topic: `kasha-server-${hostname()}`,
-  maxInFlight: 2500,
-  timeout: 28 * 1000,
-  queue: [],
+const timeout = 28 * 1000
+const maxInFlight = 2500
+const topic = `kasha-server-${hostname()}`
+const queue = []
+const reader = new Reader(topic, 'response', { ...options, maxInFlight })
 
-  connect() {
-    this.reader = new Reader(this.topic, 'response', { ...options, maxInFlight: this.maxInFlight })
+reader.on('message', async msg => {
+  // don't block the queue
+  msg.finish()
 
-    this.reader.on('message', async msg => {
-      // don't block the queue
-      msg.finish()
+  const data = msg.json()
+  const req = queue.find(req => req.correlationId === data.correlationId)
+  if (!req) return
 
-      const data = msg.json()
-      const req = this.queue.find(req => req.correlationId === data.correlationId)
-      if (!req) return
+  const { ctx, resolve, reject, type, followRedirect } = req
 
-      const { ctx, resolve, reject, type, followRedirect } = req
+  if (data.error) return reject(new RESTError(data.error))
 
-      if (data.error) return reject(new RESTError(data.error))
+  data.doc.privateExpires = new Date(data.doc.privateExpires)
+  data.doc.sharedExpires = new Date(data.doc.sharedExpires)
 
-      data.doc.privateExpires = new Date(data.doc.privateExpires)
-      data.doc.sharedExpires = new Date(data.doc.sharedExpires)
+  reply(ctx, type, followRedirect, data.doc, data.cacheStatus)
 
-      reply(ctx, type, followRedirect, data.doc, data.cacheStatus)
+  // release resources
+  for (const k in req) delete req[k]
 
-      // release resources
-      for (const k in req) delete req[k]
+  resolve()
+})
+
+function connect() {
+  return new Promise((resolve, reject) => {
+    function onReady() {
+      reader.removeListener('error', onError)
+
+      reader.on('error', e => {
+        logger.error('Worker responder error', e)
+      })
 
       resolve()
-    })
+    }
 
-    return new Promise((resolve, reject) => {
-      const onReady = () => {
-        this.reader.removeListener('error', onError)
-        this.reader.on('error', e => {
-          logger.error('Worker responder error', e)
-        })
+    function onError() {
+      reader.removeListener('ready', onReady)
+      reject()
+    }
 
-        this.cleanUpInterval = setInterval(() => {
-          const now = Date.now()
+    reader.once('ready', onReady)
+    reader.once('error', onError)
+    reader.connect()
+  })
+}
 
-          while (this.queue.length) {
-            const req = this.queue[0]
+function close() {
+  return new Promise((resolve, reject) => {
+    clearInterval(cleanUpInterval)
 
-            if (!req.ctx) { // has been consumed
-              this.queue.shift()
-            } else if (req.date + this.timeout > now) {
-              break
-            } else { // timed out
-              req.reject(new RESTError('SERVER_WORKER_TIMEOUT'))
-              this.queue.shift()
-            }
-          }
-        }, 1000)
+    if (reader.connectionIds.length === 0) {
+      return resolve()
+    }
 
-        resolve()
-      }
-
-      const onError = () => {
-        this.reader.removeListener('ready', onReady)
-        reject()
-      }
-
-      this.reader.once('ready', onReady)
-      this.reader.once('error', onError)
-      this.reader.connect()
-    })
-  },
-
-  close() {
-    clearInterval(this.cleanUpInterval)
-
-    return new Promise((resolve, reject) => {
-      if (this.reader.connectionIds.length === 0) {
+    reader.on('nsqd_closed', () => {
+      if (reader.connectionIds.length === 0) {
         return resolve()
       }
-
-      this.reader.on('nsqd_closed', () => {
-        if (this.reader.connectionIds.length === 0) {
-          return resolve()
-        }
-      })
-
-      this.reader.on('error', reject)
-      this.reader.close()
     })
-  },
 
-  // { correlationId, ctx, type, followRedirect }
-  addToQueue(req) {
-    return new Promise((resolve, reject) => {
-      this.queue.push({
-        ...req,
-        date: Date.now(),
-        resolve,
-        reject
-      })
-    })
-  }
+    reader.on('error', reject)
+    reader.close()
+  })
 }
+
+// { correlationId, ctx, type, followRedirect }
+function addToQueue(req) {
+  return new Promise((resolve, reject) => {
+    queue.push({
+      ...req,
+      date: Date.now(),
+      resolve,
+      reject
+    })
+  })
+}
+
+const cleanUpInterval = setInterval(() => {
+  const now = Date.now()
+
+  while (queue.length) {
+    const req = queue[0]
+
+    if (!req.ctx) { // has been consumed
+      queue.shift()
+    } else if (req.date + timeout > now) {
+      break
+    } else { // timed out
+      req.reject(new RESTError('SERVER_WORKER_TIMEOUT'))
+      queue.shift()
+    }
+  }
+}, 1000)
+
+
+module.exports = { connect, close, topic, addToQueue }

@@ -181,6 +181,7 @@ async function main() {
       await nsqWriter.close()
       logger.info('Closing MongoDB connection...')
       await mongo.close()
+      logger.info('exit successfully')
     })
   })
 

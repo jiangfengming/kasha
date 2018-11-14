@@ -2,68 +2,84 @@ const { Writer } = require('nsqjs')
 const { nsq: { writer: { host, port, options } } } = require('./config')
 const logger = require('./logger')
 
-const writer = new Writer(host, port, options),
+const RECONNECT_INTERVAL = 5000
 
+const writer = new Writer(host, port, options)
+let connectPromise
 function connect() {
-  if (writer.ready) return writer
+  if (connectPromise) return connectPromise
 
-  return new Promise((resolve, reject) => {
-    let resolved = false
-
-    function onReady() {
-      writer.removeListener('error', onError)
-      writer.on('error', )
+  connectPromise = new Promise((resolve, reject) => {
+    function _resolve() {
+      writer.removeListener('error', _reject)
+      writer.on('error', onError)
       writer.on('closed', onClosed)
-      resolved = true
       resolve(writer)
     }
 
-    function onError(e) {
+    function _reject(e) {
+      writer.removeListener('ready', _resolve)
+      connectPromise = null
       reject(e)
+    }
+
+    function onError(e) {
+      logger.error(e)
+      writer.removeListener('error', onError)
+      writer.removeListener('closed', onClosed)
+      connectPromise = null
+      reconnect()
     }
 
     function onClosed() {
       logger.info('nsq writer connection closed')
     }
 
-    this.writer.on('error', e => {
-      if (!resolved) {
-        reject(e)
-      } else {
-        // auto reconnect on connection error
-        logger.error(e)
-        this.reconnect()
-      }
+    writer.on('ready', _resolve)
+    writer.on('error', _reject)
+    writer.on('error', () => {
+      // set up a empty error handler to prevent the process from existing
     })
-
     writer.connect()
+  })
+
+  return connectPromise
+}
+
+let reconnectTimer
+async function reconnect() {
+  try {
+    logger.info('reconnecting to NSQ writer...')
+    await connect()
+    logger.info('NSQ writer connected')
+    reconnectTimer = null
+  } catch (e) {
+    logger.error(e)
+    if (!closing) {
+      reconnectTimer = setTimeout(reconnect, RECONNECT_INTERVAL)
+    }
+  }
+}
+
+let closing = false
+function close() {
+  return new Promise(async resolve => {
+    closing = true
+
+    if (reconnectTimer) clearTimeout(reconnectTimer)
+
+    if (connectPromise) {
+      try {
+        await connectPromise
+        writer.once('closed', resolve)
+        writer.close()
+      } catch (e) {
+        resolve()
+      }
+    } else {
+      resolve()
+    }
   })
 }
 
-module.exports = {
-
-
-
-  reconnect() {
-    if (this.writer.ready) return
-    logger.info('reconnecting to NSQ writer...')
-
-    this.writer.removeListener('error', this.)
-    this.writer.once('ready', () => {
-
-    })
-    this.writer.connect()
-
-  },
-
-  close() {
-    return new Promise(resolve => {
-      if (!this.writer.ready) {
-        return resolve()
-      }
-
-      this.writer.once('closed', resolve)
-      this.writer.close()
-    })
-  }
-}
+module.exports = { writer, connect, close }
