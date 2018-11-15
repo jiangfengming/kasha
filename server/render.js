@@ -211,7 +211,8 @@ async function render(ctx) {
   }
 
   function handleResult(doc, cacheStatus) {
-    if (doc.status) {
+    // don't return the stale document in BYPASS mode, return the last error if there's one.
+    if (doc.status && !(doc.error && cacheStatus === 'BYPASS')) {
       doc = normalizeDoc(doc, metaOnly)
 
       if (callbackURL) {
