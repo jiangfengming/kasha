@@ -9,8 +9,8 @@ const maxInFlight = 2500
 const topic = `kasha-server-${hostname()}`
 const queue = []
 
-async function connect() {
-  const reader = await nsqReader.connect(topic, 'response', { ...options, maxInFlight })
+function connect() {
+  const reader = nsqReader.connect(topic, 'response', { ...options, maxInFlight })
 
   reader.on('message', async msg => {
     // don't block the queue

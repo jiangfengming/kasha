@@ -5,34 +5,14 @@ const singleton = {
   reader: null,
 
   connect(topic, channel, options) {
-    return new Promise((resolve, reject) => {
-      singleton.reader = new Reader(topic, channel, options)
+    singleton.reader = new Reader(topic, channel, options)
 
-      function _resolve() {
-        singleton.reader.removeListener('ready', _resolve)
-        singleton.reader.removeListener('nsqd_connected', _resolve)
-        singleton.reader.removeListener('error', _reject)
-
-        singleton.reader.on('error', e => {
-          logger.error(e)
-        })
-
-        resolve(singleton.reader)
-      }
-
-      function _reject() {
-        singleton.reader.removeListener('ready', _resolve)
-        singleton.reader.removeListener('nsqd_connected', _resolve)
-        reject()
-      }
-
-      singleton.reader.once('ready', _resolve)
-      // ready event not emit sometimes
-      // we listen for nsqd_connected also
-      singleton.reader.once('nsqd_connected', _resolve)
-      singleton.reader.once('error', _reject)
-      singleton.reader.connect()
+    singleton.reader.on('error', e => {
+      logger.error(e)
     })
+
+    singleton.reader.connect()
+    return singleton.reader
   },
 
   close() {

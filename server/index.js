@@ -21,9 +21,7 @@ async function main() {
   logger.info('NSQ writer connected')
 
   const workerResponder = require('./workerResponder')
-  logger.info('connecting to worker responder...')
-  await workerResponder.connect()
-  logger.info('worker responder connected')
+  workerResponder.connect()
 
   const Koa = require('koa')
   const Router = require('koa-router')

@@ -102,9 +102,7 @@ async function main() {
 
   const nsqReader = require('../shared/nsqReader')
   const topic = argv.async ? 'kasha-async-queue' : 'kasha-sync-queue'
-  logger.info('connecting to NSQ reader...')
-  const reader = await nsqReader.connect(topic, 'worker', config.nsq.reader)
-  logger.info('NSQ reader connected')
+  const reader = nsqReader.connect(topic, 'worker', config.nsq.reader)
 
   const jobTimeout = 20 * 1000
   let jobCounter = 0
@@ -370,7 +368,7 @@ async function main() {
         if (callbackURL) {
           callback(callbackURL, error, doc, cacheStatus)
         } else if (replyTo) {
-          nsqWriter.publish(replyTo, {
+          nsqWriter.writer.publish(replyTo, {
             correlationId,
             error,
             doc,
