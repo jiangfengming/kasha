@@ -1891,10 +1891,10 @@ punycode@^2.1.0:
   resolved "https://registry.yarnpkg.com/punycode/-/punycode-2.1.1.tgz#b58b010ac40c22c5657616c8d2c2c02c7bf479ec"
   integrity sha512-XRsRjdf+j5ml+y/6GKHPZbrF/8p2Yga0JPtdqTIY2Xe5ohJPD9saDJJLPvp9+NSBprVvevdXZybnj2cv8OEd0A==
 
-puppeteer-prerender@^0.7.1:
-  version "0.7.1"
-  resolved "https://registry.yarnpkg.com/puppeteer-prerender/-/puppeteer-prerender-0.7.1.tgz#21ecf424faa92ca3b099999ee84ed71d4bc0c688"
-  integrity sha512-/X7Kn9ze0FdoaVdcfs4fy5mZ3K1t1NXbaOp/7/ipC5h/Fo7tgEZaJdzF6pTfXerPEbzUp28WstJSIIkpEzMAQw==
+puppeteer-prerender@^0.7.2:
+  version "0.7.2"
+  resolved "https://registry.yarnpkg.com/puppeteer-prerender/-/puppeteer-prerender-0.7.2.tgz#1c6ab7e352d19cabbbe8dca3ddc5377ed16e6967"
+  integrity sha512-cH9V8EXlI1PcZdKHInxHZaRmp07v1NTCWjRLWFOiToqxcr+wU7rWkMyB9g7zjrzMxkblMEnmbCiNtAYbEwDvGw==
   dependencies:
     parse-open-graph "^0.3.2"
     puppeteer "^1.10.0"
