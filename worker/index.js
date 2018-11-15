@@ -142,7 +142,7 @@ async function main() {
     if (replyTo) {
       const time = msg.timestamp.dividedBy(1000000).integerValue().toNumber()
       if (time + jobTimeout < Date.now()) {
-        logger.debug(`drop job: ${url}`)
+        logger.debug(`drop job: ${url} @${deviceType}`)
         return handleResult({ error: new RESTError('SERVER_WORKER_BUSY').toJSON() })
       }
     }
@@ -161,6 +161,7 @@ async function main() {
     }
 
     try {
+      logger.debug(`lock: ${url} @${deviceType} with ${lock}`)
       await snapshots.updateOne(lockQuery, {
         $set: {
           updatedAt: new Date(),
@@ -202,6 +203,7 @@ async function main() {
     let doc
 
     try {
+      logger.debug(`prerender ${url} @${deviceType}`)
       doc = await prerenderer.render(url, {
         userAgent: userAgents[deviceType],
         // always followRedirect when caching pages
@@ -215,6 +217,8 @@ async function main() {
         },
         rewrites
       })
+
+      logger.debug(`prerender ${url} @${deviceType} successfully`)
 
       if (doc.meta && doc.meta.status) {
         const s = parseInt(doc.meta.status)
@@ -267,6 +271,7 @@ async function main() {
         }
       }
     } catch (e) {
+      logger.debug(`prerender ${url} @${deviceType} failed`)
       doc = { error: new RESTError('SERVER_RENDER_ERROR', e.message).toJSON() }
     }
 
@@ -274,6 +279,7 @@ async function main() {
 
     const query = { site, path, deviceType, lock }
 
+    logger.debug('update snapshot:', query)
     snapshots.updateOne(query, {
       $set: {
         ...doc,
