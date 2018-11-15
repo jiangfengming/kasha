@@ -9,13 +9,21 @@ async function main() {
   const RESTError = require('../shared/RESTError')
 
   const mongo = require('../shared/mongo')
+  logger.info('connecting to MongoDB...')
   await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
+  logger.info('MongoDB connected')
+
   const getSiteConfig = require('../shared/getSiteConfig')
 
   const nsqWriter = require('../shared/nsqWriter')
+  logger.info('connecting to NSQ writer...')
   await nsqWriter.connect()
+  logger.info('NSQ writer connected')
+
   const workerResponder = require('./workerResponder')
+  logger.info('connecting to worker responder...')
   await workerResponder.connect()
+  logger.info('worker responder connected')
 
   const Koa = require('koa')
   const Router = require('koa-router')

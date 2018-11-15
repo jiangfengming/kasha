@@ -9,7 +9,9 @@ async function main() {
   const normalizeDoc = require('../shared/normalizeDoc')
 
   const mongo = require('../shared/mongo')
+  logger.info('connecting to MongoDB...')
   const db = await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.workerOptions)
+  logger.info('MongoDB connected')
 
   const snapshots = db.collection('snapshots')
   /*
@@ -91,12 +93,19 @@ async function main() {
   const uid = require('../shared/uid')
   const callback = require('../shared/callback')
 
-  const nsqWriter = await require('../shared/nsqWriter').connect()
+  const nsqWriter = require('../shared/nsqWriter')
+  logger.info('connecting to NSQ writer...')
+  await nsqWriter.connect()
+  logger.info('NSQ writer connected')
+
   const poll = require('../shared/poll')
 
   const nsqReader = require('../shared/nsqReader')
   const topic = argv.async ? 'kasha-async-queue' : 'kasha-sync-queue'
+  logger.info('connecting to NSQ reader...')
   const reader = await nsqReader.connect(topic, 'worker', config.nsq.reader)
+  logger.info('NSQ reader connected')
+
   const jobTimeout = 20 * 1000
   let jobCounter = 0
 
