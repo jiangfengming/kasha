@@ -16,7 +16,7 @@
     "mongodb": "^3.1.9",
     "node-fetch": "^2.3.0",
     "nsqjs": "^0.12.0",
-    "puppeteer-prerender": "^0.7.2",
+    "puppeteer-prerender": "^0.7.3",
     "raven-logger": "^0.2.0",
     "request": "^2.88.0",
     "rest-api-error-factory": "^0.1.1",
