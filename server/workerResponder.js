@@ -1,7 +1,6 @@
-const { Reader } = require('nsqjs')
+const nsqReader = require('../shared/nsqReader')
 const { hostname } = require('os')
 const RESTError = require('../shared/RESTError')
-const logger = require('../shared/logger')
 const { nsq: { reader: options } } = require('../shared/config')
 const reply = require('./reply')
 
@@ -9,71 +8,37 @@ const timeout = 28 * 1000
 const maxInFlight = 2500
 const topic = `kasha-server-${hostname()}`
 const queue = []
-const reader = new Reader(topic, 'response', { ...options, maxInFlight })
 
-reader.on('message', async msg => {
-  // don't block the queue
-  msg.finish()
+async function connect() {
+  const reader = await nsqReader.connect(topic, 'response', { ...options, maxInFlight })
 
-  const data = msg.json()
-  const req = queue.find(req => req.correlationId === data.correlationId)
-  if (!req) return
+  reader.on('message', async msg => {
+    // don't block the queue
+    msg.finish()
 
-  const { ctx, resolve, reject, type, followRedirect } = req
+    const data = msg.json()
+    const req = queue.find(req => req.correlationId === data.correlationId)
+    if (!req) return
 
-  if (data.error) return reject(new RESTError(data.error))
+    const { ctx, resolve, reject, type, followRedirect } = req
 
-  data.doc.privateExpires = new Date(data.doc.privateExpires)
-  data.doc.sharedExpires = new Date(data.doc.sharedExpires)
+    if (data.error) return reject(new RESTError(data.error))
 
-  reply(ctx, type, followRedirect, data.doc, data.cacheStatus)
+    data.doc.privateExpires = new Date(data.doc.privateExpires)
+    data.doc.sharedExpires = new Date(data.doc.sharedExpires)
 
-  // release resources
-  for (const k in req) delete req[k]
+    reply(ctx, type, followRedirect, data.doc, data.cacheStatus)
 
-  resolve()
-})
+    // release resources
+    for (const k in req) delete req[k]
 
-function connect() {
-  return new Promise((resolve, reject) => {
-    function onReady() {
-      reader.removeListener('error', onError)
-
-      reader.on('error', e => {
-        logger.error('Worker responder error', e)
-      })
-
-      resolve()
-    }
-
-    function onError() {
-      reader.removeListener('ready', onReady)
-      reject()
-    }
-
-    reader.once('ready', onReady)
-    reader.once('error', onError)
-    reader.connect()
+    resolve()
   })
 }
 
-function close() {
-  return new Promise((resolve, reject) => {
-    clearInterval(cleanUpInterval)
-
-    if (reader.connectionIds.length === 0) {
-      return resolve()
-    }
-
-    reader.on('nsqd_closed', () => {
-      if (reader.connectionIds.length === 0) {
-        return resolve()
-      }
-    })
-
-    reader.on('error', reject)
-    reader.close()
-  })
+async function close() {
+  clearInterval(cleanUpInterval)
+  await nsqReader.close()
 }
 
 // { correlationId, ctx, type, followRedirect }

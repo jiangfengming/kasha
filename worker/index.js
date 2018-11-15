@@ -1,9 +1,8 @@
-(async function() {
-  const argv = require('yargs').argv
-  const logger = require('../shared/logger')
+const argv = require('yargs').argv
+const logger = require('../shared/logger')
+logger.debug('Command line arguments:', argv)
 
-  logger.debug(argv)
-
+async function main() {
   const { URL } = require('url')
   const config = require('../shared/config')
   const RESTError = require('../shared/RESTError')
@@ -77,8 +76,8 @@
     }
   }
 
-  if (config.loglevel === 'debug') {
-    prerendererOpts.debug = true
+  if (config.logLevel === 'debug') {
+    prerendererOpts.debug = logger.debug.bind(logger)
   }
 
   if (argv.headless === false) {
@@ -92,16 +91,13 @@
   const uid = require('../shared/uid')
   const callback = require('../shared/callback')
 
-  const { Reader } = require('nsqjs')
-  const topic = argv.async ? 'kasha-async-queue' : 'kasha-sync-queue'
-  const reader = new Reader(topic, 'worker', config.nsq.reader)
-  reader.connect()
-
   const nsqWriter = await require('../shared/nsqWriter').connect()
   const poll = require('../shared/poll')
 
-  const TIMEOUT = 27 * 1000
-
+  const nsqReader = require('../shared/nsqReader')
+  const topic = argv.async ? 'kasha-async-queue' : 'kasha-sync-queue'
+  const reader = await nsqReader.connect(topic, 'worker', config.nsq.reader)
+  const jobTimeout = 20 * 1000
   let jobCounter = 0
 
   reader.on('message', async msg => {
@@ -138,8 +134,8 @@
 
     if (replyTo) {
       const time = msg.timestamp.dividedBy(1000000).integerValue().toNumber()
-      if (time + TIMEOUT < Date.now()) {
-        logger.debug('drop job:', req)
+      if (time + jobTimeout < Date.now()) {
+        logger.debug(`drop job: ${url}`)
         return handleResult({ error: new RESTError('SERVER_WORKER_BUSY').toJSON() })
       }
     }
@@ -388,7 +384,7 @@
     if (stopping) return
 
     stopping = true
-    logger.info('Closing the worker... Please wait for finishing the in-flight jobs.')
+    logger.info('Closing the worker... Please wait for finishing the in-flight jobs...')
     reader.pause()
 
     const interval = setInterval(() => {
@@ -399,12 +395,27 @@
     }, 1000)
 
     async function exit() {
-      reader.close()
-      nsqWriter.close()
+      logger.info('Closing NSQ reader connection...')
+      await nsqReader.close()
+      logger.info('Closing NSQ writer connection...')
+      await nsqWriter.close()
+      logger.info('Closing prerenderer...')
       await prerenderer.close()
+      logger.info('Closing MongoDB connection...')
       await mongo.close()
+      logger.info('exit successfully')
     }
   })
 
   logger.info('Worker started')
-}())
+}
+
+(async() => {
+  try {
+    await main()
+  } catch (e) {
+    logger.error(e)
+    process.exit(1)
+  }
+})()
+

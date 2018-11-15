@@ -6,6 +6,7 @@ const RECONNECT_INTERVAL = 5000
 
 const writer = new Writer(host, port, options)
 let connectPromise
+
 function connect() {
   if (connectPromise) return connectPromise
 

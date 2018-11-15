@@ -114,11 +114,7 @@ async function render(ctx) {
       path += url.hash
     }
 
-    logger.debug(ctx.url, {
-      extra: {
-        params: { site, path, deviceType, callbackURL, type, noWait, metaOnly, followRedirect }
-      }
-    })
+    logger.debug({ site, path, deviceType, callbackURL, type, noWait, metaOnly, followRedirect })
 
     if (ctx.siteConfig && ctx.siteConfig.rewrites) {
       let rewrited = urlRewrite(url.href, ctx.siteConfig.rewrites)

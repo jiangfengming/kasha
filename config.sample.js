@@ -55,6 +55,7 @@ module.exports = {
     sitemap: 60 * 60 // 1 hour
   },
 
+  // You can comment out `sites` config and config sites in mongodb `sites` collection.
   sites: [
     {
       host: 'localhost:3000',
@@ -65,9 +66,11 @@ module.exports = {
     }
   ],
 
+  /*
   sentry: {
     dsn: ''
   },
+  */
 
-  loglevel: 'debug' // debug, info, warning, error, fatal
+  logLevel: 'debug' // debug, info, warning, error, fatal
 }

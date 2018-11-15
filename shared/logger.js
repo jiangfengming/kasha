@@ -1,9 +1,12 @@
-const raven = require('raven')
+const sentry = require('@sentry/node')
 const config = require('./config')
 const Logger = require('raven-logger')
 
-if (config.sentry && config.sentry.dsn) {
-  raven.config(config.sentry.dsn, config.sentry.options).install()
+if (config.sentry) {
+  sentry.init(config.sentry)
 }
 
-module.exports = new Logger({ raven, level: config.loglevel })
+module.exports = new Logger({
+  sentry: config.sentry ? sentry : null,
+  logLevel: config.logLevel
+})

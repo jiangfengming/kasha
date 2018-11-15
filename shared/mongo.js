@@ -1,6 +1,6 @@
 const { MongoClient } = require('mongodb')
 
-const me = {
+const singleton = {
   // after the entry point function has initialized the db connection via:
   // const db = await require('./mongo').connect(url, database, options)
   // other modules can import db instance without await:
@@ -9,22 +9,17 @@ const me = {
   db: null,
 
   async connect(url, database, options = {}) {
-    if (me.db) return me.db
-
     options.useNewUrlParser = true
-
-    me.mongoClient = await new MongoClient(url, options).connect()
-    me.db = await me.mongoClient.db(database)
-    return me.db
+    singleton.mongoClient = await new MongoClient(url, options).connect()
+    singleton.db = await singleton.mongoClient.db(database)
+    return singleton.db
   },
 
   async close() {
-    if (!me.db) return
-
-    await me.mongoClient.close()
-    me.mongoClient = null
-    me.db = null
+    await singleton.mongoClient.close()
+    singleton.mongoClient = null
+    singleton.db = null
   }
 }
 
-module.exports = me
+module.exports = singleton

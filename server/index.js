@@ -1,6 +1,6 @@
 const argv = require('yargs').argv
 const logger = require('../shared/logger')
-logger.debug(argv)
+logger.debug('Command line arguments:', argv)
 
 async function main() {
   await require('../install')
@@ -12,7 +12,7 @@ async function main() {
   await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
   const getSiteConfig = require('../shared/getSiteConfig')
 
-  const nsqWriter = await require('../shared/nsqWriter')
+  const nsqWriter = require('../shared/nsqWriter')
   await nsqWriter.connect()
   const workerResponder = require('./workerResponder')
   await workerResponder.connect()
