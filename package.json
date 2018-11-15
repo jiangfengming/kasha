@@ -1,6 +1,6 @@
 {
   "name": "kasha",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "prerender service",
   "main": "index.js",
   "bin": {
