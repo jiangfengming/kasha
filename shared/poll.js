@@ -31,7 +31,7 @@ function poll(site, path, deviceType, lock) {
       } else {
         if (!lock) lock = doc.lock
 
-        if (tried > 5) {
+        if (tried >= 5) {
           clearInterval(intervalId)
 
           const error = new RESTError('SERVER_CACHE_LOCK_TIMEOUT', 'snapshot')
@@ -59,7 +59,11 @@ function poll(site, path, deviceType, lock) {
     }
 
     const intervalId = setInterval(p, 5000)
-    if (!lock) p()
+
+    if (!lock) {
+      tried = -1
+      p()
+    }
   })
 }
 
