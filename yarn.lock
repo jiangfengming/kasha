@@ -1891,19 +1891,19 @@ punycode@^2.1.0:
   resolved "https://registry.yarnpkg.com/punycode/-/punycode-2.1.1.tgz#b58b010ac40c22c5657616c8d2c2c02c7bf479ec"
   integrity sha512-XRsRjdf+j5ml+y/6GKHPZbrF/8p2Yga0JPtdqTIY2Xe5ohJPD9saDJJLPvp9+NSBprVvevdXZybnj2cv8OEd0A==
 
-puppeteer-prerender@^0.7.3:
-  version "0.7.3"
-  resolved "https://registry.yarnpkg.com/puppeteer-prerender/-/puppeteer-prerender-0.7.3.tgz#7f7ca473fbc47039e81fca4a0be49e7f18d4398e"
-  integrity sha512-fjdQ7AKxE63C7wp3iV52nsE/8rZNnJoq9I04opoEV4QOSPLg9ipEdygAsdPaOIXzRQ4m7LHU5hjH66x9Q5y1gA==
+puppeteer-prerender@0.7.4-dev.1:
+  version "0.7.4-dev.1"
+  resolved "https://registry.yarnpkg.com/puppeteer-prerender/-/puppeteer-prerender-0.7.4-dev.1.tgz#8c44e2b0d2453ab14d2d5804bdd342cfc6510f7c"
+  integrity sha512-X/5Pa7Jx2aVJz6t1CwcUvEIWr/+B53zzM+7qWFhULQroTH1Y6T5rDODW04Adfic0r20iuyUfL9Uf5qxFWUd9pQ==
   dependencies:
     parse-open-graph "^0.3.2"
-    puppeteer "^1.10.0"
+    puppeteer "1.6.2"
     request "^2.88.0"
 
-puppeteer@^1.10.0:
-  version "1.10.0"
-  resolved "https://registry.yarnpkg.com/puppeteer/-/puppeteer-1.10.0.tgz#e3005f1251c2feae0e10c0f7a35afbcd56589ceb"
-  integrity sha512-3i28X/ucX8t3eL4TZA60FLMOQNKqudFSOGDHr0cT7T4dE027CrcS885aAqjdxNybhMPliM5yImNsKJ6SQrPzhw==
+puppeteer@1.6.2:
+  version "1.6.2"
+  resolved "https://registry.yarnpkg.com/puppeteer/-/puppeteer-1.6.2.tgz#e3c31f8184e8fb8b36e4263921bcaaab7a99b3bf"
+  integrity sha512-KBgMr/ZdwIwDQWTqcAlGhnQ2Vd6p+o5B89H60XUfdmCpia2KViSZsdRjvrf2wYOxXSrpYx6OuCBzV7ppLuNjNg==
   dependencies:
     debug "^3.1.0"
     extract-zip "^1.6.6"
