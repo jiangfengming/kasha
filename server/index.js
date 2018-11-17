@@ -1,6 +1,4 @@
-const argv = require('yargs').argv
 const logger = require('../shared/logger')
-logger.debug('Command line arguments:', argv)
 
 async function main() {
   await require('../install')
