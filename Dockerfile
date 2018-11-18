@@ -18,5 +18,5 @@ RUN apt-get update && apt-get install -y wget --no-install-recommends \
     && apt-get purge --auto-remove -y curl \
     && rm -rf /src/*.deb
 
-RUN yarn global add kasha@next
+RUN yarn global add kasha
 RUN kasha-server --version

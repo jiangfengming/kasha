@@ -1,35 +1,56 @@
+const config = require('../shared/config')
 const logger = require('../shared/logger')
+const mongo = require('../shared/mongo')
+const nsqWriter = require('../shared/nsqWriter')
+const workerResponder = require('./workerResponder')
+
+;(async() => {
+  try {
+    await require('../install')
+
+    logger.info('connecting to MongoDB...')
+    await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
+    logger.info('MongoDB connected')
+
+    logger.info('connecting to NSQ writer...')
+    await nsqWriter.connect()
+    logger.info('NSQ writer connected')
+
+    workerResponder.connect()
+
+    await main()
+  } catch (e) {
+    logger.error(e)
+    await exit()
+    process.exitCode = 1
+  }
+})()
+
+async function exit() {
+  logger.info('Closing MongoDB connection...')
+  await mongo.close()
+  logger.info('MongoDB connection closed.')
+
+  logger.info('Closing NSQ writer connection...')
+  await nsqWriter.close()
+  logger.info('NSQ writer connection closed.')
+
+  logger.info('Closing worker responder connection...')
+  await workerResponder.close()
+  logger.info('Worker responder connection closed.')
+}
 
 async function main() {
-  await require('../install')
-
-  const config = require('../shared/config')
   const RESTError = require('../shared/RESTError')
-
-  const mongo = require('../shared/mongo')
-  logger.info('connecting to MongoDB...')
-  await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
-  logger.info('MongoDB connected')
-
   const getSiteConfig = require('../shared/getSiteConfig')
-
-  const nsqWriter = require('../shared/nsqWriter')
-  logger.info('connecting to NSQ writer...')
-  await nsqWriter.connect()
-  logger.info('NSQ writer connected')
-
-  const workerResponder = require('./workerResponder')
-  workerResponder.connect()
-
   const Koa = require('koa')
   const Router = require('koa-router')
+  const render = require('./render')
+  const sitemap = require('./sitemap')
   const stoppable = require('stoppable')
-
   const parseForwardedHeader = require('forwarded-parse')
 
   const app = new Koa()
-  const render = require('./render')
-  const sitemap = require('./sitemap')
 
   app.on('error', e => {
     logger.error(e)
@@ -37,8 +58,8 @@ async function main() {
 
   app.use(async(ctx, next) => {
     try {
-      logger.debug(`${ctx.method} ${ctx.href}`)
       await next()
+      logger.log(`${ctx.method} ${ctx.href} ${ctx.status}`)
     } catch (e) {
       let err = e
       if (!(e instanceof RESTError)) {
@@ -48,6 +69,7 @@ async function main() {
       ctx.set('Kasha-Code', err.code)
       ctx.status = err.httpStatus
       ctx.body = err.toJSON()
+      logger.log(`${ctx.method} ${ctx.href} ${ctx.status}: ${err.code}`)
     }
   })
 
@@ -179,24 +201,10 @@ async function main() {
     logger.info('Closing the server. Please wait for finishing the pending requests...')
 
     server.stop(async() => {
-      logger.info('Closing worker responder connection...')
-      await workerResponder.close()
-      logger.info('Closing NSQ writer connection...')
-      await nsqWriter.close()
-      logger.info('Closing MongoDB connection...')
-      await mongo.close()
+      await exit()
       logger.info('exit successfully')
     })
   })
 
-  logger.info(`http server started at port ${config.port}`)
+  logger.info(`Kasha http server started at port ${config.port}`)
 }
-
-(async() => {
-  try {
-    await main()
-  } catch (e) {
-    logger.error(e)
-    process.exit(1)
-  }
-})()

@@ -1,3 +1,4 @@
+const logger = require('./logger')
 const fetch = require('node-fetch')
 
 const RETRY = 3
@@ -21,15 +22,20 @@ async function callback(callbackURL, error, doc, cacheStatus) {
     timeout: TIMEOUT
   }
 
-  let success = false, tried = 0
-  do {
+  let tried = 0
+  while (1) { // eslint-disable-line no-constant-condition
     try {
-      await fetch(callbackURL, init)
-      success = true
+      const response = await fetch(callbackURL, init)
+      logger.log(`GET ${doc.site}/${doc.path} ${doc.status}. Callback ${callbackURL} ${response.status}.`)
+      break
     } catch (e) {
       tried++
+      if (tried >= RETRY) {
+        logger.log(`GET ${doc.site}/${doc.path} ${doc.status}. Callback ${callbackURL} ${e.message}.`)
+        break
+      }
     }
-  } while (!success && tried < RETRY)
+  }
 }
 
 module.exports = callback

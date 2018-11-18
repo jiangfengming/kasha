@@ -1,20 +1,101 @@
-const argv = require('yargs').argv
+const config = require('../shared/config')
 const logger = require('../shared/logger')
+const mongo = require('../shared/mongo')
+const nsqWriter = require('../shared/nsqWriter')
+const nsqReader = require('../shared/nsqReader')
+const Prerenderer = require('puppeteer-prerender')
+
+const JOB_TIMEOUT = 20 * 1000
+const PRERENDER_TIMEOUT = 24 * 1000
+
+const prerendererOpts = {
+  debug: config.logLevel === 'debug' ? logger.debug.bind(logger) : false,
+
+  timeout: PRERENDER_TIMEOUT,
+
+  puppeteerLaunchOptions: {
+    headless: global.argv.headless,
+
+    handleSIGINT: false,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage'
+    ]
+  },
+
+  parseOpenGraphOptions: {
+    // these tag has attributes
+    alias: {
+      'sitemap:video:player_loc': 'sitemap:video:player_loc:_',
+      'sitemap:video:restriction': 'sitemap:video:restriction:_',
+      'sitemap:video:platform': 'sitemap:video:platform:_',
+      'sitemap:video:price': 'sitemap:video:price:_',
+      'sitemap:video:uploader': 'sitemap:video:uploader:_'
+    },
+
+    arrays: [
+      'sitemap:image',
+      'sitemap:video',
+      'sitemap:video:tag'
+    ]
+  }
+}
+
+let db, reader, prerenderer
+;(async() => {
+  try {
+    logger.info('connecting to MongoDB...')
+    db = await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.workerOptions)
+    logger.info('MongoDB connected')
+
+    logger.info('connecting to NSQ writer...')
+    await nsqWriter.connect()
+    logger.info('NSQ writer connected')
+
+    reader = nsqReader.connect(global.argv.async ? 'kasha-async-queue' : 'kasha-sync-queue', 'worker', config.nsq.reader)
+
+    prerenderer = new Prerenderer(prerendererOpts)
+
+    await main()
+  } catch (e) {
+    logger.error(e)
+    await exit()
+    process.exitCode = 1
+  }
+})()
+
+async function exit() {
+  logger.info('Closing MongoDB connection...')
+  await mongo.close()
+  logger.info('MongoDB connection closed.')
+
+  logger.info('Closing NSQ writer connection...')
+  await nsqWriter.close()
+  logger.info('NSQ writer connection closed.')
+
+  logger.info('Closing NSQ reader connection...')
+  await nsqReader.close()
+  logger.info('NSQ reader connection closed.')
+
+  if (prerenderer) {
+    logger.info('Closing prerenderer...')
+    await prerenderer.close()
+  }
+}
 
 async function main() {
   const { URL } = require('url')
   const config = require('../shared/config')
   const RESTError = require('../shared/RESTError')
   const normalizeDoc = require('../shared/normalizeDoc')
+  const userAgents = require('./userAgents')
+  const uid = require('../shared/uid')
+  const callback = require('../shared/callback')
+  const poll = require('../shared/poll')
 
-  const mongo = require('../shared/mongo')
-  logger.info('connecting to MongoDB...')
-  const db = await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.workerOptions)
-  logger.info('MongoDB connected')
-
-  const snapshots = db.collection('snapshots')
   /*
-  schema:
+  snapshots schema:
   site: String
   path: String
   deviceType: String
@@ -32,10 +113,10 @@ async function main() {
   sharedExpires: Date
   lock: String
   */
+  const snapshots = db.collection('snapshots')
 
-  const sitemaps = db.collection('sitemaps')
   /*
-  schema:
+  sitemaps schema:
   site: String
   path: String
   lastmod: String
@@ -46,64 +127,8 @@ async function main() {
   videos: Array
   updatedAt: Date
   */
+  const sitemaps = db.collection('sitemaps')
 
-  const Prerenderer = require('puppeteer-prerender')
-
-  const prerendererOpts = {
-    timeout: 24 * 1000,
-    puppeteerLaunchOptions: {
-      handleSIGINT: false,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage'
-      ]
-    },
-    parseOpenGraphOptions: {
-      // these tag has attributes
-      alias: {
-        'sitemap:video:player_loc': 'sitemap:video:player_loc:_',
-        'sitemap:video:restriction': 'sitemap:video:restriction:_',
-        'sitemap:video:platform': 'sitemap:video:platform:_',
-        'sitemap:video:price': 'sitemap:video:price:_',
-        'sitemap:video:uploader': 'sitemap:video:uploader:_'
-      },
-
-      arrays: [
-        'sitemap:image',
-        'sitemap:video',
-        'sitemap:video:tag'
-      ]
-    }
-  }
-
-  if (config.logLevel === 'debug') {
-    prerendererOpts.debug = logger.debug.bind(logger)
-  }
-
-  if (argv.headless === false) {
-    prerendererOpts.puppeteerLaunchOptions.headless = false
-  }
-
-  const prerenderer = new Prerenderer(prerendererOpts)
-
-  const userAgents = require('./userAgents')
-
-  const uid = require('../shared/uid')
-  const callback = require('../shared/callback')
-
-  const nsqWriter = require('../shared/nsqWriter')
-  logger.info('connecting to NSQ writer...')
-  await nsqWriter.connect()
-  logger.info('NSQ writer connected')
-
-  const poll = require('../shared/poll')
-
-  const nsqReader = require('../shared/nsqReader')
-  const topic = argv.async ? 'kasha-async-queue' : 'kasha-sync-queue'
-  const reader = nsqReader.connect(topic, 'worker', config.nsq.reader)
-
-  const jobTimeout = 20 * 1000
   let jobCounter = 0
 
   reader.on('message', async msg => {
@@ -140,7 +165,7 @@ async function main() {
 
     if (replyTo) {
       const time = msg.timestamp.dividedBy(1000000).integerValue().toNumber()
-      if (time + jobTimeout < Date.now()) {
+      if (time + JOB_TIMEOUT < Date.now()) {
         logger.debug(`drop job: ${url} @${deviceType}`)
         return handleResult({ error: new RESTError('SERVER_WORKER_BUSY').toJSON() })
       }
@@ -355,7 +380,10 @@ async function main() {
     }
 
     function handleResult(doc) {
+      logger.log(`${url} @${deviceType} ${doc.error ? doc.error.code : doc.status}`)
+
       if (callbackURL || replyTo) {
+        // if fetch the document failed, we try to use the cached document if mode is not BYPASS
         if (cacheStatus !== 'BYPASS' && cacheDoc && (!doc.status || doc.status >= 500 && cacheDoc.status < 500)) {
           doc = cacheDoc
           if (cacheStatus === 'EXPIRED') {
@@ -383,8 +411,6 @@ async function main() {
       }
 
       if (!msg.hasResponded) msg.finish()
-
-      logger.debug(`job finished: ${url}`)
       jobCounter--
     }
   })
@@ -399,35 +425,14 @@ async function main() {
     logger.info('Closing the worker... Please wait for finishing the in-flight jobs...')
     reader.pause()
 
-    const interval = setInterval(() => {
+    const interval = setInterval(async() => {
       if (jobCounter === 0) {
         clearInterval(interval)
-        exit()
+        await exit()
+        logger.info('exit successfully')
       }
     }, 1000)
-
-    async function exit() {
-      logger.info('Closing NSQ reader connection...')
-      await nsqReader.close()
-      logger.info('Closing NSQ writer connection...')
-      await nsqWriter.close()
-      logger.info('Closing prerenderer...')
-      await prerenderer.close()
-      logger.info('Closing MongoDB connection...')
-      await mongo.close()
-      logger.info('exit successfully')
-    }
   })
 
-  logger.info('Worker started')
+  logger.info('Kasha Worker started')
 }
-
-(async() => {
-  try {
-    await main()
-  } catch (e) {
-    logger.error(e)
-    process.exit(1)
-  }
-})()
-

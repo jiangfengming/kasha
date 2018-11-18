@@ -1,11 +1,15 @@
-# kasha - Prerender service for SPA
+# Kasha 📸
+Prerender your Single-Page Application.
 
 ## Features
 * Prerender the Single-Page Application.
-* Automatically collect sitemap data from `<meta>`s.
-* Generate `robots.txt` file with sitemap directives.
+* Automatically collect sitemaps from `<meta>`s.
+* Generate `robots.txt` with sitemap directives.
 * Sync prerendering.
-* Async prerendering with callback url.
+* Async prerendering with callback URL.
+* URL rewriting.
+* Works as a proxy server.
+* Rich APIs.
 * Caching.
 
 ## Requirements
@@ -14,7 +18,7 @@
 
 ## Installation
 ```sh
-npm install kasha -g
+yarn global add kasha
 ```
 
 ## Configuration
@@ -24,35 +28,54 @@ See [config.sample.js](config.sample.js)
 
 ### Start the server:
 ```sh
-kasha-server --config=/path/to/config.js
+kasha server --config=/path/to/config.js
 ```
 
 ### Start the worker:
 ```sh 
-kasha-worker --config=/path/to/config.js
+kasha worker --config=/path/to/config.js
 
 # async worker
 # requests with 'callbackURL' parameter will be dispatched to async workers.
-kasha-worker --async --config=/path/to/config.js
+kasha worker --async --config=/path/to/config.js
 ```
 
+## Proxy mode
+**DOCS TO BE WRITTEN**
+
 ## APIs
+Please confirm `apiHost` has been set correctly.
+
+For example, if set `apiHost: '127.0.0.1:3000'`, then only requests from `http(s)://127.0.0.1:3000/*` can access the APIs,
+All other domains are served in proxy mode.
 
 ### GET /render
 Prerenders the page.
 
 #### Query string params:  
-`url`: The encoded URL of the webpage to render.  
-`deviceType`: `desktop`|`mobile`. Use what type of device to render the page. Defaults to `desktop`.  
-`proxy`: Returns the page with `Content-Type: text/html`. Otherwise returns `json`.  
-`noWait`: Don't wait the result. It is useful for pre-caching the page.  
-`callbackURL`: Don't wait the result. Once the job is done, `POST` the result to the given url with `json` format.  
-`metaOnly`: Only returns meta data without html content.  
-`followRedirect`: Follows the redirects if the page return `301`/`302`.  
-`refresh`: Forces to refresh the cache.  
+`url`: The encoded URL of the webpage to render.
+
+`deviceType`: `desktop` | `mobile`. Use what type of device to render the page. Defaults to `desktop`.
+  It mainly sets the `User-Agent` of the browser.
+
+`type`: Set the response type. Defaults to `html`.
+  * `html`: Returns html with header `Content-Type: text/html`.
+  * `json`: Returns json with header `Content-Type: application/json`.
+  * `static`: Returns html with header `Content-Type: text/html`, but stripped the `<script>` tags and `on*` event handlers.
+
+`callbackURL`: Don't wait the result. Once the job is done, `POST` the result to the given URL with `json` format.
+If `callbackURL` is set, `type` is ignored.
+
+`metaOnly`: Only returns meta data without html content.
+
+`followRedirect`: Follows the redirects if the page return `301`/`302`.
+
+`refresh`: Forces to refresh the cache.
+
+`noWait`: Don't wait for the response. It is useful for pre-caching the page.
 
 To the boolean parameters, if the param is absent or set to `0`, it means `false`.
-If set to `1` or empty value (e.g., `&proxy`, `&proxy=`, `&proxy=1`), it means `true`.   
+If set to `1` or empty value (e.g., `&refresh`, `&refresh=`, `&refresh=1`), it means `true`.   
 
 Example: `http://localhost:3000/render?url=https%3A%2F%2Fdavidwalsh.name%2Ffacebook-meta-tags&deviceType=mobile&callbackURL=http%3A%2F%2Flocalhost%3A8080%2F&followRedirect`
 
@@ -106,13 +129,14 @@ Example: `http://localhost:3000/render?url=https%3A%2F%2Fdavidwalsh.name%2Ffaceb
 ```
 
 ### GET /:url
-Alias of `/render?url=URL&proxy`.  
-Example: `http://localhost:3000/https://www.example.com/`  
+Alias of `/render?url=ENCODED_URL`.
+
+For example, `http://localhost:3000/https://www.example.com/` is equivalent to `http://localhost:3000/render?url=https%3A%2F%2Fwww.example.com%2F`
 
 Notice: the `hash` of the url won't be sent to server. If you need the `hash` to be sent to the server, use the `/render` API.
 
 ### GET /cache?url=URL
-Alias of `/render?url=URL&nowait`
+Alias of `/render?url=ENCODED_URL&noWait`
 
 ### GET /:site/robots.txt
 Get `robots.txt` file with sitemaps collected by kasha. e.g.:
@@ -136,11 +160,10 @@ Sitemap: https://www.example.com/sitemaps/index/google/image/1.xml
 Sitemap: https://www.example.com/sitemaps/index/google/video/1.xml
 ```
 
-In order to access the sitemap files, you need to use [kasha-proxy](https://github.com/kasha-io/kasha-proxy) to pass `/sitemaps/*` urls to kasha.
-
 ### GET /:site/sitemaps/:page.xml
-Get [sitemap](https://www.sitemaps.org/protocol.html) of page N. e.g.:
+Get [sitemap](https://www.sitemaps.org/protocol.html) of page N.
 
+For example:
 ```
 http://localhost:3000/https://www.example.com/sitemaps/1.xml
 ```
@@ -183,7 +206,6 @@ kasha can collect sitemap data from custom Open Graph `<meta>` tags. For example
 canonical url is used as <loc> tag of sitemap xml.
 <meta property="og:url" content="..."> can be used also.
 -->
-
 <link rel="canonical" href="https://www.example.com/test.html">
 
 <meta property="sitemap:changefreq" content="hourly">
@@ -198,6 +220,9 @@ canonical url is used as <loc> tag of sitemap xml.
 </head>
 ```
 
-Sitemap data will be collected only if `origin` of canonical URL is the same as current page.
+Sitemap data will be collected only if the `origin` of the canonical URL is the same as the current page.
 
 See here for available tags: [sitemap protocol](https://www.sitemaps.org/protocol.html) and [Google sitemap extensions](https://support.google.com/webmasters/answer/183668)
+
+## License
+[MIT](LICENSE)

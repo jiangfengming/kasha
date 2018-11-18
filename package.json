@@ -4,28 +4,27 @@
   "description": "prerender service",
   "main": "index.js",
   "bin": {
-    "kasha-server": "bin/kasha-server",
-    "kasha-worker": "bin/kasha-worker"
+    "kasha": "bin/kasha"
   },
   "dependencies": {
-    "@sentry/node": "^4.3.0",
+    "@sentry/node": "^4.3.2",
     "forwarded-parse": "^2.1.0",
     "html-entities": "^1.2.1",
     "koa": "^2.6.2",
     "koa-router": "^7.4.0",
-    "mongodb": "^3.1.9",
+    "mongodb": "^3.1.10",
     "node-fetch": "^2.3.0",
     "nsqjs": "^0.12.0",
     "puppeteer-prerender": "^0.7.4-dev.2",
-    "raven-logger": "^0.2.0",
+    "raven-logger": "^0.3.0",
     "request": "^2.88.0",
     "rest-api-error-factory": "^0.1.1",
     "robots-txt-guard": "^0.2.1",
     "robots-txt-parse": "^1.0.1",
-    "schema-upgrade": "^0.2.0",
+    "schema-upgrade": "^0.2.1",
     "stoppable": "^1.1.0",
     "through": "^2.3.8",
-    "yargs": "^12.0.2"
+    "yargs": "^12.0.4"
   },
   "devDependencies": {
     "babel-eslint": "^10.0.1",

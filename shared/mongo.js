@@ -9,6 +9,8 @@ const singleton = {
   db: null,
 
   async connect(url, database, options = {}) {
+    if (singleton.db) return singleton.db
+
     options.useNewUrlParser = true
     singleton.mongoClient = await new MongoClient(url, options).connect()
     singleton.db = await singleton.mongoClient.db(database)
@@ -16,6 +18,8 @@ const singleton = {
   },
 
   async close() {
+    if (!singleton.mongoClient) return
+
     await singleton.mongoClient.close()
     singleton.mongoClient = null
     singleton.db = null

@@ -44,7 +44,7 @@ async function main() {
     throw new Error('Other process is upgrading the database. Please wait.')
   }
 
-  schema.upgrade()
+  await schema.upgrade()
 
   await collection.updateOne({
     key: 'appInfo',

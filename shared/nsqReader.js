@@ -17,7 +17,7 @@ const singleton = {
 
   close() {
     return new Promise((resolve, reject) => {
-      if (singleton.reader.connectionIds.length === 0) {
+      if (!singleton.reader || singleton.reader.connectionIds.length === 0) {
         return resolve()
       }
 

@@ -1,0 +1,36 @@
+#!/usr/bin/env node
+
+console.log(process.argv.join(' ')) // eslint-disable-line no-console
+
+require('yargs')
+  .option('config', {
+    alias: 'c',
+    describe: 'path to the config file',
+    demandOption: true
+  })
+  .command(['install', 'upgrade'], 'Create or upgrade the MongoDB database', {}, () => {
+    require('../install')
+  })
+  .command('server', 'Start the Kasha HTTP server', {}, () => {
+    require('../server')
+  })
+  .command('worker', 'Start the Kasha prerender worker', {
+    async: {
+      describe: 'Start the worker in async mode.',
+      type: 'boolean',
+      default: false
+    },
+
+    headless: {
+      describe: 'Start the chromium browser in headless mode',
+      type: 'boolean',
+      default: true
+    }
+  }, () => {
+    require('../worker')
+  })
+  .demandCommand(1, '<command> is required')
+  .middleware(argv => global.argv = argv)
+  .alias('version', 'v')
+  .alias('help', 'h')
+  .parse()

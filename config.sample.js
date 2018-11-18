@@ -1,12 +1,14 @@
 module.exports = {
+  // The listen port of the http server
   port: 3000,
 
-  // request with this host header is served in API mode.
-  // if not set or set to falsy values, API mode is disabled.
+  // Request with this host header is served in API mode.
+  // If not set or set to falsy values, API mode is disabled.
   apiHost: '127.0.0.1:3000',
   // apiHost: ['127.0.0.1:3000', 'kasha.example.com']
 
   nsq: {
+    // Options: https://github.com/dudleycarr/nsqjs#new-readertopic-channel-options
     reader: {
       // lookupdHTTPAddresses: '127.0.0.1:4161'
       // lookupdHTTPAddresses: ['10.0.0.142:4161','10.0.0.155:4161','10.0.0.4:4161']
@@ -14,6 +16,7 @@ module.exports = {
       maxInFlight: 10
     },
 
+    // Options: https://github.com/dudleycarr/nsqjs#new-writernsqdhost-nsqdport-options
     writer: {
       host: '127.0.0.1',
       port: 4150,
@@ -22,21 +25,26 @@ module.exports = {
   },
 
   mongodb: {
+    // MongoDB connection URL
     url: 'mongodb://localhost:27017',
+
+    // Database name
     database: 'kasha',
 
+    // MongoClient options for http server
+    // http://mongodb.github.io/node-mongodb-native/3.1/api/MongoClient.html
     serverOptions: {
       poolSize: 10
     },
 
+    // MongoClient options for worker
     workerOptions: {
       poolSize: 2
     }
   },
 
+  // The unit of time is in seconds
   cache: {
-    // in seconds
-
     // default max-age header of resources.
     maxage: 3 * 60, // 3 minutes
 
@@ -55,7 +63,7 @@ module.exports = {
     sitemap: 60 * 60 // 1 hour
   },
 
-  // You can comment out `sites` config and config sites in mongodb `sites` collection.
+  // You can comment out `sites` config here, and store the sites config in db's `sites` collection.
   sites: [
     {
       host: 'localhost:3000',
@@ -66,11 +74,13 @@ module.exports = {
     }
   ],
 
+  // Sentry error tracking
+  // https://sentry.io/
   /*
   sentry: {
-    dsn: ''
+    dsn: 'https://<key>@sentry.io/<project>'
   },
   */
 
-  logLevel: 'debug' // debug, info, warning, error, fatal
+  logLevel: 'log' // critical, fatal, error, warning, info, log, debug
 }
