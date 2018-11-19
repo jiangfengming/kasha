@@ -16,7 +16,7 @@
     "node-fetch": "^2.3.0",
     "nsqjs": "^0.12.0",
     "puppeteer-prerender": "^0.7.6",
-    "raven-logger": "^0.3.0",
+    "raven-logger": "^0.3.1",
     "request": "^2.88.0",
     "rest-api-error-factory": "^0.1.1",
     "robots-txt-guard": "^0.2.1",
