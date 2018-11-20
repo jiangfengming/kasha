@@ -89,7 +89,8 @@ async function main() {
     .get('(.*)', ctx => {
       ctx.query = {
         url: ctx.siteConfig.protocol + '://' + ctx.siteConfig.host + ctx.url,
-        deviceType: ctx.siteConfig.deviceType || 'desktop'
+        deviceType: ctx.siteConfig.deviceType || 'desktop',
+        type: 'html'
       }
       ctx.path = '/render'
       return render(ctx)
@@ -129,7 +130,8 @@ async function main() {
     .get('/(http.+)', (ctx, next) => {
       ctx.query = {
         url: ctx.url.slice(1),
-        deviceType: ctx.headers['x-device-type'] || 'desktop'
+        deviceType: ctx.headers['x-device-type'] || 'desktop',
+        type: 'static'
       }
       ctx.path = '/render'
       return next()

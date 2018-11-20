@@ -58,7 +58,7 @@ Prerenders the page.
 `deviceType`: `desktop` | `mobile`. Use what type of device to render the page. Defaults to `desktop`.
   It mainly sets the `User-Agent` of the browser.
 
-`type`: Set the response type. Defaults to `html`.
+`type`: Set the response type. Defaults to `json`.
   * `html`: Returns html with header `Content-Type: text/html`.
   * `json`: Returns json with header `Content-Type: application/json`.
   * `static`: Returns html with header `Content-Type: text/html`, but stripped the `<script>` tags and `on*` event handlers.
@@ -129,7 +129,7 @@ Example: `http://localhost:3000/render?url=https%3A%2F%2Fdavidwalsh.name%2Ffaceb
 ```
 
 ### GET /:url
-Alias of `/render?url=ENCODED_URL`.
+Alias of `/render?url=ENCODED_URL&type=static`.
 
 For example, `http://localhost:3000/https://www.example.com/` is equivalent to `http://localhost:3000/render?url=https%3A%2F%2Fwww.example.com%2F`
 

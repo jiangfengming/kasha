@@ -19,7 +19,7 @@ const inArray = require('../shared/inArray')
 async function render(ctx) {
   const now = Date.now()
   const { deviceType = 'desktop', callbackURL } = ctx.query
-  let { url, type = 'html', noWait, metaOnly, followRedirect, refresh } = ctx.query
+  let { url, type = 'json', noWait, metaOnly, followRedirect, refresh } = ctx.query
 
   try {
     url = new URL(url)
