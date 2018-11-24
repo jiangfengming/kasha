@@ -58,6 +58,7 @@ async function main() {
 
   app.use(async(ctx, next) => {
     try {
+      logger.debug(ctx.method, ctx.href)
       await next()
       logger.log(`${ctx.method} ${ctx.href} ${ctx.status}`)
     } catch (e) {

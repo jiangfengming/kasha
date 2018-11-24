@@ -254,6 +254,7 @@ async function render(ctx) {
         msg.correlationId = uid()
       }
 
+      logger.debug('sendToWorker', topic, msg)
       nsqWriter.writer.publish(topic, msg, e => {
         if (e) {
           const { timestamp, eventId } = logger.error(e)
