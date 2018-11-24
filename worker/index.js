@@ -163,9 +163,12 @@ async function main() {
       })
     }
 
+    const msgTimestamp = msg.timestamp.dividedBy(1000000).integerValue().toNumber()
+    const msgAttemps = msg.attempts
+    const jobStartTime = Date.now()
+
     if (replyTo) {
-      const time = msg.timestamp.dividedBy(1000000).integerValue().toNumber()
-      if (time + JOB_TIMEOUT < Date.now()) {
+      if (msgTimestamp + JOB_TIMEOUT < Date.now()) {
         logger.debug(`drop job: ${url} @${deviceType}`)
         return handleResult({ error: new RESTError('SERVER_WORKER_BUSY').toJSON() })
       }
@@ -380,7 +383,7 @@ async function main() {
     }
 
     function handleResult(doc) {
-      logger.log(`${url} @${deviceType} ${doc.error ? doc.error.code : doc.status}`)
+      logger.log(`${url} @${deviceType} ${doc.error ? doc.error.code : doc.status}. queue: ${jobStartTime - msgTimestamp}ms, render: ${Date.now() - jobStartTime}ms, attemps: ${msgAttemps}`)
 
       if (callbackURL || replyTo) {
         // if fetch the document failed, we try to use the cached document if mode is not BYPASS
