@@ -201,7 +201,7 @@ async function render(ctx) {
         // something went wrong when updating the document.
         // we still use the stale doc if available.
         // but don't give cache response if 'refresh' param is set.
-        if (doc.status || !refresh) {
+        if (doc.status && !refresh) {
           return handleResult(doc, privateExpires && privateExpires >= now ? 'HIT' : 'STALE')
         } else {
           throw e
