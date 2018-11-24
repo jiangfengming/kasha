@@ -31,12 +31,12 @@ function poll(site, path, deviceType, lock) {
       } else {
         if (!lock) lock = doc.lock
 
-        if (tried >= 5) {
+        if (tried >= 6) {
           clearInterval(intervalId)
 
           const error = new RESTError('SERVER_CACHE_LOCK_TIMEOUT', 'snapshot')
 
-          // if the same lock lasts 25s, the other worker may went wrong
+          // if the same lock lasts 30s, the other worker may went wrong
           // we remove the lock
           collection.updateOne({
             site,
