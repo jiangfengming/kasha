@@ -22,6 +22,8 @@ async function render(ctx) {
   let { url, type = 'json', noWait, metaOnly, followRedirect, refresh } = ctx.query
 
   try {
+    // mongodb index size must be less than 1024 bytes (includes structural overhead)
+    assert(Buffer.byteLength(url) <= 896)
     url = new URL(url)
     assert(['http:', 'https:'].includes(url.protocol))
   } catch (e) {
