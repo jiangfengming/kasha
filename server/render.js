@@ -184,8 +184,13 @@ async function render(ctx) {
       }
 
       if (sharedExpires && sharedExpires >= now) {
-        // refresh cache in background
-        if (!lock) {
+        if (lock) {
+          // in case other process didn't release the lock
+          poll(site, path, deviceType, lock).catch(() => {
+            // nop
+          })
+        } else {
+          // refresh cache in background
           sendToWorker(null, { noWait: true, callbackURL: null })
         }
 
