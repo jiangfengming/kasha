@@ -60,12 +60,12 @@ let db, reader, prerenderer
     await main()
   } catch (e) {
     logger.error(e)
-    await exit()
+    await closeConnections()
     process.exitCode = 1
   }
 })()
 
-async function exit() {
+async function closeConnections() {
   logger.info('Closing MongoDB connection...')
   await mongo.close()
   logger.info('MongoDB connection closed.')
@@ -420,8 +420,7 @@ async function main() {
 
   // graceful exit
   let stopping = false
-
-  process.once('SIGINT', async() => {
+  async function exit() {
     if (stopping) return
 
     stopping = true
@@ -431,11 +430,14 @@ async function main() {
     const interval = setInterval(async() => {
       if (jobCounter === 0) {
         clearInterval(interval)
-        await exit()
+        await closeConnections()
         logger.info('exit successfully')
       }
     }, 1000)
-  })
+  }
+
+  process.once('SIGINT', exit)
+  process.once('SIGTERM', exit)
 
   logger.info('Kasha Worker started')
 }
