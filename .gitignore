@@ -1,4 +1,5 @@
 config.dev.js
+.vscode/sftp.json
 
 # Logs
 logs
