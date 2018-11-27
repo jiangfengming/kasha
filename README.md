@@ -1,4 +1,6 @@
-# Kasha 📸
+<p align="center"><img src="static/kasha.svg" width="256" height="256"></p>
+
+# Kasha
 Prerender your Single-Page Application.
 
 ## Features
@@ -226,3 +228,5 @@ See here for available tags: [sitemap protocol](https://www.sitemaps.org/protoco
 
 ## License
 [MIT](LICENSE)
+
+The logo is made from [Prosymbols](https://www.flaticon.com/authors/prosymbols)</a>'s [camera](https://www.flaticon.com/free-icon/camera_204286) icon licensed by [Creative Commons BY 3.0](https://creativecommons.org/licenses/by/3.0/).
