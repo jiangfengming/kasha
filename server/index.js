@@ -6,11 +6,11 @@ const workerResponder = require('./workerResponder')
 
 ;(async() => {
   try {
-    await require('../install')
-
     logger.info('connecting to MongoDB...')
     await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
     logger.info('MongoDB connected')
+
+    await require('../install')
 
     logger.info('connecting to NSQ writer...')
     await nsqWriter.connect()
@@ -21,12 +21,12 @@ const workerResponder = require('./workerResponder')
     await main()
   } catch (e) {
     logger.error(e)
-    await exit()
+    await closeConnections()
     process.exitCode = 1
   }
 })()
 
-async function exit() {
+async function closeConnections() {
   logger.info('Closing MongoDB connection...')
   await mongo.close()
   logger.info('MongoDB connection closed.')
@@ -58,6 +58,7 @@ async function main() {
 
   app.use(async(ctx, next) => {
     try {
+      logger.debug(ctx.method, ctx.href)
       await next()
       logger.log(`${ctx.method} ${ctx.href} ${ctx.status}`)
     } catch (e) {
@@ -196,17 +197,20 @@ async function main() {
 
   // graceful exit
   let stopping = false
-  process.on('SIGINT', async() => {
+  async function exit() {
     if (stopping) return
 
     stopping = true
     logger.info('Closing the server. Please wait for finishing the pending requests...')
 
     server.stop(async() => {
-      await exit()
+      await closeConnections()
       logger.info('exit successfully')
     })
-  })
+  }
+
+  process.on('SIGINT', exit)
+  process.on('SIGTERM', exit)
 
   logger.info(`Kasha http server started at port ${config.port}`)
 }

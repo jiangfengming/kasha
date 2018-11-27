@@ -22,6 +22,8 @@ async function render(ctx) {
   let { url, type = 'json', noWait, metaOnly, followRedirect, refresh } = ctx.query
 
   try {
+    // mongodb index size must be less than 1024 bytes (includes structural overhead)
+    assert(Buffer.byteLength(url) <= 896)
     url = new URL(url)
     assert(['http:', 'https:'].includes(url.protocol))
   } catch (e) {
@@ -182,8 +184,13 @@ async function render(ctx) {
       }
 
       if (sharedExpires && sharedExpires >= now) {
-        // refresh cache in background
-        if (!lock) {
+        if (lock) {
+          // in case other process didn't release the lock
+          poll(site, path, deviceType, lock).catch(() => {
+            // nop
+          })
+        } else {
+          // refresh cache in background
           sendToWorker(null, { noWait: true, callbackURL: null })
         }
 
@@ -199,7 +206,7 @@ async function render(ctx) {
         // something went wrong when updating the document.
         // we still use the stale doc if available.
         // but don't give cache response if 'refresh' param is set.
-        if (doc.status || !refresh) {
+        if (doc.status && !refresh) {
           return handleResult(doc, privateExpires && privateExpires >= now ? 'HIT' : 'STALE')
         } else {
           throw e
@@ -252,6 +259,7 @@ async function render(ctx) {
         msg.correlationId = uid()
       }
 
+      logger.debug('sendToWorker', topic, msg)
       nsqWriter.writer.publish(topic, msg, e => {
         if (e) {
           const { timestamp, eventId } = logger.error(e)
