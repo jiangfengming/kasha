@@ -53,9 +53,15 @@ let db, reader, prerenderer
     await nsqWriter.connect()
     logger.info('NSQ writer connected')
 
-    reader = nsqReader.connect(global.argv.async ? 'kasha-async-queue' : 'kasha-sync-queue', 'worker', config.nsq.reader)
-
+    logger.info('launching chromium...')
     prerenderer = new Prerenderer(prerendererOpts)
+    await prerenderer.launch()
+    prerenderer.on('disconnected', () => {
+      logger.error('Chromium disconnected')
+    })
+    logger.info('Chromium launched')
+
+    reader = nsqReader.connect(global.argv.async ? 'kasha-async-queue' : 'kasha-sync-queue', 'worker', config.nsq.reader)
 
     await main()
   } catch (e) {
