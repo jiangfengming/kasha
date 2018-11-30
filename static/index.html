@@ -5,6 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <title>Kasha</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/png" href="/static/favicon.png">
 <style>
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
@@ -14,6 +15,10 @@ body {
   border: 1px solid #ccc;
   border-radius: 2px;
   height: 30px;
+}
+
+.textbox:disabled, .select:disabled {
+  background-color: #ebebe4;
 }
 
 /* from https://medium.com/claritydesignsystem/pure-css-accessible-checkboxes-and-radios-buttons-54063e759bb3 */
@@ -84,6 +89,10 @@ body {
   outline: #4d90fe auto 5px;
 }
 
+.checkbox:disabled + label::before {
+  background-color: #ebebe4;
+}
+
 .form {
   width: fit-content;
   text-align: center;
@@ -122,7 +131,7 @@ body {
   box-shadow: 0 3px 8px 0 rgba(0, 0, 0, 0.2);
 }
 
-.options {
+.fieldset {
   text-align: left;
   margin: 10px 0;
   border: 1px solid #ddd;
@@ -141,13 +150,13 @@ body {
 </head>
 
 <body>
-  <form action="render" method="get" class="form" target="_blank">
-    <img src="kasha.svg" alt="kasha logo" width="200">
+  <form name="render" action="render" method="get" class="form" target="_blank">
+    <img src="/static/kasha.svg" alt="kasha logo" width="200">
     <h1>Kasha</h1>
 
-    <input type="text" placeholder="https://www.example.com/" class="address-box"><button type="submit" class="btn-render">Render</button>
+    <input type="url" name="url" required placeholder="https://www.example.com/" class="address-box"><button type="submit" class="btn-render">Render</button>
 
-    <fieldset class="options">
+    <fieldset class="fieldset">
       <legend>Options</legend>
 
       <div class="opt">
@@ -174,8 +183,60 @@ body {
       <div class="opt"><input type="checkbox" class="checkbox" name="noWait" value="" id="noWait"><label for="noWait">noWait</label></div>
       <div class="opt"><input type="checkbox" class="checkbox" name="followRedirect" value="" id="followRedirect"><label for="followRedirect">followRedirect</label></div>
 
-      <div class="opt"><label>callbackURL: <input type="text" name="callbackURL" placeholder="https://api.example.com/render-callback" class="textbox callback-url-textbox"></label></div>
+      <div class="opt"><label>callbackURL: <input type="url" name="callbackURL" placeholder="https://api.example.com/render-callback" class="textbox callback-url-textbox"></label></div>
     </fieldset>
+
+    <fieldset class="fieldset">
+      <legend>Sitemaps</legend>
+
+      <ul>
+        <li><a href="#" data-href="/robots.txt" target="_blank">/robots.txt</a></li>
+        <li><a href="#" data-href="/sitemaps/index/1.xml" target="_blank">/sitemaps/index/1.xml</a></li>
+        <li><a href="#" data-href="/sitemaps/index/google/1.xml" target="_blank">/sitemaps/index/google/1.xml</a></li>
+        <li><a href="#" data-href="/sitemaps/index/google/news/1.xml" target="_blank">/sitemaps/index/google/news/1.xml</a></li>
+        <li><a href="#" data-href="/sitemaps/index/google/image/1.xml" target="_blank">/sitemaps/index/google/image/1.xml</a></li>
+        <li><a href="#" data-href="/sitemaps/index/google/video/1.xml" target="_blank">/sitemaps/index/google/video/1.xml</a></li>
+        <li><a href="#" data-href="/sitemaps/1.xml" target="_blank">/sitemaps/1.xml</a></li>
+        <li><a href="#" data-href="/sitemaps/google/1.xml" target="_blank">/sitemaps/google/1.xml</a></li>
+        <li><a href="#" data-href="/sitemaps/google/news/1.xml" target="_blank">/sitemaps/google/news/1.xml</a></li>
+        <li><a href="#" data-href="/sitemaps/google/image/1.xml" target="_blank">/sitemaps/google/image/1.xml</a></li>
+        <li><a href="#" data-href="/sitemaps/google/video/1.xml" target="_blank">/sitemaps/google/video/1.xml</a></li>
+      </ul>
+    </fieldset>
+
+    <script>
+      const form = document.forms.render.elements
+
+      form.noWait.addEventListener('change', function() {
+        form.type.disabled = form.metaOnly.disabled = form.callbackURL.disabled = this.checked
+      })
+
+      form.callbackURL.addEventListener('change', function() {
+        form.type.disabled = form.noWait.disabled = Boolean(this.value)
+      })
+
+      const urlInput = form.url
+      const sitemapLinks = document.querySelectorAll('a[data-href]')
+
+      for (const link of sitemapLinks) {
+        link.addEventListener('click', e => {
+          if (!urlInput.reportValidity()) {
+            e.preventDefault()
+          }
+        })
+      }
+
+      urlInput.addEventListener('change', function() {
+        let url
+        try {
+          url = new URL(this.value)
+        } catch (e) {}
+
+        for (const link of sitemapLinks) {
+          link.href =  url ? `/${url.origin}${link.dataset.href}` : '#'
+        }
+      })
+    </script>
   </form>
 </body>
 </html>

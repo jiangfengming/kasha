@@ -45,6 +45,10 @@ async function main() {
   const getSiteConfig = require('../shared/getSiteConfig')
   const Koa = require('koa')
   const Router = require('koa-router')
+  const mount = require('koa-mount')
+  const serve = require('koa-static')
+  const send = require('koa-send')
+  const path = require('path')
   const render = require('./render')
   const sitemap = require('./sitemap')
   const stoppable = require('stoppable')
@@ -101,7 +105,16 @@ async function main() {
 
   // api routes
   const siteParam = ':site(https?://[^/]+)'
-  const apiRoutes = new Router()
+  const apiRouter = new Router()
+
+  if (config.enableHomepage) {
+    apiRouter.get('/', async ctx => {
+      await send(ctx, 'index.html', { root: path.resolve(__dirname, '../static') })
+    })
+    apiRouter.use(mount('/static', serve(path.resolve(__dirname, '../static'))))
+  }
+
+  const apiRoutes = apiRouter
     .param('site', async(site, ctx, next) => {
       try {
         const url = new URL(site)
