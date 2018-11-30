@@ -77,13 +77,6 @@ async function render(ctx) {
     type = 'json'
   }
 
-  if (noWait && (callbackURL || metaOnly || ctx.query.type)) {
-    throw new RESTError(
-      'CLIENT_INVALID_PARAM',
-      'noWait can\'t be used with callbackURL | metaOnly | type'
-    )
-  }
-
   const site = url.origin
   let path = url.pathname
 
