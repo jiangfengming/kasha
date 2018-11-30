@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@sentry/node": "^4.4.1",
+    "cron": "^1.5.0",
     "forwarded-parse": "^2.1.0",
     "html-entities": "^1.2.1",
     "koa": "^2.6.2",

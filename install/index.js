@@ -2,9 +2,8 @@ async function main() {
   const Schema = require('schema-upgrade')
   const config = require('../shared/config')
   const db = await require('../shared/mongo').connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
-  const collection = db.collection('meta')
-  let appInfo = await collection.findOne({ key: 'appInfo' })
 
+  let appInfo = await db.collection('meta').findOne({ key: 'appInfo' })
   if (!appInfo) {
     appInfo = {
       key: 'appInfo',
@@ -12,8 +11,8 @@ async function main() {
       upgrading: false
     }
 
-    await collection.createIndex({ key: 1 }, { unique: true })
-    await collection.insertOne(appInfo)
+    await db.collection('meta').createIndex({ key: 1 }, { unique: true })
+    await db.collection('meta').insertOne(appInfo)
   }
 
   const schema = new Schema(db, appInfo.version)
@@ -24,6 +23,16 @@ async function main() {
     const sitemap = db.collection('sitemaps')
     await sitemap.createIndex({ site: 1, path: 1 }, { unique: true })
     await sitemap.createIndex({ 'news.publication_date': -1 })
+  })
+
+  schema.version(2, async db => {
+    await db.collection('snapshots').createIndex({ sharedExpires: 1 })
+    await db.collection('meta').insertOne({
+      key: 'autoClean',
+      cleaning: false,
+      cronTime: null,
+      next: null
+    })
   })
 
   const latest = schema.latest()

@@ -64,7 +64,9 @@ module.exports = {
     robotsTxt: 24 * 60 * 60, // 1 day
 
     // max-age of sitemaps
-    sitemap: 60 * 60 // 1 hour
+    sitemap: 60 * 60, // 1 hour
+
+    autoClean: '0 0 * * *' // At 00:00 every day
   },
 
   // You can comment out `sites` config here, and store the sites config in db's `sites` collection.
