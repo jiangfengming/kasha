@@ -30,7 +30,7 @@ require('yargs')
     require('../worker')
   })
   .command('clean', 'Clean expired caches', {}, () => {
-    require('../clean')
+    require('../clean').cli()
   })
   .demandCommand(1, '<command> is required')
   .middleware(argv => global.argv = argv)

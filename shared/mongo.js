@@ -1,22 +1,23 @@
 const { MongoClient } = require('mongodb')
+const config = require('./shared/config')
 const logger = require('./logger')
 
 const singleton = {
   // after the entry point function has initialized the db connection via:
-  // const db = await require('./mongo').connect(url, database, options)
+  // const db = await require('./mongo').connect()
   // other modules can import db instance without await:
   // const { db } = require('./mongo')
   mongoClient: null,
   db: null,
 
-  async connect(url, database, options = {}) {
+  async connect() {
     if (singleton.db) return singleton.db
 
-    options.useNewUrlParser = true
+    const options = { ...config.mongodb.options, useNewUrlParser: true }
 
     logger.info('Conntecting to MongoDB...')
-    singleton.mongoClient = await new MongoClient(url, options).connect()
-    singleton.db = await singleton.mongoClient.db(database)
+    singleton.mongoClient = await new MongoClient(config.mongodb.url, options).connect()
+    singleton.db = await singleton.mongoClient.db(config.mongodb.database)
     logger.info('MongoDB connected')
 
     return singleton.db

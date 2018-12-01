@@ -45,7 +45,7 @@ const prerendererOpts = {
 let db, reader, prerenderer
 ;(async() => {
   try {
-    db = await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.workerOptions)
+    db = await mongo.connect()
     await nsqWriter.connect()
 
     logger.info('Launching chromium...')
