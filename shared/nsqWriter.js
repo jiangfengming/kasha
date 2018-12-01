@@ -11,7 +11,10 @@ function connect() {
   if (connectPromise) return connectPromise
 
   connectPromise = new Promise((resolve, reject) => {
+    logger.info('Connecting to NSQ writer...')
+
     function _resolve() {
+      logger.info('NSQ writer connected')
       writer.removeListener('error', _reject)
       writer.on('error', onError)
       writer.on('closed', onClosed)
@@ -65,6 +68,7 @@ async function reconnect() {
 let closing = false
 function close() {
   return new Promise(async resolve => {
+    logger.info('Closing NSQ writer connection...')
     closing = true
 
     if (reconnectTimer) clearTimeout(reconnectTimer)
@@ -72,12 +76,17 @@ function close() {
     if (connectPromise) {
       try {
         await connectPromise
-        writer.once('closed', resolve)
+        writer.once('closed', _resolve)
         writer.close()
       } catch (e) {
-        resolve()
+        _resolve()
       }
     } else {
+      _resolve()
+    }
+
+    function _resolve() {
+      logger.info('NSQ writer connection closed.')
       resolve()
     }
   })

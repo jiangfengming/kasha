@@ -9,7 +9,7 @@ require('yargs')
     demandOption: true
   })
   .command(['install', 'upgrade'], 'Create or upgrade the MongoDB database', {}, () => {
-    require('../install')
+    require('../install').cli()
   })
   .command('server', 'Start the Kasha HTTP server', {}, () => {
     require('../server')
@@ -28,6 +28,9 @@ require('yargs')
     }
   }, () => {
     require('../worker')
+  })
+  .command('clean', 'Clean expired caches', {}, () => {
+    require('../clean')
   })
   .demandCommand(1, '<command> is required')
   .middleware(argv => global.argv = argv)

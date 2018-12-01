@@ -17,18 +17,25 @@ const singleton = {
 
   close() {
     return new Promise((resolve, reject) => {
+      logger.info('Closing NSQ reader connection...')
+
       if (!singleton.reader || singleton.reader.connectionIds.length === 0) {
-        return resolve()
+        return _resolve()
       }
 
       singleton.reader.on('nsqd_closed', () => {
         if (singleton.reader.connectionIds.length === 0) {
-          return resolve()
+          return _resolve()
         }
       })
 
       singleton.reader.on('error', reject)
       singleton.reader.close()
+
+      function _resolve() {
+        logger.info('NSQ reader connection closed')
+        resolve()
+      }
     })
   }
 }

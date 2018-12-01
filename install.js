@@ -1,6 +1,8 @@
-async function main() {
-  const Schema = require('schema-upgrade')
-  const config = require('../shared/config')
+const Schema = require('schema-upgrade')
+const config = require('../shared/config')
+const logger = require('../shared/logger')
+
+async function install() {
   const db = await require('../shared/mongo').connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
 
   let appInfo = await db.collection('meta').findOne({ key: 'appInfo' })
@@ -31,7 +33,7 @@ async function main() {
       key: 'autoClean',
       cleaning: false,
       cronTime: null,
-      next: null
+      nextAt: null
     })
   })
 
@@ -67,4 +69,13 @@ async function main() {
   })
 }
 
-module.exports = main()
+async function cli() {
+  try {
+    await install()
+  } catch (e) {
+    logger.error(e)
+    process.exitCode = 1
+  }
+}
+
+module.exports = { install, cli }

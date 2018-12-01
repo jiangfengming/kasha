@@ -3,21 +3,15 @@ const logger = require('../shared/logger')
 const mongo = require('../shared/mongo')
 const nsqWriter = require('../shared/nsqWriter')
 const workerResponder = require('./workerResponder')
+let autoClean
 
 ;(async() => {
   try {
-    logger.info('connecting to MongoDB...')
     await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
-    logger.info('MongoDB connected')
-
     await require('../install')
-
-    logger.info('connecting to NSQ writer...')
+    await autoClean.start()
     await nsqWriter.connect()
-    logger.info('NSQ writer connected')
-
     workerResponder.connect()
-
     await main()
   } catch (e) {
     logger.error(e)
@@ -27,17 +21,10 @@ const workerResponder = require('./workerResponder')
 })()
 
 async function closeConnections() {
-  logger.info('Closing MongoDB connection...')
+  await autoClean.stop()
   await mongo.close()
-  logger.info('MongoDB connection closed.')
-
-  logger.info('Closing NSQ writer connection...')
   await nsqWriter.close()
-  logger.info('NSQ writer connection closed.')
-
-  logger.info('Closing worker responder connection...')
   await workerResponder.close()
-  logger.info('Worker responder connection closed.')
 }
 
 async function main() {

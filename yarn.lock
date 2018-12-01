@@ -2096,10 +2096,10 @@ saslprep@^1.0.0:
   dependencies:
     sparse-bitfield "^3.0.3"
 
-schema-upgrade@^0.2.1:
-  version "0.2.1"
-  resolved "https://registry.yarnpkg.com/schema-upgrade/-/schema-upgrade-0.2.1.tgz#63cc6a3762f4fa5aab28a4f91d980d3c11b8d50b"
-  integrity sha512-MvZZgb0zwbKKjDBzEqFp1xQbAdoH+qMGkgFXw13mjurr6ABQ3pmPa/UOYdKC78IEHz5amnvt/wRjyktwWlNv5A==
+schema-upgrade@^0.2.2:
+  version "0.2.2"
+  resolved "https://registry.yarnpkg.com/schema-upgrade/-/schema-upgrade-0.2.2.tgz#8673aab0cbdf656ace7ad5e9bd7a4a06bf42fa22"
+  integrity sha512-QhH2TgcTQ2uypWynghHceRk0YDMZLqDVbCMfaZoP/Th8dJVYxiwnGXxPAK66XgMo3PS1Yl4tgBpr1bx41Sqq+A==
 
 semver@^5.1.0, semver@^5.4.1, semver@^5.5.0, semver@^5.5.1:
   version "5.6.0"

@@ -45,15 +45,10 @@ const prerendererOpts = {
 let db, reader, prerenderer
 ;(async() => {
   try {
-    logger.info('connecting to MongoDB...')
     db = await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.workerOptions)
-    logger.info('MongoDB connected')
-
-    logger.info('connecting to NSQ writer...')
     await nsqWriter.connect()
-    logger.info('NSQ writer connected')
 
-    logger.info('launching chromium...')
+    logger.info('Launching chromium...')
     prerenderer = new Prerenderer(prerendererOpts)
     await prerenderer.launch()
     prerenderer.on('disconnected', () => {
@@ -72,21 +67,14 @@ let db, reader, prerenderer
 })()
 
 async function closeConnections() {
-  logger.info('Closing MongoDB connection...')
   await mongo.close()
-  logger.info('MongoDB connection closed.')
-
-  logger.info('Closing NSQ writer connection...')
   await nsqWriter.close()
-  logger.info('NSQ writer connection closed.')
-
-  logger.info('Closing NSQ reader connection...')
   await nsqReader.close()
-  logger.info('NSQ reader connection closed.')
 
   if (prerenderer) {
     logger.info('Closing prerenderer...')
     await prerenderer.close()
+    logger.info('Prerender closed')
   }
 }
 
@@ -321,7 +309,7 @@ async function main() {
       $inc: {
         renderTimes: 1
       }
-    }).catch(e => {
+    }, { upsert: true }).catch(e => {
       logger.error(e)
     })
 
