@@ -39,7 +39,6 @@ async function install() {
     await metaColl.insertOne({
       key: 'autoClean',
       cleaning: false,
-      cronTime: null,
       nextAt: null
     })
     logger.info('Upgraded to database schema version 2.')
