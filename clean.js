@@ -15,7 +15,7 @@ async function connectDB() {
 let timer
 let cleaningPromise = Promise.resolve()
 
-async function cron() {
+async function setupCronJob() {
   if (!cronTime) return
 
   logger.info('Setting up auto clean cron job...')
@@ -24,14 +24,14 @@ async function cron() {
 
   if (!nextAt) {
     nextAt = nextDate(cronTime)
-    await metaColl.updateOne({ key: 'autoClean', nextAt: null }, { nextAt })
+    await metaColl.updateOne({ key: 'autoClean', nextAt: null }, { nextAt: nextAt.toDate() })
   }
 
   setTimer(nextAt)
   logger.info(`Auto clean cron job will start at ${nextAt.format()}.`)
 }
 
-function stop() {
+function stopCronJob() {
   if (timer) {
     clearTimeout(timer)
   }
@@ -53,35 +53,20 @@ function nextDate(cronTime) {
 
 function setTimer(nextAt) {
   const timeout = nextAt - Date.now()
-  timer = setTimeout(cleanCronJob, timeout)
+  timer = setTimeout(cronJob, timeout)
 }
 
-function cleanCronJob() {
+function cronJob() {
   cleaningPromise = (async() => {
     const info = await getInfo()
     let nextAt = info.nextAt
 
     if (!info.cleaning) {
       nextAt = nextDate(cronTime)
-
-      let result
       try {
-        result = metaColl.updateOne({ key: 'autoClean', cleaning: false }, {
-          cleaning: true,
-          nextAt
-        })
+        await clean(nextAt)
       } catch (e) {
         logger.error(e)
-      }
-
-      if (result.modifiedCount) {
-        try {
-          await clean()
-        } catch (e) {
-          logger.error(e)
-        } finally {
-
-        }
       }
     }
 
@@ -90,11 +75,27 @@ function cleanCronJob() {
   })()
 }
 
-async function clean() {
-  logger.info('Cleaning expired snapshots...')
-  const startTime = Date.now()
-  const result = snapshotColl.deleteMany({ sharedExpires: { $lt: new Date() } })
-  logger.info(`Cleaned ${result.deletedCount} expired snapshots (${Date.now() - startTime}ms).`)
+async function clean(nextAt) {
+  const result = metaColl.updateOne({ key: 'autoClean', cleaning: false }, {
+    cleaning: true,
+    nextAt: nextAt ? nextAt.toDate() : null
+  })
+
+  if (!result.modifiedCount) {
+    logger.info('Other process is cleaning the caches.')
+    return
+  }
+
+  try {
+    logger.info('Cleaning expired snapshots...')
+    const startTime = Date.now()
+    const result = snapshotColl.deleteMany({ sharedExpires: { $lt: new Date() } })
+    logger.info(`Cleaned ${result.deletedCount} expired snapshots (${((Date.now() - startTime) / 1000).toFixed(3)}s).`)
+  } catch (e) {
+    throw e
+  } finally {
+    await metaColl.updateOne({ key: 'autoClean', cleaning: true }, { cleaning: false })
+  }
 }
 
 async function cli() {
@@ -108,4 +109,4 @@ async function cli() {
   }
 }
 
-module.exports = { cron, stop, cli }
+module.exports = { setupCronJob, stopCronJob, cli }
