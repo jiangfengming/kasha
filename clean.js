@@ -1,8 +1,9 @@
 const { CronJob } = require('cron')
+const moment = require('moment')
 const config = require('./shared/config')
 const mongo = require('./shared/mongo')
 const logger = require('./shared/logger')
-const cronTime = config.cache.autoClean
+const cronTime = config.cache.cacheClean
 
 let db, metaColl, snapshotColl
 
@@ -24,7 +25,7 @@ async function setupCronJob() {
 
   if (!nextAt) {
     nextAt = nextDate(cronTime)
-    await metaColl.updateOne({ key: 'autoClean', nextAt: null }, { nextAt: nextAt.toDate() })
+    await metaColl.updateOne({ key: 'cacheClean', nextAt: null }, { nextAt: nextAt.toDate() })
   }
 
   setTimer(nextAt)
@@ -40,10 +41,12 @@ function stopCronJob() {
 }
 
 function getInfo() {
-  return metaColl.findOne({ key: 'autoClean' })
+  return metaColl.findOne({ key: 'cacheClean' })
 }
 
-function nextDate(cronTime) {
+function nextDate() {
+  if (!cronTime) return null
+
   const job = new CronJob(cronTime, () => { /* nop */ })
 
   // nextDates() returns an array of Moment objects
@@ -61,7 +64,9 @@ function cronJob() {
     const info = await getInfo()
     let nextAt = info.nextAt
 
-    if (!info.cleaning) {
+    if (info.cleaning) {
+      if (nextAt)
+    } else {
       nextAt = nextDate(cronTime)
       try {
         await clean(nextAt)
@@ -75,14 +80,24 @@ function cronJob() {
   })()
 }
 
-async function clean(nextAt) {
-  const result = metaColl.updateOne({ key: 'autoClean', cleaning: false }, {
-    cleaning: true,
+async function clean(isCron) {
+  const now = new Date()
+  const nextAt = nextDate()
+
+  const result = metaColl.updateOne({ key: 'cacheClean', cleaningAt: null }, {
+    cleaningAt: now,
     nextAt: nextAt ? nextAt.toDate() : null
   })
 
   if (!result.modifiedCount) {
-    logger.info('Other process is cleaning the caches.')
+    const info = await getInfo()
+
+    if (info.cleaningAt) {
+      const cleaningAt = moment(info.cleaningAt)
+      logger[isCron ? 'warn' : 'info'](`The last cleaning job (${cleaningAt.format()}) hasn't finished yet.`)
+    } else {
+      logger.info()
+    }
     return
   }
 
@@ -94,7 +109,7 @@ async function clean(nextAt) {
   } catch (e) {
     throw e
   } finally {
-    await metaColl.updateOne({ key: 'autoClean', cleaning: true }, { cleaning: false })
+    await metaColl.updateOne({ key: 'cacheClean', cleaning: true }, { cleaning: false })
   }
 }
 

@@ -37,8 +37,8 @@ async function install() {
     logger.info('Upgrading database schema to version 2...')
     await db.collection('snapshots').createIndex({ sharedExpires: 1 })
     await metaColl.insertOne({
-      key: 'autoClean',
-      cleaning: false,
+      key: 'cacheClean',
+      cleaningAt: null,
       nextAt: null
     })
     logger.info('Upgraded to database schema version 2.')
