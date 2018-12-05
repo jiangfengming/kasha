@@ -1,9 +1,10 @@
 const Schema = require('schema-upgrade')
+const config = require('../shared/config')
 const logger = require('./shared/logger')
 const mongo = require('./shared/mongo')
 
 async function install() {
-  const db = await mongo.connect()
+  const db = await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
   const metaColl = db.collection('meta')
 
   logger.info('Checking current database schema version...')
@@ -38,6 +39,7 @@ async function install() {
     await db.collection('snapshots').createIndex({ sharedExpires: 1 })
     await metaColl.insertOne({
       key: 'cacheClean',
+      cronTime: null,
       cleaningAt: null,
       nextAt: null
     })

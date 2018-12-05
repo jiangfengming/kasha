@@ -8,7 +8,7 @@ const cronTime = config.cache.cacheClean
 let db, metaColl, snapshotColl
 
 async function connectDB() {
-  db = await mongo.connect()
+  db = await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
   metaColl = db.collection('meta')
   snapshotColl = db.collection('snapshots')
 }
@@ -80,7 +80,7 @@ function cronJob() {
   })()
 }
 
-async function clean(isCron) {
+async function clean() {
   const now = new Date()
   const nextAt = nextDate()
 
@@ -94,11 +94,19 @@ async function clean(isCron) {
 
     if (info.cleaningAt) {
       const cleaningAt = moment(info.cleaningAt)
-      logger[isCron ? 'warn' : 'info'](`The last cleaning job (${cleaningAt.format()}) hasn't finished yet.`)
+      logger.warn(`The last cleaning job (${cleaningAt.format()}) hasn't finished yet.`)
     } else {
-      logger.info()
+      logger.info('The last cleaning job has just finished, no need to clean again.')
     }
+
+    if (nextAt) {
+      if (!info.nextAt)
+      schedule()
+    }
+
     return
+  } else {
+
   }
 
   try {

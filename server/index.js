@@ -8,7 +8,7 @@ let clean
 ;(async() => {
   try {
     await require('../install').install()
-    await mongo.connect()
+    await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
     await clean.start()
     await nsqWriter.connect()
     workerResponder.connect()
