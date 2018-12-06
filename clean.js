@@ -3,45 +3,66 @@ const moment = require('moment')
 const config = require('./shared/config')
 const mongo = require('./shared/mongo')
 const logger = require('./shared/logger')
-const cronTime = config.cache.cacheClean
+const cronTime = config.cache.autoClean
 
 let db, metaColl, snapshotColl
-
 async function connectDB() {
   db = await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
   metaColl = db.collection('meta')
   snapshotColl = db.collection('snapshots')
 }
 
-let timer
-let cleaningPromise = Promise.resolve()
-
-async function setupCronJob() {
-  if (!cronTime) return
-
-  logger.info('Setting up auto clean cron job...')
-  await connectDB()
-  let { nextAt } = await getInfo()
-
-  if (!nextAt) {
-    nextAt = nextDate(cronTime)
-    await metaColl.updateOne({ key: 'cacheClean', nextAt: null }, { nextAt: nextAt.toDate() })
-  }
-
-  setTimer(nextAt)
-  logger.info(`Auto clean cron job will start at ${nextAt.format()}.`)
-}
-
-function stopCronJob() {
-  if (timer) {
-    clearTimeout(timer)
-  }
-
-  return cleaningPromise
-}
-
 function getInfo() {
   return metaColl.findOne({ key: 'cacheClean' })
+}
+
+async function setupCron() {
+  logger.info('Setting up auto clean cron job...')
+
+  await connectDB()
+  const info = await getInfo()
+
+  let nextAt = info.nextAt
+  if (info.cronTime !== cronTime || (info.nextAt && info.nextAt < Date.now())) {
+    nextAt = nextDate()
+    await metaColl.updateOne({ key: 'cacheClean' }, {
+      $set: { cronTime, nextAt }
+    })
+
+    if (!cronTime) {
+      logger.info('Auto clean cron job removed.')
+    }
+  }
+
+  if (nextAt) {
+    setTimer(nextAt)
+    logger.info('Auto clean cron job set up.')
+  }
+}
+
+let cronTimer
+let cronPromise = Promise.resolve()
+// nextAt: Date | Moment
+function setTimer(nextAt) {
+  if (!nextAt) return
+
+  const timeout = nextAt - Date.now()
+  cronTimer = setTimeout(() => {
+    cronPromise = clean(nextAt)
+  }, timeout)
+  logger.info(`Cache auto clean will start at ${moment(nextAt).format()}`)
+}
+
+async function stopCron() {
+  if (!cronTime) return
+
+  logger.info('Stopping auto clean cron job...')
+  if (cronTimer) {
+    clearTimeout(cronTimer)
+  }
+
+  await cronPromise
+  logger.info('Auto clean cron job stopped.')
 }
 
 function nextDate() {
@@ -51,73 +72,59 @@ function nextDate() {
 
   // nextDates() returns an array of Moment objects
   // https://momentjs.com/docs/
-  return job.nextDates(1)[0]
+  return job.nextDates(1)[0].toDate()
 }
 
-function setTimer(nextAt) {
-  const timeout = nextAt - Date.now()
-  timer = setTimeout(cronJob, timeout)
-}
+async function clean(schedule) {
+  const query = {
+    key: 'cacheClean',
+    cleaning: false
+  }
 
-function cronJob() {
-  cleaningPromise = (async() => {
-    const info = await getInfo()
-    let nextAt = info.nextAt
+  const $set = {
+    cleaning: true,
+    cleaningAt: new Date()
+  }
 
-    if (info.cleaning) {
-      if (nextAt)
-    } else {
-      nextAt = nextDate(cronTime)
-      try {
-        await clean(nextAt)
-      } catch (e) {
-        logger.error(e)
-      }
-    }
+  if (schedule) {
+    query.nextAt = schedule
+    $set.nextAt = nextDate()
+  }
 
-    setTimer(nextAt)
-    logger.info(`Auto clean next time at ${nextAt.format()}.`)
-  })()
-}
-
-async function clean() {
-  const now = new Date()
-  const nextAt = nextDate()
-
-  const result = metaColl.updateOne({ key: 'cacheClean', cleaningAt: null }, {
-    cleaningAt: now,
-    nextAt: nextAt ? nextAt.toDate() : null
-  })
+  const result = await metaColl.updateOne(query, { $set })
 
   if (!result.modifiedCount) {
     const info = await getInfo()
-
-    if (info.cleaningAt) {
-      const cleaningAt = moment(info.cleaningAt)
-      logger.warn(`The last cleaning job (${cleaningAt.format()}) hasn't finished yet.`)
+    const cleaningAt = moment(info.cleaningAt)
+    if (info.cleaning) {
+      logger.warn(`The last cleaning job at ${cleaningAt.format()} hasn't finished yet.`)
     } else {
-      logger.info('The last cleaning job has just finished, no need to clean again.')
+      logger.info(`The last cleaning job at ${cleaningAt.format()} has just finished, no need to clean again.`)
     }
 
-    if (nextAt) {
-      if (!info.nextAt)
-      schedule()
+    if (schedule && info.nextAt) {
+      let nextAt = info.nextAt
+      if (info.nextAt < Date.now()) {
+        nextAt = $set.nextAt
+        await metaColl.updateOne({ key: 'cacheClean', nextAt: info.nextAt }, { $set: { nextAt } })
+      }
+      setTimer(nextAt)
     }
 
     return
   } else {
+    try {
+      if (schedule) setTimer($set.nextAt)
 
-  }
-
-  try {
-    logger.info('Cleaning expired snapshots...')
-    const startTime = Date.now()
-    const result = snapshotColl.deleteMany({ sharedExpires: { $lt: new Date() } })
-    logger.info(`Cleaned ${result.deletedCount} expired snapshots (${((Date.now() - startTime) / 1000).toFixed(3)}s).`)
-  } catch (e) {
-    throw e
-  } finally {
-    await metaColl.updateOne({ key: 'cacheClean', cleaning: true }, { cleaning: false })
+      logger.info('Cleaning expired snapshots...')
+      const startTime = Date.now()
+      const result = await snapshotColl.deleteMany({ sharedExpires: { $lt: new Date() } })
+      logger.info(`Cleaned ${result.deletedCount} expired snapshots (${((Date.now() - startTime) / 1000).toFixed(3)}s).`)
+    } catch (e) {
+      throw e
+    } finally {
+      await metaColl.updateOne({ key: 'cacheClean', cleaning: true }, { $set: { cleaning: false } })
+    }
   }
 }
 
@@ -132,4 +139,4 @@ async function cli() {
   }
 }
 
-module.exports = { setupCronJob, stopCronJob, cli }
+module.exports = { setupCron, stopCron, cli }

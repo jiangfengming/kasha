@@ -3,13 +3,13 @@ const logger = require('../shared/logger')
 const mongo = require('../shared/mongo')
 const nsqWriter = require('../shared/nsqWriter')
 const workerResponder = require('./workerResponder')
-let clean
+const clean = require('../clean')
 
 ;(async() => {
   try {
     await require('../install').install()
     await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
-    await clean.start()
+    await clean.setupCron()
     await nsqWriter.connect()
     workerResponder.connect()
     await main()
@@ -21,7 +21,7 @@ let clean
 })()
 
 async function closeConnections() {
-  await autoClean.stop()
+  await clean.stopCron()
   await mongo.close()
   await nsqWriter.close()
   await workerResponder.close()

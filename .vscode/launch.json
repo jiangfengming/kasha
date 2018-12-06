@@ -24,6 +24,20 @@
       "name": "Worker --async",
       "program": "${workspaceFolder}/bin/kasha",
       "args": ["worker", "--config=config.dev.js", "--async", "--no-headless"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "install",
+      "program": "${workspaceFolder}/bin/kasha",
+      "args": ["install", "--config=config.dev.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "clean",
+      "program": "${workspaceFolder}/bin/kasha",
+      "args": ["clean", "--config=config.dev.js"]
     }
   ]
 }

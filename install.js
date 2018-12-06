@@ -1,5 +1,5 @@
 const Schema = require('schema-upgrade')
-const config = require('../shared/config')
+const config = require('./shared/config')
 const logger = require('./shared/logger')
 const mongo = require('./shared/mongo')
 
@@ -40,6 +40,7 @@ async function install() {
     await metaColl.insertOne({
       key: 'cacheClean',
       cronTime: null,
+      cleaning: false,
       cleaningAt: null,
       nextAt: null
     })
