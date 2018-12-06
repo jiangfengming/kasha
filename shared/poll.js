@@ -1,20 +1,16 @@
 const RESTError = require('./RESTError')
 const logger = require('./logger')
 const { db } = require('./mongo')
-const collection = db.collection('snapshots')
+const getLockError = require('./getLockError')
 
 function poll(site, path, deviceType, lock) {
   return new Promise((resolve, reject) => {
-    let tried = 0
-
-    async function p() {
+    const intervalId = setInterval(async() => {
       logger.debug(`polling ${site}${path}. lock: ${lock}`)
-
-      tried++
 
       let doc
       try {
-        doc = await collection.findOne({ site, path, deviceType })
+        doc = await db.collection('snapshots').findOne({ site, path, deviceType })
       } catch (e) {
         clearInterval(intervalId)
         const { timestamp, eventId } = logger.error(e)
@@ -22,48 +18,23 @@ function poll(site, path, deviceType, lock) {
       }
 
       if (!doc) {
+        clearInterval(intervalId)
         return reject(new RESTError('SERVER_DOC_DELETED'))
       }
 
       if (!doc.lock || (lock && lock !== doc.lock)) {
+        // lock removed or changed
         clearInterval(intervalId)
         resolve(doc)
       } else {
         if (!lock) lock = doc.lock
-
-        if (tried >= 6) {
+        const error = getLockError(site, path, deviceType, lock, doc.updatedAt)
+        if (error) {
           clearInterval(intervalId)
-
-          const error = new RESTError('SERVER_CACHE_LOCK_TIMEOUT', 'snapshot')
-
-          // if the same lock lasts 30s, the other worker may went wrong
-          // we remove the lock
-          collection.updateOne({
-            site,
-            path,
-            deviceType,
-            lock
-          }, {
-            $set: {
-              error: error.toJSON(),
-              updatedAt: new Date(),
-              lock: null
-            }
-          }).catch(e => {
-            logger.error(e)
-          })
-
           reject(error)
         }
       }
-    }
-
-    const intervalId = setInterval(p, 5000)
-
-    if (!lock) {
-      tried = -1
-      p()
-    }
+    }, 5000)
   })
 }
 

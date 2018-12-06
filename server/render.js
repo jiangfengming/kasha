@@ -15,6 +15,7 @@ const poll = require('../shared/poll')
 const normalizeDoc = require('../shared/normalizeDoc')
 const urlRewrite = require('../shared/urlRewrite')
 const inArray = require('../shared/inArray')
+const getLockError = require('../shared/getLockError')
 
 async function render(ctx) {
   const now = Date.now()
@@ -165,7 +166,7 @@ async function render(ctx) {
       return sendToWorker(refresh ? 'BYPASS' : 'MISS')
     }
 
-    const { privateExpires, sharedExpires, lock } = doc
+    const { privateExpires, sharedExpires, lock, updatedAt } = doc
 
     if (refresh) {
       if (!lock) {
@@ -178,10 +179,7 @@ async function render(ctx) {
 
       if (sharedExpires && sharedExpires >= now) {
         if (lock) {
-          // in case other process didn't release the lock
-          poll(site, path, deviceType, lock).catch(() => {
-            // nop
-          })
+          getLockError(site, path, deviceType, lock, updatedAt)
         } else {
           // refresh cache in background
           sendToWorker(null, { noWait: true, callbackURL: null })
