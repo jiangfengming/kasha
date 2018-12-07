@@ -201,6 +201,7 @@ body {
         <li><a href="#" data-href="/sitemaps/google/news/1.xml" target="_blank">/sitemaps/google/news/1.xml</a></li>
         <li><a href="#" data-href="/sitemaps/google/image/1.xml" target="_blank">/sitemaps/google/image/1.xml</a></li>
         <li><a href="#" data-href="/sitemaps/google/video/1.xml" target="_blank">/sitemaps/google/video/1.xml</a></li>
+        <li><a href="#" data-href="/sitemaps/google/item" data-append-path target="_blank">/sitemaps/google/item</a></li>
       </ul>
     </fieldset>
 
@@ -233,7 +234,19 @@ body {
         } catch (e) {}
 
         for (const link of sitemapLinks) {
-          link.href =  url ? `/${url.origin}${link.dataset.href}` : '#'
+          if (url) {
+            if (link.dataset.appendPath === '') {
+              link.href = `/${url.origin}${link.dataset.href}${url.pathname}`
+              link.textContent = `${link.dataset.href}${url.pathname}`
+            } else {
+              link.href = `/${url.origin}${link.dataset.href}`
+            }
+          } else {
+            link.href = '#'
+            if (link.dataset.appendPath === '') {
+              link.textContent = link.dataset.href
+            }
+          }
         }
       })
     </script>

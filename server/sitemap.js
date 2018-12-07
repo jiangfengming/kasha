@@ -214,6 +214,14 @@ async function googleSitemap(ctx) {
   await respond(ctx, result, genGoogleSitemap)
 }
 
+async function googleSitemapItem(ctx) {
+  const site = ctx.site
+  const path = '/' + ctx.params.path
+
+  const result = await sitemaps.find({ site, path }, { limit: 1 })
+  await respond(ctx, result, genGoogleSitemap)
+}
+
 async function googleNewsSitemap(ctx) {
   const site = ctx.site
   const limit = parseLimitParam(ctx.query.limit, GOOGLE_LIMIT)
@@ -423,6 +431,7 @@ module.exports = {
   robotsTxt,
   sitemap,
   googleSitemap,
+  googleSitemapItem,
   googleNewsSitemap,
   googleImageSitemap,
   googleVideoSitemap,
