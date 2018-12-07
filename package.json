@@ -1,7 +1,7 @@
 {
   "name": "kasha",
   "version": "0.7.0",
-  "description": "prerender service",
+  "description": "Prerender your Single-Page Application.",
   "main": "index.js",
   "bin": {
     "kasha": "bin/kasha"
@@ -49,18 +49,19 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fenivana/kasha.git"
+    "url": "git+https://github.com/kasha-io/kasha.git"
   },
   "keywords": [
+    "puppeteer",
     "prerender",
     "seo"
   ],
   "author": "Jiang Fengming",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/fenivana/kasha/issues"
+    "url": "https://github.com/kasha-io/kasha/issues"
   },
-  "homepage": "https://github.com/fenivana/kasha#readme",
+  "homepage": "https://github.com/kasha-io/kasha#readme",
   "directories": {
     "test": "tests"
   }
