@@ -3,7 +3,7 @@ const moment = require('moment')
 const config = require('./shared/config')
 const mongo = require('./shared/mongo')
 const logger = require('./shared/logger')
-const cronTime = config.cache.autoClean
+const cronTime = config.cache.autoClean || null
 
 let db, metaColl, snapshotColl
 async function connectDB() {
