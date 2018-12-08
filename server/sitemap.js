@@ -5,6 +5,7 @@ const { db } = require('../shared/mongo')
 const RESTError = require('../shared/RESTError')
 const config = require('../shared/config')
 const urlRewrite = require('../shared/urlRewrite')
+const logger = require('../shared/logger')
 
 const sitemaps = db.collection('sitemaps')
 
@@ -181,10 +182,20 @@ async function respond(ctx, result, gen) {
   ctx.set('Content-Type', 'text/xml; charset=utf-8')
   const count = await result.count()
   if (count) {
+    result.addCursorFlag('noCursorTimeout', true)
     ctx.set('Cache-Control', `max-age=${config.cache.sitemap}`)
     const stream = new PassThrough()
     ctx.body = stream
-    gen(stream, result)
+    // start streaming and don't await
+    gen(stream, result).catch(e => {
+      logger.error(e)
+    }).finally(async() => {
+      try {
+        await result.close()
+      } catch (e) {
+        logger.error(e)
+      }
+    })
   }
 }
 
@@ -193,10 +204,13 @@ async function sitemap(ctx) {
   const limit = parseLimitParam(ctx.query.limit, PAGE_LIMIT)
   const page = parsePageParam(ctx.params.page)
 
-  const result = await sitemaps.find({ site }, {
+  const query = { site }
+  const options = {
     skip: (page - 1) * limit,
     limit
-  })
+  }
+  logger.debug('query sitemaps', query, options)
+  const result = await sitemaps.find(query, options)
 
   await respond(ctx, result, genSitemap)
 }
@@ -206,10 +220,13 @@ async function googleSitemap(ctx) {
   const limit = parseLimitParam(ctx.query.limit, GOOGLE_LIMIT)
   const page = parsePageParam(ctx.params.page)
 
-  const result = await sitemaps.find({ site }, {
+  const query = { site }
+  const options = {
     skip: (page - 1) * limit,
     limit
-  })
+  }
+  logger.debug('query sitemaps', query, options)
+  const result = await sitemaps.find(query, options)
 
   await respond(ctx, result, genGoogleSitemap)
 }
@@ -218,7 +235,11 @@ async function googleSitemapItem(ctx) {
   const site = ctx.site
   const path = '/' + ctx.params.path
 
-  const result = await sitemaps.find({ site, path }, { limit: 1 })
+  const query = { site, path }
+  const options = { limit: 1 }
+  logger.debug('query sitemaps', query, options)
+  const result = await sitemaps.find(query, options)
+
   await respond(ctx, result, genGoogleSitemap)
 }
 
@@ -227,13 +248,16 @@ async function googleNewsSitemap(ctx) {
   const limit = parseLimitParam(ctx.query.limit, GOOGLE_LIMIT)
   const page = parsePageParam(ctx.params.page)
 
-  const result = await sitemaps.find({
+  const query = {
     site,
     'news.publication_date': { $gte: twoDaysAgo() }
-  }, {
+  }
+  const options = {
     skip: (page - 1) * limit,
     limit
-  })
+  }
+  logger.debug('query sitemaps', query, options)
+  const result = await sitemaps.find(query, options)
 
   await respond(ctx, result, genGoogleNewsSitemap)
 }
@@ -247,13 +271,16 @@ async function googleImageSitemap(ctx) {
   const limit = parseLimitParam(ctx.query.limit, GOOGLE_LIMIT)
   const page = parsePageParam(ctx.params.page)
 
-  const result = await sitemaps.find({
+  const query = {
     site,
-    image: { $exists: true }
-  }, {
+    hasImages: true
+  }
+  const options = {
     skip: (page - 1) * limit,
     limit
-  })
+  }
+  logger.debug('query sitemaps', query, options)
+  const result = await sitemaps.find(query, options)
 
   await respond(ctx, result, genGoogleImageSitemap)
 }
@@ -263,13 +290,16 @@ async function googleVideoSitemap(ctx) {
   const limit = parseLimitParam(ctx.query.limit, GOOGLE_LIMIT)
   const page = parsePageParam(ctx.params.page)
 
-  const result = await sitemaps.find({
+  const query = {
     site,
-    video: { $exists: true }
-  }, {
+    hasVideos: true
+  }
+  const options = {
     skip: (page - 1) * limit,
     limit
-  })
+  }
+  logger.debug('query sitemaps', query, options)
+  const result = await sitemaps.find(query, options)
 
   await respond(ctx, result, genGoogleVideoSitemap)
 }
@@ -279,17 +309,25 @@ async function robotsTxt(ctx) {
   const limit = parseLimitParam(ctx.query.limit, PAGE_LIMIT)
   const googleLimit = parseLimitParam(ctx.query.googleLimit, GOOGLE_LIMIT)
 
+  const queryAll = { site }
+  const queryNews = { site, 'news.publication_date': { $gte: twoDaysAgo() } }
+  const queryImages = { site, hasImages: true }
+  const queryVideos = { site, hasVideos: true }
+  logger.debug('count sitemaps', queryAll, queryNews, queryImages, queryVideos)
+
   const [allCount, newsCount, imageCount, videoCount, rules] = await Promise.all([
-    sitemaps.countDocuments({ site }),
-    sitemaps.countDocuments({ site, 'news.publication_date': { $gte: twoDaysAgo() } }),
-    sitemaps.countDocuments({ site, image: { $exists: true } }),
-    sitemaps.countDocuments({ site, video: { $exists: true } }),
+    sitemaps.countDocuments(queryAll),
+    sitemaps.countDocuments(queryNews),
+    sitemaps.countDocuments(queryImages),
+    sitemaps.countDocuments(queryVideos),
 
     new Promise((resolve, reject) => {
       let url = site + '/robots.txt'
       if (ctx.siteConfig && ctx.siteConfig.rewrites) {
         url = urlRewrite(url, ctx.siteConfig.rewrites)
       }
+
+      logger.debug('fetch robots.txt:', url)
 
       const req = request({
         url,
@@ -371,14 +409,19 @@ async function _sitemapIndex(ctx, type) {
   const query = { site }
   if (type === 'news') {
     query['news.publication_date'] = { $gte: twoDaysAgo() }
-  } else if (['image', 'video'].includes(type)) {
-    query[type] = { $exists: true }
+  } else if (type === 'image') {
+    query.hasImages = true
+  } else if (type === 'video') {
+    query.hasVideos = true
   }
 
-  const docCount = await sitemaps.countDocuments(query, {
+  const options = {
     skip: (page - 1) * limit * PAGE_LIMIT,
     limit: limit * PAGE_LIMIT
-  })
+  }
+
+  logger.debug('count sitemaps', query, options)
+  const docCount = await sitemaps.countDocuments(query, options)
 
   if (docCount) {
     ctx.set('Content-Type', 'text/xml; charset=utf-8')
