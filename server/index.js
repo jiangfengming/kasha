@@ -107,7 +107,7 @@ async function main() {
       try {
         const url = new URL(site)
         ctx.site = url.origin
-        ctx.siteConfig = await getSiteConfig(url.host)
+        ctx.siteConfig = await getSiteConfig({ host: url.host, protocol: url.protocol.slice(0, -1) })
         return next()
       } catch (e) {
         throw new RESTError('CLIENT_INVALID_PARAM', 'site')
