@@ -1,4 +1,4 @@
-const { PassThrough } = require('stream')
+const { PassThrough, Transform } = require('stream')
 const { XmlEntities } = require('html-entities')
 const request = require('request')
 const { db } = require('../shared/mongo')
@@ -40,85 +40,68 @@ function parsePageParam(page) {
   }
 }
 
-async function genSitemap(stream, data) {
-  stream.write('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
+const standardSitemapStream = {
+  header: '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
 
-  let entry
-  while (entry = await data.next()) { // eslint-disable-line no-cond-assign
-    stream.write('<url>')
-    stream.write(standardTags(entry))
-    stream.write('</url>')
+  transform(doc, encoding, cb) {
+    cb(null, `<url>${standardTags(doc)}</url>`)
   }
-
-  stream.end('</urlset>')
 }
 
-async function genGoogleSitemap(stream, data) {
-  stream.write('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">')
+const googleSitemapStream = {
+  header: '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">',
 
-  let entry
-  while (entry = await data.next()) { // eslint-disable-line no-cond-assign
-    stream.write('<url>')
-    stream.write(standardTags(entry))
+  transform(doc, encoding, cb) {
+    this.push('<url>')
+    this.push(standardTags(doc))
 
-    if (entry.news) {
-      stream.write(googleNewsTags(entry.news))
+    if (doc.news) {
+      this.push(googleNewsTags(doc.news))
     }
 
-    if (entry.image) {
-      entry.image.forEach(img => stream.write(googleImageTags(img)))
+    if (doc.image) {
+      doc.image.forEach(img => this.push(googleImageTags(img)))
     }
 
-    if (entry.video) {
-      entry.video.forEach(video => stream.write(googleVideoTags(video)))
+    if (doc.video) {
+      doc.video.forEach(video => this.push(googleVideoTags(video)))
     }
 
-    stream.write('</url>')
+    this.push('</url>')
+    cb()
   }
-
-  stream.end('</urlset>')
 }
 
-async function genGoogleNewsSitemap(stream, data) {
-  stream.write('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">')
+const googleNewsSitemapStream = {
+  header: '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">',
 
-  let entry
-  while (entry = await data.next()) { // eslint-disable-line no-cond-assign
-    stream.write('<url>')
-    stream.write(standardTags(entry))
-    stream.write(googleNewsTags(entry.news))
-    stream.write('</url>')
+  transform(doc, encoding, cb) {
+    cb(null, `<url>${standardTags(doc)}${googleNewsTags(doc.news)}</url>`)
   }
-
-  stream.end('</urlset>')
 }
 
-async function genGoogleImageSitemap(stream, data) {
-  stream.write('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">')
+const googleImageSitemapStream = {
+  header: '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">',
 
-  let entry
-  while (entry = await data.next()) { // eslint-disable-line no-cond-assign
-    stream.write('<url>')
-    stream.write(standardTags(entry))
-    entry.image.forEach(img => stream.write(googleImageTags(img)))
-    stream.write('</url>')
+  transform(doc, encoding, cb) {
+    this.push('<url>')
+    this.push(standardTags(doc))
+    doc.image.forEach(img => this.push(googleImageTags(img)))
+    this.push('</url>')
+    cb()
   }
-
-  stream.end('</urlset>')
 }
 
-async function genGoogleVideoSitemap(stream, data) {
-  stream.write('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">')
+const googleVideoSitemapStream = {
+  header: '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">',
 
-  let entry
-  while (entry = await data.next()) { // eslint-disable-line no-cond-assign
-    stream.write('<url>')
-    stream.write(standardTags(entry))
-    entry.video.forEach(video => stream.write(googleVideoTags(video)))
-    stream.write('</url>')
+  transform(doc, encoding, cb) {
+    this.push('<url>')
+    this.push(standardTags(doc))
+    doc.video.forEach(video => this.push(googleVideoTags(video)))
+    this.push('</url>')
+    cb()
   }
-
-  stream.end('</urlset>')
 }
 
 function standardTags(page) {
@@ -178,25 +161,36 @@ function googleVideoTags(video) {
   return tags
 }
 
-async function respond(ctx, result, gen) {
+async function respond(ctx, data, { header, transform }) {
+  if (!await data.hasNext()) return
+
   ctx.set('Content-Type', 'text/xml; charset=utf-8')
-  const count = await result.count()
-  if (count) {
-    result.addCursorFlag('noCursorTimeout', true)
-    ctx.set('Cache-Control', `max-age=${config.cache.sitemap}`)
-    const stream = new PassThrough()
-    ctx.body = stream
-    // start streaming and don't await
-    gen(stream, result).catch(e => {
-      logger.error(e)
-    }).finally(async() => {
-      try {
-        await result.close()
-      } catch (e) {
-        logger.error(e)
-      }
-    })
-  }
+  ctx.set('Cache-Control', `max-age=${config.cache.sitemap}`)
+
+  ctx.body = new PassThrough()
+
+  ctx.body.on('error', async() => {
+    try {
+      await data.close()
+    } catch (e) {
+      logger.debug(e)
+    }
+  })
+
+  ctx.body.write(header)
+
+  const trans = new Transform({
+    writableObjectMode: true,
+    transform
+  })
+
+  trans.setEncoding('utf8')
+
+  trans.on('end', () => {
+    ctx.body.end('</urlset>')
+  })
+
+  data.pipe(trans).pipe(ctx.body, { end: false })
 }
 
 async function sitemap(ctx) {
@@ -210,9 +204,9 @@ async function sitemap(ctx) {
     limit
   }
   logger.debug('query sitemaps', query, options)
-  const result = await sitemaps.find(query, options)
+  const data = await sitemaps.find(query, options)
 
-  await respond(ctx, result, genSitemap)
+  await respond(ctx, data, standardSitemapStream)
 }
 
 async function googleSitemap(ctx) {
@@ -226,9 +220,9 @@ async function googleSitemap(ctx) {
     limit
   }
   logger.debug('query sitemaps', query, options)
-  const result = await sitemaps.find(query, options)
+  const data = await sitemaps.find(query, options)
 
-  await respond(ctx, result, genGoogleSitemap)
+  await respond(ctx, data, googleSitemapStream)
 }
 
 async function googleSitemapItem(ctx) {
@@ -238,9 +232,9 @@ async function googleSitemapItem(ctx) {
   const query = { site, path }
   const options = { limit: 1 }
   logger.debug('query sitemaps', query, options)
-  const result = await sitemaps.find(query, options)
+  const data = await sitemaps.find(query, options)
 
-  await respond(ctx, result, genGoogleSitemap)
+  await respond(ctx, data, googleSitemapStream)
 }
 
 async function googleNewsSitemap(ctx) {
@@ -257,9 +251,9 @@ async function googleNewsSitemap(ctx) {
     limit
   }
   logger.debug('query sitemaps', query, options)
-  const result = await sitemaps.find(query, options)
+  const data = await sitemaps.find(query, options)
 
-  await respond(ctx, result, genGoogleNewsSitemap)
+  await respond(ctx, data, googleNewsSitemapStream)
 }
 
 function twoDaysAgo() {
@@ -280,9 +274,9 @@ async function googleImageSitemap(ctx) {
     limit
   }
   logger.debug('query sitemaps', query, options)
-  const result = await sitemaps.find(query, options)
+  const data = await sitemaps.find(query, options)
 
-  await respond(ctx, result, genGoogleImageSitemap)
+  await respond(ctx, data, googleImageSitemapStream)
 }
 
 async function googleVideoSitemap(ctx) {
@@ -299,9 +293,9 @@ async function googleVideoSitemap(ctx) {
     limit
   }
   logger.debug('query sitemaps', query, options)
-  const result = await sitemaps.find(query, options)
+  const data = await sitemaps.find(query, options)
 
-  await respond(ctx, result, genGoogleVideoSitemap)
+  await respond(ctx, data, googleVideoSitemapStream)
 }
 
 async function robotsTxt(ctx) {

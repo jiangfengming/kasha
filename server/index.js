@@ -44,7 +44,12 @@ async function main() {
   const app = new Koa()
 
   app.on('error', e => {
-    logger.error(e)
+    // 'ERR_STREAM_DESTROYED' normally because the client closed the connection
+    if (e.code === 'ERR_STREAM_DESTROYED') {
+      logger.debug(e)
+    } else {
+      logger.error(e)
+    }
   })
 
   app.use(async(ctx, next) => {
