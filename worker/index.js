@@ -178,12 +178,11 @@ async function main() {
 
     if (cacheStatus !== 'BYPASS') {
       // expired
-      lockQuery.$or = [{ privateExpires: null }, { privateExpires: { $lt: new Date() } }]
+      lockQuery.privateExpires = { $lt: new Date() }
     }
 
     try {
       logger.debug(`lock: ${url} @${deviceType} with ${lock}`)
-      const fewSecsLater = new Date(Date.now() * 25 * 1000)
       await snapshots.updateOne(lockQuery, {
         $set: {
           updatedAt: new Date(),
@@ -191,8 +190,8 @@ async function main() {
         },
         $setOnInsert: {
           renderTimes: 0,
-          privateExpires: fewSecsLater,
-          sharedExpires: fewSecsLater // set to 25 secs later, prevent from cache cleaning
+          privateExpires: new Date(),
+          sharedExpires: new Date(Date.now() + 30 * 1000) // set to 30 secs later, prevent from cache cleaning
         }
       }, { upsert: true })
     } catch (e) {

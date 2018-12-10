@@ -166,6 +166,13 @@ async function render(ctx) {
       return sendToWorker(refresh ? 'BYPASS' : 'MISS')
     }
 
+    if (doc.lock) {
+      const lockError = await getLockError(site, path, deviceType, doc.lock, doc.updatedAt)
+      if (lockError && lockError.code === 'SERVER_CACHE_LOCK_TIMEOUT') {
+        doc.lock = null
+      }
+    }
+
     if (refresh && !doc.lock) {
       return sendToWorker('BYPASS')
     }
@@ -176,12 +183,7 @@ async function render(ctx) {
       }
 
       if (doc.sharedExpires >= now) {
-        let lockError
-        if (doc.lock) {
-          lockError = await getLockError(site, path, deviceType, doc.lock, doc.updatedAt)
-        }
-
-        if (!doc.lock || (lockError && lockError.code === 'SERVER_CACHE_LOCK_TIMEOUT')) {
+        if (!doc.lock) {
           // refresh the cache in background
           sendToWorker(null, { noWait: true, callbackURL: null })
         }
