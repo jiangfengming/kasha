@@ -166,22 +166,23 @@ async function render(ctx) {
       return sendToWorker(refresh ? 'BYPASS' : 'MISS')
     }
 
-    const { privateExpires, sharedExpires, lock, updatedAt } = doc
+    if (refresh && !doc.lock) {
+      return sendToWorker('BYPASS')
+    }
 
-    if (refresh) {
-      if (!lock) {
-        return sendToWorker('BYPASS')
-      }
-    } else {
-      if (privateExpires && privateExpires >= now) {
+    if (!refresh && doc.status) {
+      if (doc.privateExpires >= now) {
         return handleResult(doc, 'HIT')
       }
 
-      if (sharedExpires && sharedExpires >= now) {
-        if (lock) {
-          getLockError(site, path, deviceType, lock, updatedAt)
-        } else {
-          // refresh cache in background
+      if (doc.sharedExpires >= now) {
+        let lockError
+        if (doc.lock) {
+          lockError = await getLockError(site, path, deviceType, doc.lock, doc.updatedAt)
+        }
+
+        if (!doc.lock || (lockError && lockError.code === 'SERVER_CACHE_LOCK_TIMEOUT')) {
+          // refresh the cache in background
           sendToWorker(null, { noWait: true, callbackURL: null })
         }
 
@@ -189,23 +190,23 @@ async function render(ctx) {
       }
     }
 
-    if (lock) {
+    if (doc.lock) {
+      const status = doc.status
       try {
-        doc = await poll(site, path, deviceType, lock)
-        return handleResult(doc, refresh ? 'BYPASS' : privateExpires ? 'EXPIRED' : 'MISS')
+        doc = await poll(site, path, deviceType, doc.lock)
+        return handleResult(doc, refresh ? 'BYPASS' : status ? 'EXPIRED' : 'MISS')
       } catch (e) {
         // something went wrong when updating the document.
-        // we still use the stale doc if available.
-        // but don't give cache response if 'refresh' param is set.
+        // we still use the stale doc if available unless `refresh` param is set.
         if (doc.status && !refresh) {
-          return handleResult(doc, privateExpires && privateExpires >= now ? 'HIT' : 'STALE')
+          return handleResult(doc, doc.privateExpires && doc.privateExpires >= now ? 'HIT' : 'STALE')
         } else {
           throw e
         }
       }
     }
 
-    return sendToWorker('EXPIRED')
+    return sendToWorker(doc.status ? 'EXPIRED' : 'MISS')
   }
 
   function handleResult(doc, cacheStatus) {

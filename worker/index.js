@@ -183,13 +183,16 @@ async function main() {
 
     try {
       logger.debug(`lock: ${url} @${deviceType} with ${lock}`)
+      const fewSecsLater = new Date(Date.now() * 25 * 1000)
       await snapshots.updateOne(lockQuery, {
         $set: {
           updatedAt: new Date(),
           lock
         },
         $setOnInsert: {
-          renderTimes: 0
+          renderTimes: 0,
+          privateExpires: fewSecsLater,
+          sharedExpires: fewSecsLater // set to 25 secs later, prevent from cache cleaning
         }
       }, { upsert: true })
     } catch (e) {

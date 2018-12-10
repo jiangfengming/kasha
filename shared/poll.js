@@ -28,7 +28,7 @@ function poll(site, path, deviceType, lock) {
         resolve(doc)
       } else {
         if (!lock) lock = doc.lock
-        const error = getLockError(site, path, deviceType, lock, doc.updatedAt)
+        const error = await getLockError(site, path, deviceType, lock, doc.updatedAt)
         if (error) {
           clearInterval(intervalId)
           reject(error)
