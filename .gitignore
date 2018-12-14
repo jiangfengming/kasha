@@ -1,5 +1,8 @@
 config.dev.js
 .vscode/sftp.json
+package-lock.json
+yarn.lock
+shrinkwrap.yaml
 
 # Logs
 logs
