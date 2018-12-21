@@ -8,11 +8,13 @@ const removeXMLInvalidChars = require('./removeXMLInvalidChars')
 
 const JOB_TIMEOUT = 20 * 1000
 const PRERENDER_TIMEOUT = 24 * 1000
+const PRERENDER_WAIT = 5 * 1000
 
 const prerendererOpts = {
   debug: config.logLevel === 'debug' ? logger.debug.bind(logger) : false,
 
   timeout: PRERENDER_TIMEOUT,
+  wait: PRERENDER_WAIT,
 
   puppeteerLaunchOptions: {
     headless: global.argv.headless,
