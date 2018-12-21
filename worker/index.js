@@ -234,6 +234,7 @@ async function main() {
         followRedirect: true,
         extraMeta: {
           status: { selector: 'meta[http-equiv="Status" i]', property: 'content' },
+          location: { selector: 'meta[http-equiv="Location" i]', property: 'content' },
           lastModified: { selector: 'meta[http-equiv="Last-Modified" i]', property: 'content' },
           cacheControl: { selector: 'meta[http-equiv="Cache-Control" i]', property: 'content' },
           expires: { selector: 'meta[http-equiv="Expires" i]', property: 'content' }
@@ -247,6 +248,10 @@ async function main() {
         const s = parseInt(doc.meta.status)
         if (!isNaN(s) && s >= 100 && s < 600) {
           doc.status = s
+
+          if ([301, 302].includes(doc.status) && doc.meta.location) {
+            doc.redirect = doc.meta.location
+          }
         }
       }
 
