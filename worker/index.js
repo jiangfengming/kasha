@@ -4,6 +4,7 @@ const mongo = require('../shared/mongo')
 const nsqWriter = require('../shared/nsqWriter')
 const nsqReader = require('../shared/nsqReader')
 const Prerenderer = require('puppeteer-prerender')
+const removeXMLInvalidChars = require('./removeXMLInvalidChars')
 
 const JOB_TIMEOUT = 20 * 1000
 const PRERENDER_TIMEOUT = 24 * 1000
@@ -345,9 +346,10 @@ async function main() {
 
           if (sitemap.news) {
             const date = new Date(sitemap.news.publication_date)
-            if (isNaN(date.getTime())) {
+            if (!sitemap.news.title || isNaN(date.getTime())) {
               delete sitemap.news
             } else {
+              sitemap.news.title = removeXMLInvalidChars(sitemap.news.title)
               sitemap.news.publication_date = date
             }
           }
