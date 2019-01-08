@@ -20,7 +20,7 @@
     "mongodb": "^3.1.10",
     "node-fetch": "^2.3.0",
     "nsqjs": "^0.12.0",
-    "puppeteer-prerender": "^0.9.0",
+    "puppeteer-prerender": "^0.10.0",
     "raven-logger": "^0.3.1",
     "request": "^2.88.0",
     "rest-api-error-factory": "^0.1.1",
@@ -33,7 +33,7 @@
   },
   "devDependencies": {
     "babel-eslint": "^10.0.1",
-    "eslint": "^5.10.0",
+    "eslint": "^5.12.0",
     "eslint-config-enough": "^0.3.4",
     "mocha": "^5.2.0"
   },
