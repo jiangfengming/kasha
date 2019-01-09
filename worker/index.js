@@ -137,6 +137,7 @@ async function main() {
       site,
       path,
       deviceType,
+      waitForVariable,
       callbackURL,
       metaOnly
     } = req
@@ -239,7 +240,8 @@ async function main() {
           cacheControl: { selector: 'meta[http-equiv="Cache-Control" i]', property: 'content' },
           expires: { selector: 'meta[http-equiv="Expires" i]', property: 'content' }
         },
-        rewrites
+        rewrites,
+        waitForVariable
       })
 
       logger.debug(`prerender ${url} @${deviceType} successfully`)

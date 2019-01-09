@@ -76,7 +76,15 @@ module.exports = {
       protocol: 'https',
       rewrites: [
         ['localhost:3000', 'www.example.com']
-      ]
+      ],
+      includes: [
+        '/',
+        /\/articles\/\d+/
+      ],
+      excludes: [
+        /\/accounts\/.*/
+      ],
+      waitForVariable: 'PAGE_READY'
     }
   ],
 
