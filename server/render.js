@@ -239,7 +239,6 @@ async function render(ctx) {
             ([search, replace]) =>
               search.constructor === RegExp ? ['regexp', search.toString(), replace] : ['string', search, replace]
           ) : null,
-        waitForVariable: ctx.siteConfig && ctx.siteConfig.waitForVariable,
         callbackURL: options.callbackURL,
         metaOnly,
         cacheStatus

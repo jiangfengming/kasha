@@ -83,8 +83,7 @@ module.exports = {
       ],
       excludes: [
         /\/accounts\/.*/
-      ],
-      waitForVariable: 'PAGE_READY'
+      ]
     }
   ],
 
