@@ -247,7 +247,7 @@ async function main() {
           })
         } catch (e) {
           logger.debug(`prerender ${url} @${deviceType} failed.`, e)
-          if (tried >= 3 || !/timeout/.test(e.message)) {
+          if (tried >= 3 || !/Timeout|TIMED_OUT/i.test(e.message)) {
             throw e
           }
         }
