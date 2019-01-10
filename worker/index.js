@@ -7,11 +7,9 @@ const Prerenderer = require('puppeteer-prerender')
 const removeXMLInvalidChars = require('./removeXMLInvalidChars')
 
 const JOB_TIMEOUT = 20 * 1000
-const PRERENDER_TIMEOUT = 24 * 1000
 
 const prerendererOpts = {
   debug: config.logLevel === 'debug' ? logger.debug.bind(logger) : false,
-  timeout: PRERENDER_TIMEOUT,
 
   puppeteerLaunchOptions: {
     headless: global.argv.headless,
@@ -227,20 +225,33 @@ async function main() {
 
     try {
       logger.debug(`prerender ${url} @${deviceType}`)
-      doc = await prerenderer.render(url, {
-        userAgent: userAgents[deviceType],
-        // always followRedirect when caching pages
-        // in case of a request with followRedirect=true waits a cache lock of request with followRedirect=false
-        followRedirect: true,
-        extraMeta: {
-          status: { selector: 'meta[http-equiv="Status" i]', property: 'content' },
-          location: { selector: 'meta[http-equiv="Location" i]', property: 'content' },
-          lastModified: { selector: 'meta[http-equiv="Last-Modified" i]', property: 'content' },
-          cacheControl: { selector: 'meta[http-equiv="Cache-Control" i]', property: 'content' },
-          expires: { selector: 'meta[http-equiv="Expires" i]', property: 'content' }
-        },
-        rewrites
-      })
+
+      let tried = 0
+      do {
+        try {
+          tried++
+          doc = await prerenderer.render(url, {
+            timeout: 8000,
+            userAgent: userAgents[deviceType],
+            // always followRedirect when caching pages
+            // in case of a request with followRedirect=true waits a cache lock of request with followRedirect=false
+            followRedirect: true,
+            extraMeta: {
+              status: { selector: 'meta[http-equiv="Status" i]', property: 'content' },
+              location: { selector: 'meta[http-equiv="Location" i]', property: 'content' },
+              lastModified: { selector: 'meta[http-equiv="Last-Modified" i]', property: 'content' },
+              cacheControl: { selector: 'meta[http-equiv="Cache-Control" i]', property: 'content' },
+              expires: { selector: 'meta[http-equiv="Expires" i]', property: 'content' }
+            },
+            rewrites
+          })
+        } catch (e) {
+          logger.debug(`prerender ${url} @${deviceType} failed.`, e)
+          if (tried >= 3 || !/timeout/.test(e.message)) {
+            throw e
+          }
+        }
+      } while (!doc)
 
       logger.debug(`prerender ${url} @${deviceType} successfully`)
 
