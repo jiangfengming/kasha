@@ -5,7 +5,7 @@ const logger = require('./logger')
 const RECONNECT_INTERVAL = 5000
 
 const writer = new Writer(host, port, options)
-let connectPromise
+let connectPromise, closing
 
 function connect() {
   if (connectPromise) return connectPromise
@@ -36,7 +36,12 @@ function connect() {
     }
 
     function onClosed() {
-      logger.info('nsq writer connection closed')
+      const msg = 'NSQ writer connection closed.'
+      if (closing) {
+        logger.info(msg)
+      } else {
+        onError(new Error(msg))
+      }
     }
 
     writer.on('ready', _resolve)
@@ -58,14 +63,13 @@ async function reconnect() {
     logger.info('NSQ writer connected')
     reconnectTimer = null
   } catch (e) {
-    logger.error(e)
+    logger.error('Connecting to NSQ writer failed.', e)
     if (!closing) {
       reconnectTimer = setTimeout(reconnect, RECONNECT_INTERVAL)
     }
   }
 }
 
-let closing = false
 function close() {
   return new Promise(async resolve => {
     logger.info('Closing NSQ writer connection...')
@@ -76,17 +80,12 @@ function close() {
     if (connectPromise) {
       try {
         await connectPromise
-        writer.once('closed', _resolve)
+        writer.once('closed', resolve)
         writer.close()
       } catch (e) {
-        _resolve()
+        resolve()
       }
     } else {
-      _resolve()
-    }
-
-    function _resolve() {
-      logger.info('NSQ writer connection closed.')
       resolve()
     }
   })

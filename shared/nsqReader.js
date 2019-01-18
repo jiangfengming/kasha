@@ -8,7 +8,7 @@ const singleton = {
     singleton.reader = new Reader(topic, channel, options)
 
     singleton.reader.on('error', e => {
-      logger.error(e)
+      logger.error('NSQ reader error.', e)
     })
 
     singleton.reader.connect()
@@ -33,7 +33,7 @@ const singleton = {
       singleton.reader.close()
 
       function _resolve() {
-        logger.info('NSQ reader connection closed')
+        logger.info('NSQ reader connection closed.')
         resolve()
       }
     })
