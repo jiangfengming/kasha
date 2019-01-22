@@ -7,7 +7,7 @@
     "kasha": "bin/kasha"
   },
   "dependencies": {
-    "@sentry/node": "^4.5.2",
+    "@sentry/node": "^4.5.3",
     "cron": "^1.6.0",
     "forwarded-parse": "^2.1.0",
     "html-entities": "^1.2.1",
@@ -16,11 +16,11 @@
     "koa-router": "^7.4.0",
     "koa-send": "^5.0.0",
     "koa-static": "^5.0.0",
-    "moment": "^2.23.0",
+    "moment": "^2.24.0",
     "mongodb": "^3.1.12",
     "node-fetch": "^2.3.0",
     "nsqjs": "^0.12.0",
-    "puppeteer-prerender": "^0.12.3",
+    "puppeteer-prerender": "^0.12.4",
     "raven-logger": "^0.3.1",
     "request": "^2.88.0",
     "rest-api-error-factory": "^0.1.1",
