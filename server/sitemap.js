@@ -363,31 +363,31 @@ async function robotsTxt(ctx) {
   ctx.body = rules + '\n'
 
   for (let n = 1; n <= normalSitemapIndexCount; n++) {
-    ctx.body += `Sitemap: ${site}/sitemaps/index/${n}.xml`
+    ctx.body += `Sitemap: ${site}/sitemap.index.${n}.xml`
     if (limit !== PAGE_LIMIT) ctx.body += `?limit=${limit}`
     ctx.body += '\n'
   }
 
   for (let n = 1; n <= googleSitemapIndexCount; n++) {
-    ctx.body += `Sitemap: ${site}/sitemaps/index/google/${n}.xml`
+    ctx.body += `Sitemap: ${site}/sitemap.index.google.${n}.xml`
     if (googleLimit !== GOOGLE_LIMIT) ctx.body += `?limit=${googleLimit}`
     ctx.body += '\n'
   }
 
   for (let n = 1; n <= newsSitemapIndexCount; n++) {
-    ctx.body += `Sitemap: ${site}/sitemaps/index/google/news/${n}.xml`
+    ctx.body += `Sitemap: ${site}/sitemap.index.google.news.${n}.xml`
     if (googleLimit !== GOOGLE_LIMIT) ctx.body += `?limit=${googleLimit}`
     ctx.body += '\n'
   }
 
   for (let n = 1; n <= imageSitemapIndexCount; n++) {
-    ctx.body += `Sitemap: ${site}/sitemaps/index/google/image/${n}.xml`
+    ctx.body += `Sitemap: ${site}/sitemap.index.google.image.${n}.xml`
     if (googleLimit !== GOOGLE_LIMIT) ctx.body += `?limit=${googleLimit}`
     ctx.body += '\n'
   }
 
   for (let n = 1; n <= videoSitemapIndexCount; n++) {
-    ctx.body += `Sitemap: ${site}/sitemaps/index/google/video/${n}.xml`
+    ctx.body += `Sitemap: ${site}/sitemap.index.google.video.${n}.xml`
     if (googleLimit !== GOOGLE_LIMIT) ctx.body += `?limit=${googleLimit}`
     ctx.body += '\n'
   }
@@ -426,16 +426,16 @@ async function _sitemapIndex(ctx, type) {
 
     stream.write('<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
 
-    let path
-    if (type === 'normal') path = site + '/sitemaps'
-    else if (type === 'google') path = site + '/sitemaps/google'
-    else path = site + '/sitemaps/google/' + type
+    let prefix
+    if (type === 'normal') prefix = site + '/sitemap'
+    else if (type === 'google') prefix = site + '/sitemap.google'
+    else prefix = site + '/sitemap.google.' + type
 
     const start = (page - 1) * limit
     const pageCount = Math.ceil(docCount / limit)
 
     for (let n = 1; n <= pageCount; n++) {
-      stream.write(`<sitemap><loc>${path}/${start + n}.xml`)
+      stream.write(`<sitemap><loc>${prefix}.${start + n}.xml`)
       if (limit !== MAX) stream.write(`?limit=${limit}`)
       stream.write('</loc></sitemap>')
     }
