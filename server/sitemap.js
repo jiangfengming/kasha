@@ -319,6 +319,10 @@ async function robotsTxt(ctx) {
       let url = site + '/robots.txt'
       if (ctx.siteConfig && ctx.siteConfig.rewrites) {
         url = urlRewrite(url, ctx.siteConfig.rewrites)
+
+        if (!url) {
+          return resolve('')
+        }
       }
 
       logger.debug('fetch robots.txt:', url)
