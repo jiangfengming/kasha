@@ -136,7 +136,7 @@ async function render(ctx) {
 
       if (!includes) {
         return new Promise((resolve, reject) => {
-          const _http = rewrited.protocol === 'http' ? http : https
+          const _http = rewrited.protocol === 'http:' ? http : https
           const req = _http.request(rewrited.href, res => {
             delete res.headers.connection
             if (res.headers['content-type'].includes('text/html')) {
