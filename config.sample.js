@@ -56,10 +56,6 @@ module.exports = {
     // if a resource exceeds maxage but in sMaxage, it will be returned and the resource will be refreshed in background.
     sMaxage: 24 * 60 * 60, // 1 day
 
-    // max-age header of stale resources.
-    // if we failed to refresh the resource, we return the stale resource and set max-age to maxStale seconds.
-    maxStale: 10, // 10 seconds
-
     // max-age of robots.txt file
     robotsTxt: 24 * 60 * 60, // 1 day
 

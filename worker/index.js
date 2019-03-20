@@ -400,7 +400,7 @@ async function main() {
 
       if (callbackURL || replyTo) {
         // if fetch the document failed, we try to use the cached document if mode is not BYPASS
-        if (cacheStatus !== 'BYPASS' && cacheDoc && (!doc.status || doc.status >= 500 && cacheDoc.status < 500)) {
+        if ((!doc.status || doc.status >= 500 && cacheDoc.status < 500) && cacheStatus !== 'BYPASS' && cacheDoc) {
           doc = cacheDoc
           if (cacheStatus === 'EXPIRED') {
             cacheStatus = 'STALE'

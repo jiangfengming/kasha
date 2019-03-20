@@ -1,5 +1,7 @@
 config.dev.js
 .vscode/sftp.json
+
+# Package lock files
 package-lock.json
 yarn.lock
 shrinkwrap.yaml

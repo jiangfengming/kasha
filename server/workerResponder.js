@@ -26,6 +26,7 @@ function connect() {
 
     data.doc.privateExpires = new Date(data.doc.privateExpires)
     data.doc.sharedExpires = new Date(data.doc.sharedExpires)
+    data.doc.updatedAt = new Date(data.doc.updatedAt)
 
     reply(ctx, type, followRedirect, data.doc, data.cacheStatus)
 
