@@ -14,6 +14,11 @@ module.exports = {
     httpStatus: 400
   },
 
+  CLIENT_INVALID_PROTOCOL: {
+    message: 'Invalid forwarded proto.',
+    httpStatus: 400
+  },
+
   CLIENT_HOST_CONFIG_NOT_EXIST: {
     message: 'Host config does not exist.',
     httpStatus: 400

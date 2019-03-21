@@ -152,27 +152,29 @@ async function main() {
   app.use(async(ctx, next) => {
     if (ctx.method === 'HEAD') {
       // health check request
-      ctx.body = ''
+      ctx.status = 200
       return
     } else if (ctx.method !== 'GET') {
       throw new RESTError('CLIENT_METHOD_NOT_ALLOWED', ctx.method)
     }
 
     let host = ctx.host
-    if (!host) throw new RESTError('CLIENT_EMPTY_HOST_HEADER')
+    let protocol
 
-    if (config.apiHost && config.apiHost.includes(host)) {
+    if (host && config.apiHost && config.apiHost.includes(host)) {
       ctx.mode = 'api'
       return apiRoutes(ctx, next)
     } else {
-      ctx.mode = 'proxy'
-
-      let protocol
       if (ctx.headers.forwarded) {
         try {
           const forwarded = parseForwardedHeader(ctx.headers.forwarded)[0]
-          if (forwarded.host) host = forwarded.host
-          if (forwarded.proto) protocol = forwarded.proto
+          if (forwarded.host) {
+            host = forwarded.host
+          }
+
+          if (forwarded.proto) {
+            protocol = forwarded.proto
+          }
         } catch (e) {
           throw new RESTError('CLIENT_INVALID_HEADER', 'Forwarded')
         }
@@ -184,18 +186,22 @@ async function main() {
         protocol = ctx.headers['x-forwarded-proto']
       }
 
-      const query = { host }
-      if (protocol) {
-        query.protocol = protocol
+      if (protocol && !['http', 'https'].includes(protocol)) {
+        throw new RESTError('CLIENT_INVALID_PROTOCOL')
       }
 
-      ctx.siteConfig = await getSiteConfig(query)
+      if (!host) {
+        throw new RESTError('CLIENT_EMPTY_HOST_HEADER')
+      }
+
+      ctx.siteConfig = await getSiteConfig(host)
 
       if (!ctx.siteConfig) {
         throw new RESTError('CLIENT_HOST_CONFIG_NOT_EXIST')
       }
 
-      ctx.site = ctx.siteConfig.protocol + '://' + ctx.siteConfig.host
+      ctx.mode = 'proxy'
+      ctx.site = (protocol || ctx.siteConfig.defaultProtocol) + '://' + ctx.siteConfig.host
       return proxyRoutes(ctx, next)
     }
   })
