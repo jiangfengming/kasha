@@ -3,13 +3,11 @@ const logger = require('../shared/logger')
 const mongo = require('../shared/mongo')
 const nsqWriter = require('../shared/nsqWriter')
 const workerResponder = require('./workerResponder')
-const clean = require('../clean')
 
 ;(async() => {
   try {
     await require('../install').install()
     await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
-    await clean.setupCron()
     await nsqWriter.connect()
     workerResponder.connect()
     await main()
@@ -21,7 +19,6 @@ const clean = require('../clean')
 })()
 
 async function closeConnections() {
-  await clean.stopCron()
   await mongo.close()
   await nsqWriter.close()
   await workerResponder.close()
@@ -29,9 +26,9 @@ async function closeConnections() {
 
 async function main() {
   const RESTError = require('../shared/RESTError')
-  const getSiteConfig = require('../shared/getSiteConfig')
+  const getHostConfig = require('../shared/getHostConfig')
   const Koa = require('koa')
-  const Router = require('koa-router')
+  const Router = require('koa-pilot')
   const mount = require('koa-mount')
   const serve = require('koa-static')
   const send = require('koa-send')
@@ -54,9 +51,7 @@ async function main() {
 
   app.use(async(ctx, next) => {
     try {
-      logger.debug(ctx.method, ctx.href)
       await next()
-      logger.log(`${ctx.method} ${ctx.href} ${ctx.status}`)
     } catch (e) {
       let err = e
       if (!(e instanceof RESTError)) {
@@ -72,79 +67,44 @@ async function main() {
 
   // proxy routes
   const proxyRoutes = new Router()
-    .get('/sitemap.:page(\\d+).xml', sitemap.sitemap)
-    .get('/sitemap.google.:page(\\d+).xml', sitemap.googleSitemap)
-    .get('/sitemap.google.news.:page(\\d+).xml', sitemap.googleNewsSitemap)
-    .get('/sitemap.google.image.:page(\\d+).xml', sitemap.googleImageSitemap)
-    .get('/sitemap.google.video.:page(\\d+).xml', sitemap.googleVideoSitemap)
-    .get('/sitemap.debug/:path*', sitemap.googleSitemapItem)
-    .get('/sitemap.index.:page(\\d+).xml', sitemap.sitemapIndex)
-    .get('/sitemap.index.google.:page(\\d+).xml', sitemap.googleSitemapIndex)
-    .get('/sitemap.index.google.news.:page(\\d+).xml', sitemap.googleNewsSitemapIndex)
-    .get('/sitemap.index.google.image.:page(\\d+).xml', sitemap.googleImageSitemapIndex)
-    .get('/sitemap.index.google.video.:page(\\d+).xml', sitemap.googleVideoSitemapIndex)
+    .get(/^\/sitemap\.(?<page>\d+)\.xml$/, sitemap.sitemap)
+    .get(/^\/sitemap\.google\.(?<page>\d+)\.xml$/, sitemap.googleSitemap)
+    .get(/^\/sitemap\.google\.news\.(?<page>\d+)\.xml$/, sitemap.googleNewsSitemap)
+    .get(/^\/sitemap\.google\.image\.(?<page>\d+)\.xml$/, sitemap.googleImageSitemap)
+    .get(/^\/sitemap\.google\.video\.(?<page>\d+)\.xml$/, sitemap.googleVideoSitemap)
+    .get(/^\/sitemap\.debug(?<path>\/.*)/, sitemap.googleSitemapItem)
+    .get(/^\/sitemap\.index\.(?<page>\d+)\.xml$/, sitemap.sitemapIndex)
+    .get(/^\/sitemap\.index\.google\.(?<page>\d+)\.xml$/, sitemap.googleSitemapIndex)
+    .get(/^\/sitemap\.index\.google\.news\.(?<page>\d+)\.xml$/, sitemap.googleNewsSitemapIndex)
+    .get(/^\/sitemap\.index\.google\.image\.(?<page>\d+)\.xml$/, sitemap.googleImageSitemapIndex)
+    .get(/^\/sitemap\.index\.google\.video\.(?<page>\d+)\.xml$/, sitemap.googleVideoSitemapIndex)
     .get('/robots.txt', sitemap.robotsTxt)
-    .get('(.*)', ctx => {
-      ctx.query = {
-        url: ctx.siteConfig.protocol + '://' + ctx.siteConfig.host + ctx.url,
-        deviceType: ctx.siteConfig.deviceType || 'desktop',
+    .get('*', (ctx, next) => {
+      ctx.state.params = {
+        url: ctx.state.origin + ctx.url,
         type: 'html'
       }
-      ctx.path = '/render'
-      return render(ctx)
+      return render(ctx, next)
     })
     .routes()
 
-
   // api routes
-  const siteParam = ':site(https?://[^/]+)'
   const apiRouter = new Router()
 
   if (config.enableHomepage) {
     apiRouter.get('/', async ctx => {
       await send(ctx, 'index.html', { root: path.resolve(__dirname, '../static') })
     })
-    apiRouter.use(mount('/static', serve(path.resolve(__dirname, '../static'))))
+
+    apiRouter.get('/static/*', mount('/static', serve(path.resolve(__dirname, '../static'))))
   }
 
   const apiRoutes = apiRouter
-    .param('site', async(site, ctx, next) => {
-      try {
-        const url = new URL(site)
-        ctx.site = url.origin
-        ctx.siteConfig = await getSiteConfig({ host: url.host, protocol: url.protocol.slice(0, -1) })
-        return next()
-      } catch (e) {
-        throw new RESTError('CLIENT_INVALID_PARAM', 'site')
-      }
+    .get('/render', (ctx, next) => {
+      ctx.state.params = { ...ctx.query }
+      return render(ctx, next)
     })
-    .get(`/${siteParam}/sitemap.:page(\\d+).xml`, sitemap.sitemap)
-    .get(`/${siteParam}/sitemap.google.:page(\\d+).xml`, sitemap.googleSitemap)
-    .get(`/${siteParam}/sitemap.google.news.:page(\\d+).xml`, sitemap.googleNewsSitemap)
-    .get(`/${siteParam}/sitemap.google.image.:page(\\d+).xml`, sitemap.googleImageSitemap)
-    .get(`/${siteParam}/sitemap.google.video.:page(\\d+).xml`, sitemap.googleVideoSitemap)
-    .get(`/${siteParam}/sitemap.debug/:path*`, sitemap.googleSitemapItem)
-    .get(`/${siteParam}/sitemap.index.:page(\\d+).xml`, sitemap.sitemapIndex)
-    .get(`/${siteParam}/sitemap.index.google.:page(\\d+).xml`, sitemap.googleSitemapIndex)
-    .get(`/${siteParam}/sitemap.index.google.news.:page(\\d+).xml`, sitemap.googleNewsSitemapIndex)
-    .get(`/${siteParam}/sitemap.index.google.image.:page(\\d+).xml`, sitemap.googleImageSitemapIndex)
-    .get(`/${siteParam}/sitemap.index.google.video.:page(\\d+).xml`, sitemap.googleVideoSitemapIndex)
-    .get(`/${siteParam}/robots.txt`, sitemap.robotsTxt)
-    .get('/render', render)
-    .get('/cache', (ctx, next) => {
-      ctx.query.noWait = ''
-      return next()
-    }, render)
-    .get('/(http.+)', (ctx, next) => {
-      ctx.query = {
-        url: ctx.url.slice(1),
-        deviceType: ctx.headers['x-device-type'] || 'desktop',
-        type: 'static'
-      }
-      ctx.path = '/render'
-      return next()
-    }, render)
-    .get('(.*)', () => {
+    .get('*', () => {
       throw new RESTError('CLIENT_NO_SUCH_API')
     })
     .routes()
@@ -154,7 +114,9 @@ async function main() {
       // health check request
       ctx.status = 200
       return
-    } else if (ctx.method !== 'GET') {
+    }
+
+    if (ctx.method !== 'GET') {
       throw new RESTError('CLIENT_METHOD_NOT_ALLOWED', ctx.method)
     }
 
@@ -162,8 +124,21 @@ async function main() {
     let protocol
 
     if (host && config.apiHost && config.apiHost.includes(host)) {
-      ctx.mode = 'api'
-      return apiRoutes(ctx, next)
+      const matchedOrigin = ctx.path.match(/^\/(https?:\/\/[^/]+)/)
+      if (!matchedOrigin) {
+        return apiRoutes(ctx, next)
+      }
+
+      let url
+      try {
+        url = new URL(matchedOrigin[1])
+      } catch (e) {
+        throw new RESTError('CLIENT_INVALID_HOST')
+      }
+
+      host = url.host
+      protocol = url.protocol
+      ctx.path = ctx.path.replace(matchedOrigin[0], '')
     } else {
       if (ctx.headers.forwarded) {
         try {
@@ -191,19 +166,26 @@ async function main() {
       }
 
       if (!host) {
-        throw new RESTError('CLIENT_EMPTY_HOST_HEADER')
+        throw new RESTError('CLIENT_INVALID_HOST')
       }
-
-      ctx.siteConfig = await getSiteConfig(host)
-
-      if (!ctx.siteConfig) {
-        throw new RESTError('CLIENT_HOST_CONFIG_NOT_EXIST')
-      }
-
-      ctx.mode = 'proxy'
-      ctx.site = (protocol || ctx.siteConfig.defaultProtocol) + '://' + ctx.siteConfig.host
-      return proxyRoutes(ctx, next)
     }
+
+    ctx.state.config = await getHostConfig(host)
+
+    if (!ctx.state.config && config.disallowUnknownHost) {
+      throw new RESTError('CLIENT_HOST_CONFIG_NOT_EXIST')
+    }
+
+    if (!protocol) {
+      if (!ctx.state.config || ctx.state.config.defaultProtocol) {
+        throw new RESTError('CLIENT_INVALID_PROTOCOL')
+      }
+
+      protocol = ctx.state.config.defaultProtocol
+    }
+
+    ctx.state.origin = protocol + '://' + ctx.state.config.host
+    return proxyRoutes(ctx, next)
   })
 
   const server = stoppable(app.listen(config.port))

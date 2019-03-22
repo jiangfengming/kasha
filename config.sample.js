@@ -11,6 +11,8 @@ module.exports = {
   // for example: http://127.0.0.1:3000/
   enableHomepage: true,
 
+  disallowUnknownHost: false,
+
   nsq: {
     // Options: https://github.com/dudleycarr/nsqjs#new-readertopic-channel-options
     reader: {
@@ -62,7 +64,7 @@ module.exports = {
     // max-age of sitemaps
     sitemap: 60 * 60, // 1 hour
 
-    autoClean: '0 0 * * *' // At 00:00 every day
+    removeAfter: 24 * 60 * 60 // 1 day
   },
 
   // You can comment out `sites` config here, and store the sites config in db's `sites` collection.

@@ -9,8 +9,8 @@ module.exports = {
     httpStatus: 400
   },
 
-  CLIENT_EMPTY_HOST_HEADER: {
-    message: 'Host header is empty.',
+  CLIENT_INVALID_HOST: {
+    message: 'Invalid host.',
     httpStatus: 400
   },
 
