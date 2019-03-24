@@ -7,8 +7,8 @@ const nsqWriter = require('../shared/nsqWriter')
 const reply = require('./reply')
 const RESTError = require('../shared/RESTError')
 const logger = require('../shared/logger')
+const mergeSetting = require('./mergeSetting')
 const { db } = require('../shared/mongo')
-const getSiteConfig = require('../shared/getSiteConfig')
 const uid = require('../shared/uid')
 const callback = require('../shared/callback')
 const poll = require('../shared/poll')
@@ -19,8 +19,8 @@ const getLockError = require('../shared/getLockError')
 
 async function render(ctx) {
   const now = Date.now()
-  const { deviceType = 'desktop', callbackURL } = ctx.query
-  let { url, type = 'json', noWait, metaOnly, followRedirect, refresh } = ctx.query
+  const { callbackURL } = ctx.state.params
+  let { url, type = 'json', profile, noWait, metaOnly, followRedirect, refresh } = ctx.state.params
 
   try {
     // mongodb index size must be less than 1024 bytes (includes structural overhead)
@@ -29,10 +29,6 @@ async function render(ctx) {
     assert(['http:', 'https:'].includes(url.protocol))
   } catch (e) {
     throw new RESTError('CLIENT_INVALID_PARAM', 'url')
-  }
-
-  if (!['mobile', 'desktop'].includes(deviceType)) {
-    throw new RESTError('CLIENT_INVALID_PARAM', 'deviceType')
   }
 
   if (callbackURL) {
@@ -76,6 +72,29 @@ async function render(ctx) {
 
   if ((callbackURL || metaOnly) && type !== 'json') {
     type = 'json'
+  }
+
+  if (!profile && ctx.state.config.defaultProfile) {
+    profile = ctx.state.config.defaultProfile
+  }
+
+  if (profile) {
+    if (!ctx.state.config.profiles || !ctx.state.config.profiles[profile]) {
+      throw new RESTError('CLIENT_INVALID_PARAM', 'profile')
+    } else {
+      profile = ctx.state.config.profiles[profile]
+    }
+  }
+
+  let {
+    preserveSearchParams = true,
+    removeHash = false,
+    rewrites = null,
+    excludes = null,
+    includes = null
+  } = ctx.state.config
+
+  if (profile) {
   }
 
   const site = url.origin

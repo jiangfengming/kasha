@@ -26,7 +26,7 @@ async function closeConnections() {
 
 async function main() {
   const RESTError = require('../shared/RESTError')
-  const getHostConfig = require('../shared/getHostConfig')
+  const getSiteConfig = require('../shared/getSiteConfig')
   const Koa = require('koa')
   const Router = require('koa-pilot')
   const mount = require('koa-mount')
@@ -82,7 +82,8 @@ async function main() {
     .get('*', (ctx, next) => {
       ctx.state.params = {
         url: ctx.state.origin + ctx.url,
-        type: 'html'
+        type: 'html',
+        profile: ctx.headers['kasha-profile']
       }
       return render(ctx, next)
     })
@@ -101,7 +102,7 @@ async function main() {
 
   const apiRoutes = apiRouter
     .get('/render', (ctx, next) => {
-      ctx.state.params = { ...ctx.query }
+      ctx.state.params = ctx.query
       return render(ctx, next)
     })
     .get('*', () => {
@@ -170,21 +171,25 @@ async function main() {
       }
     }
 
-    ctx.state.config = await getHostConfig(host)
+    ctx.state.config = await getSiteConfig(host)
 
-    if (!ctx.state.config && config.disallowUnknownHost) {
-      throw new RESTError('CLIENT_HOST_CONFIG_NOT_EXIST')
+    if (!ctx.state.config) {
+      if (config.disallowUnknownHost) {
+        throw new RESTError('CLIENT_HOST_CONFIG_NOT_EXIST')
+      } else {
+        ctx.state.config = {}
+      }
     }
 
     if (!protocol) {
-      if (!ctx.state.config || ctx.state.config.defaultProtocol) {
+      if (!ctx.state.config.defaultProtocol) {
         throw new RESTError('CLIENT_INVALID_PROTOCOL')
+      } else {
+        protocol = ctx.state.config.defaultProtocol
       }
-
-      protocol = ctx.state.config.defaultProtocol
     }
 
-    ctx.state.origin = protocol + '://' + ctx.state.config.host
+    ctx.state.origin = protocol + '://' + host
     return proxyRoutes(ctx, next)
   })
 
