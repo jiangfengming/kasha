@@ -26,7 +26,7 @@ async function closeConnections() {
 
 async function main() {
   const RESTError = require('../shared/RESTError')
-  const getSiteConfig = require('../shared/getSiteConfig')
+  const getSiteConfig = require('./getSiteConfig')
   const Koa = require('koa')
   const Router = require('koa-pilot')
   const mount = require('koa-mount')

@@ -14,7 +14,7 @@ const callback = require('../shared/callback')
 const poll = require('../shared/poll')
 const normalizeDoc = require('../shared/normalizeDoc')
 const urlRewrite = require('../shared/urlRewrite')
-const inArray = require('../shared/inArray')
+const inArray = require('./inArray')
 const getLockError = require('../shared/getLockError')
 
 async function render(ctx) {
@@ -78,11 +78,12 @@ async function render(ctx) {
     profile = ctx.state.config.defaultProfile
   }
 
+  let settings
   if (profile) {
     if (!ctx.state.config.profiles || !ctx.state.config.profiles[profile]) {
       throw new RESTError('CLIENT_INVALID_PARAM', 'profile')
     } else {
-      profile = ctx.state.config.profiles[profile]
+      settings = ctx.state.config.profiles[profile]
     }
   }
 
@@ -94,11 +95,18 @@ async function render(ctx) {
     includes = null
   } = ctx.state.config
 
-  if (profile) {
+  if (settings) {
+    preserveSearchParams = mergeSetting(preserveSearchParams, settings.preserveSearchParams)
+    if (settings.removeHash != null) {
+      removeHash = settings.removeHash
+    }
+    rewrites = mergeSetting(rewrites, settings.rewrites)
+    excludes = mergeSetting(excludes, settings.excludes)
+    includes = mergeSetting(includes, settings.includes)
   }
 
   const site = url.origin
-  let path = url.pathname
+  let path
 
   if (noWait || callbackURL) {
     ctx.body = { queued: true }
@@ -112,27 +120,34 @@ async function render(ctx) {
   }
 
   async function handler() {
-    if (!ctx.siteConfig) {
-      try {
-        ctx.siteConfig = await getSiteConfig({ host: url.host, protocol: url.protocol.slice(0, -1) })
-      } catch (e) {
-        const { timestamp, eventId } = logger.error(e)
-        throw new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId)
+    if (!preserveSearchParams) {
+      url.search = ''
+    } else if (preserveSearchParams.constructor === Array) {
+      const matched = preserveSearchParams.find(([rule]) =>
+        rule instanceof RegExp ? rule.test(url.pathname) : rule === url.pathname
+      )
+
+      if (matched) {
+        const whitelist = matched[1]
+        for (const [q] of url.searchParams) {
+          if (!whitelist.includes(q)) {
+            url.searchParams.delete(q)
+          }
+        }
+      } else {
+        url.search = ''
       }
     }
 
-    if (!ctx.siteConfig || !ctx.siteConfig.removeQueryString) {
-      path += url.search
+    if (removeHash) {
+      url.hash = ''
     }
 
-    if (!ctx.siteConfig || !ctx.siteConfig.removeHash) {
-      path += url.hash
-    }
+    logger.debug({ site, path, profile, callbackURL, type, noWait, metaOnly, followRedirect })
 
-    logger.debug({ site, path, deviceType, callbackURL, type, noWait, metaOnly, followRedirect })
+    if (rewrites) {
+      let rewrited = urlRewrite(url.href, rewrites)
 
-    if (ctx.siteConfig && ctx.siteConfig.rewrites) {
-      let rewrited = urlRewrite(url.href, ctx.siteConfig.rewrites)
       try {
         rewrited = new URL(rewrited)
       } catch (e) {
@@ -175,7 +190,7 @@ async function render(ctx) {
     let doc
 
     try {
-      doc = await db.collection('snapshots').findOne({ site, path, deviceType })
+      doc = await db.collection('snapshots').findOne({ site, path, profile })
     } catch (e) {
       const { timestamp, eventId } = logger.error(e)
       throw new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId)
@@ -186,7 +201,7 @@ async function render(ctx) {
     }
 
     if (doc.lock) {
-      const lockError = await getLockError(site, path, deviceType, doc.lock, doc.updatedAt)
+      const lockError = await getLockError(site, path, profile, doc.lock, doc.updatedAt)
       if (lockError && lockError.code === 'SERVER_CACHE_LOCK_TIMEOUT') {
         doc.lock = null
       }
@@ -214,7 +229,7 @@ async function render(ctx) {
     if (doc.lock) {
       const status = doc.status
       try {
-        doc = await poll(site, path, deviceType, doc.lock)
+        doc = await poll(site, path, profile, doc.lock)
         return handleResult(doc, refresh ? 'BYPASS' : status ? 'EXPIRED' : 'MISS')
       } catch (e) {
         // something went wrong when updating the document.
@@ -252,7 +267,7 @@ async function render(ctx) {
       const msg = {
         site,
         path,
-        deviceType,
+        profile,
         rewrites: ctx.siteConfig && ctx.siteConfig.rewrites
           ? ctx.siteConfig.rewrites.map(
             ([search, replace]) =>
