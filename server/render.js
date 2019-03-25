@@ -92,21 +92,27 @@ async function render(ctx) {
     removeHash = false,
     rewrites = null,
     excludes = null,
-    includes = null
+    includes = null,
+    width = null,
+    height = null,
+    userAgent = null,
+    userAgentSuffix = 'kasha'
   } = ctx.state.config
 
   if (settings) {
     preserveSearchParams = mergeSetting(preserveSearchParams, settings.preserveSearchParams)
-    if (settings.removeHash != null) {
-      removeHash = settings.removeHash
-    }
     rewrites = mergeSetting(rewrites, settings.rewrites)
     excludes = mergeSetting(excludes, settings.excludes)
     includes = mergeSetting(includes, settings.includes)
-  }
 
-  const site = url.origin
-  let path
+    ;({
+      removeHash = false,
+      width = null,
+      height = null,
+      userAgent = null,
+      userAgentSuffix = 'kasha'
+    } = settings)
+  }
 
   if (noWait || callbackURL) {
     ctx.body = { queued: true }
@@ -119,71 +125,82 @@ async function render(ctx) {
     return handler()
   }
 
-  async function handler() {
-    if (!preserveSearchParams) {
-      url.search = ''
-    } else if (preserveSearchParams.constructor === Array) {
-      const matched = preserveSearchParams.find(([rule]) =>
-        rule instanceof RegExp ? rule.test(url.pathname) : rule === url.pathname
-      )
+  const site = url.origin
+  let path
 
-      if (matched) {
-        const whitelist = matched[1]
-        for (const [q] of url.searchParams) {
-          if (!whitelist.includes(q)) {
-            url.searchParams.delete(q)
+  async function handler() {
+    if (preserveSearchParams) {
+      if (preserveSearchParams.constructor === Array) {
+        const matched = preserveSearchParams.find(([rule]) =>
+          rule instanceof RegExp ? rule.test(url.pathname) : rule === url.pathname
+        )
+
+        if (matched) {
+          const whitelist = matched[1]
+          for (const [q] of url.searchParams) {
+            if (!whitelist.includes(q)) {
+              url.searchParams.delete(q)
+            }
           }
+          url.searchParams.sort()
+        } else {
+          url.search = ''
         }
       } else {
-        url.search = ''
+        url.searchParams.sort()
       }
+    } else {
+      url.search = ''
     }
 
     if (removeHash) {
       url.hash = ''
     }
 
+    path = url.pathname + url.search + url.hash
+
     logger.debug({ site, path, profile, callbackURL, type, noWait, metaOnly, followRedirect })
 
-    if (rewrites) {
-      let rewrited = urlRewrite(url.href, rewrites)
-
-      try {
-        rewrited = new URL(rewrited)
-      } catch (e) {
-        throw new RESTError('SERVER_URL_REWRITE_ERROR', rewrited)
+    if (excludes) {
+      let exclude
+      if (includes && inArray(includes, url.pathname)) {
+        exclude = false
       }
 
-      // if pathname neither in includes list, nor in excludes list, then `includes` is true
-      let includes
-      if (ctx.siteConfig.includes && inArray(ctx.siteConfig.includes, url.pathname)) {
-        includes = true
+      if (exclude === undefined) {
+        exclude = inArray(excludes, url.pathname)
       }
 
-      if (includes === undefined) {
-        if (ctx.siteConfig.excludes && inArray(ctx.siteConfig.excludes, url.pathname)) {
-          includes = false
-        } else {
-          includes = true
-        }
-      }
+      if (exclude) {
+        if (rewrites) {
+          let rewrited = urlRewrite(url.origin + url.pathname, rewrites)
 
-      if (!includes) {
-        return new Promise((resolve, reject) => {
-          const _http = rewrited.protocol === 'http:' ? http : https
-          const req = _http.request(rewrited.href, res => {
-            delete res.headers.connection
-            if (res.headers['content-type'].includes('text/html')) {
-              delete res.headers['content-disposition']
-            }
-            ctx.set(res.headers)
-            ctx.body = res
-            resolve()
+          try {
+            rewrited = new URL(rewrited)
+          } catch (e) {
+            throw new RESTError('SERVER_URL_REWRITE_ERROR', rewrited)
+          }
+
+          rewrited.search = url.search
+
+          return new Promise((resolve, reject) => {
+            const _http = rewrited.protocol === 'http:' ? http : https
+            const req = _http.request(rewrited.href, res => {
+              delete res.headers.connection
+              delete res.headers['keep-alive']
+              if (res.headers['content-type'].includes('text/html')) {
+                delete res.headers['content-disposition']
+              }
+              ctx.status = res.statusCode
+              ctx.set(res.headers)
+              ctx.body = res
+              resolve()
+            })
+
+            req.on('error', e => reject(new RESTError('SERVER_FETCH_ERROR', rewrited.href, e.message)))
+            req.end()
           })
-
-          req.on('error', e => reject(new RESTError('SERVER_FETCH_ERROR', rewrited.href, e.message)))
-          req.end()
-        })
+        }
       }
     }
 
@@ -268,8 +285,12 @@ async function render(ctx) {
         site,
         path,
         profile,
-        rewrites: ctx.siteConfig && ctx.siteConfig.rewrites
-          ? ctx.siteConfig.rewrites.map(
+        width,
+        height,
+        userAgent,
+        userAgentSuffix,
+        rewrites: rewrites
+          ? rewrites.map(
             ([search, replace]) =>
               search.constructor === RegExp ? ['regexp', search.toString(), replace] : ['string', search, replace]
           ) : null,
