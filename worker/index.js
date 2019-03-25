@@ -90,7 +90,7 @@ async function main() {
   snapshots schema:
   site: String
   path: String
-  deviceType: String
+  profile: String
   status: Number
   redirect: String
   meta: Object
@@ -103,6 +103,7 @@ async function main() {
   updatedAt: Date
   privateExpires: Date
   sharedExpires: Date
+  removeAt: Date
   lock: String
   */
   const snapshots = db.collection('snapshots')
@@ -134,7 +135,11 @@ async function main() {
       correlationId,
       site,
       path,
-      deviceType,
+      profile,
+      width,
+      height,
+      userAgent,
+      userAgentSuffix,
       callbackURL,
       metaOnly
     } = req
