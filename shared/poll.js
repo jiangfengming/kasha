@@ -3,14 +3,14 @@ const logger = require('./logger')
 const { db } = require('./mongo')
 const getLockError = require('./getLockError')
 
-function poll(site, path, deviceType, lock) {
+function poll(site, path, profile, lock) {
   return new Promise((resolve, reject) => {
     const intervalId = setInterval(async() => {
       logger.debug(`polling ${site}${path}. lock: ${lock}`)
 
       let doc
       try {
-        doc = await db.collection('snapshots').findOne({ site, path, deviceType })
+        doc = await db.collection('snapshots').findOne({ site, path, profile })
       } catch (e) {
         clearInterval(intervalId)
         const { timestamp, eventId } = logger.error(e)
@@ -28,7 +28,7 @@ function poll(site, path, deviceType, lock) {
         resolve(doc)
       } else {
         if (!lock) lock = doc.lock
-        const error = await getLockError(site, path, deviceType, lock, doc.updatedAt)
+        const error = await getLockError(site, path, profile, lock, doc.updatedAt)
         if (error) {
           clearInterval(intervalId)
           reject(error)

@@ -2,7 +2,7 @@ const { db } = require('./mongo')
 const RESTError = require('./RESTError')
 const logger = require('./logger')
 
-async function getLockError(site, path, deviceType, lock, updatedAt) {
+async function getLockError(site, path, profile, lock, updatedAt) {
   if (lock && Date.now() - updatedAt > 25 * 1000) {
     // other process hasn't refreshed the cache in 25 secs
     // remove the lock
@@ -12,7 +12,7 @@ async function getLockError(site, path, deviceType, lock, updatedAt) {
       await db.collection('snapshots').updateOne({
         site,
         path,
-        deviceType,
+        profile,
         lock
       }, {
         $set: {

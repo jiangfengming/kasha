@@ -2,7 +2,7 @@ module.exports = function(doc, metaOnly) {
   return {
     site: doc.site,
     path: doc.path,
-    deviceType: doc.deviceType,
+    profile: doc.profile,
     status: doc.status,
     redirect: doc.redirect,
     meta: doc.meta,

@@ -3,7 +3,7 @@ const logger = require('../shared/logger')
 const mongo = require('../shared/mongo')
 const nsqWriter = require('../shared/nsqWriter')
 const nsqReader = require('../shared/nsqReader')
-const Prerenderer = require('puppeteer-prerender')
+const Prerenderer = require('./Prerenderer')
 const removeXMLInvalidChars = require('./removeXMLInvalidChars')
 
 const JOB_TIMEOUT = 20 * 1000
@@ -81,7 +81,6 @@ async function main() {
   const config = require('../shared/config')
   const RESTError = require('../shared/RESTError')
   const normalizeDoc = require('../shared/normalizeDoc')
-  const userAgents = require('./userAgents')
   const uid = require('../shared/uid')
   const callback = require('../shared/callback')
   const poll = require('../shared/poll')
@@ -136,10 +135,10 @@ async function main() {
       site,
       path,
       profile,
-      width,
-      height,
       userAgent,
       userAgentSuffix,
+      width,
+      height,
       callbackURL,
       metaOnly
     } = req
@@ -166,7 +165,7 @@ async function main() {
 
     if (replyTo) {
       if (msgTimestamp + JOB_TIMEOUT < Date.now()) {
-        logger.debug(`drop job: ${url} @${deviceType}`)
+        logger.debug(`drop job: ${url} @${profile}`)
         return handleResult({ error: new RESTError('SERVER_WORKER_BUSY').toJSON() })
       }
     }
@@ -175,7 +174,7 @@ async function main() {
     const lockQuery = {
       site,
       path,
-      deviceType,
+      profile,
       lock: null
     }
 
@@ -185,7 +184,7 @@ async function main() {
     }
 
     try {
-      logger.debug(`lock: ${url} @${deviceType} with ${lock}`)
+      logger.debug(`lock: ${url} @${profile} with ${lock}`)
       await snapshots.updateOne(lockQuery, {
         $set: {
           updatedAt: new Date(),
@@ -210,7 +209,7 @@ async function main() {
       // the document maybe locked by others, or is valid
       let doc
       try {
-        doc = await poll(site, path, deviceType)
+        doc = await poll(site, path, profile)
       } catch (e) {
         return handleResult({ error: e.toJSON() })
       }
@@ -219,7 +218,7 @@ async function main() {
     }
 
     try {
-      cacheDoc = await snapshots.findOne({ site, path, deviceType, status: { $type: 'int' } })
+      cacheDoc = await snapshots.findOne({ site, path, profile, status: { $type: 'int' } })
     } catch (e) {
       const { timestamp, eventId } = logger.error(e)
       return handleResult({ error: new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId).toJSON() })
@@ -229,36 +228,32 @@ async function main() {
     let doc
 
     try {
-      logger.debug(`prerender ${url} @${deviceType}`)
+      logger.debug(`prerender ${url} @${profile}`)
 
-      let tried = 0
-      do {
-        try {
-          tried++
-          doc = await prerenderer.render(url, {
-            timeout: 8000,
-            userAgent: userAgents[deviceType],
-            // always followRedirect when caching pages
-            // in case of a request with followRedirect=true waits a cache lock of request with followRedirect=false
-            followRedirect: true,
-            extraMeta: {
-              status: { selector: 'meta[http-equiv="Status" i]', property: 'content' },
-              location: { selector: 'meta[http-equiv="Location" i]', property: 'content' },
-              lastModified: { selector: 'meta[http-equiv="Last-Modified" i]', property: 'content' },
-              cacheControl: { selector: 'meta[http-equiv="Cache-Control" i]', property: 'content' },
-              expires: { selector: 'meta[http-equiv="Expires" i]', property: 'content' }
-            },
-            rewrites
-          })
-        } catch (e) {
-          logger.debug(`prerender ${url} @${deviceType} failed.`, e)
-          if (tried >= 3 || !/Timeout|TIMED_OUT/i.test(e.message)) {
-            throw e
-          }
-        }
-      } while (!doc)
+      try {
+        doc = await prerenderer.render(url, {
+          timeout: 20000,
+          userAgent,
+          userAgentSuffix,
 
-      logger.debug(`prerender ${url} @${deviceType} successfully`)
+          // always followRedirect when caching pages
+          // in case of a request with followRedirect=true waits a cache lock of request with followRedirect=false
+          followRedirect: true,
+          extraMeta: {
+            status: { selector: 'meta[http-equiv="Status" i]', property: 'content' },
+            location: { selector: 'meta[http-equiv="Location" i]', property: 'content' },
+            lastModified: { selector: 'meta[http-equiv="Last-Modified" i]', property: 'content' },
+            cacheControl: { selector: 'meta[http-equiv="Cache-Control" i]', property: 'content' },
+            expires: { selector: 'meta[http-equiv="Expires" i]', property: 'content' }
+          },
+          rewrites
+        })
+      } catch (e) {
+        logger.debug(`prerender ${url} @${profile} failed.`, e)
+        throw e
+      }
+
+      logger.debug(`prerender ${url} @${profile} successfully`)
 
       if (doc.meta && doc.meta.status) {
         const s = parseInt(doc.meta.status)
@@ -315,13 +310,13 @@ async function main() {
         }
       }
     } catch (e) {
-      logger.debug(`prerender ${url} @${deviceType} failed`)
+      logger.debug(`prerender ${url} @${profile} failed`)
       doc = { error: new RESTError('SERVER_RENDER_ERROR', e.message).toJSON() }
     }
 
     doc.updatedAt = new Date()
 
-    const query = { site, path, deviceType, lock }
+    const query = { site, path, profile, lock }
 
     logger.debug('update snapshot:', query)
     snapshots.updateOne(query, {
@@ -401,7 +396,7 @@ async function main() {
     }
 
     function handleResult(doc) {
-      logger.log(`${url} @${deviceType} ${doc.error ? doc.error.code : doc.status}. queue: ${jobStartTime - msgTimestamp}ms, render: ${Date.now() - jobStartTime}ms, attemps: ${msgAttemps}`)
+      logger.log(`${url} @${profile} ${doc.error ? doc.error.code : doc.status}. queue: ${jobStartTime - msgTimestamp}ms, render: ${Date.now() - jobStartTime}ms, attemps: ${msgAttemps}`)
 
       if (callbackURL || replyTo) {
         // if fetch the document failed, we try to use the cached document if mode is not BYPASS
