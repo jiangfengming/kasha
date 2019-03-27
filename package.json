@@ -8,10 +8,10 @@
   },
   "dependencies": {
     "@sentry/node": "^4.6.4",
-    "anyproxy": "^4.0.15",
     "cron": "^1.7.0",
     "forwarded-parse": "^2.1.0",
     "html-entities": "^1.2.1",
+    "http-mitm-proxy": "^0.7.0",
     "koa": "^2.7.0",
     "koa-mount": "^4.0.0",
     "koa-send": "^5.0.0",

@@ -1,45 +1,26 @@
-const AnyProxy = require('anyproxy')
-
-const rule = {
-  async beforeSendRequest(req) {
-    console.log(req.url)
-    console.log(req._req.headers)
-  }
-}
+const _proxy = require('http-mitm-proxy')
 
 let proxy
-
 function start() {
   return new Promise(resolve => {
     if (proxy) {
-      return proxy
+      return resolve(proxy.httpPort)
     }
 
-    if (AnyProxy.utils.certMgr.ifRootCAFileExists()) {
-      main()
-    } else {
-      AnyProxy.utils.certMgr.generateRootCA(e => {
-        if (e) {
-          throw e
-        }
+    proxy = _proxy()
 
-        main()
-      })
-    }
+    proxy.use(_proxy.wildcard)
 
-    function main() {
-      const proxy = new AnyProxy.ProxyServer({
-        port: 54100,
-        rule,
-        forceProxyHttps: true
-      })
+    proxy.onRequest((ctx, cb) => {
+      const req = ctx.clientToProxyRequest
+      const url = (ctx.isSSL ? 'https://' : 'http://') + req.headers.host + req.url
 
-      proxy.on('ready', () => {
-        resolve(proxy.httpProxyServer.address().port)
-      })
+      return cb()
+    })
 
-      proxy.start()
-    }
+    proxy.listen({ forceSNI: true }, () => {
+      resolve(proxy.httpPort)
+    })
   })
 }
 
