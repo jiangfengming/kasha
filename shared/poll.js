@@ -14,12 +14,12 @@ function poll(site, path, profile, lock) {
       } catch (e) {
         clearInterval(intervalId)
         const { timestamp, eventId } = logger.error(e)
-        return reject(new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+        return reject(new RESTError('INTERNAL_ERROR', timestamp, eventId))
       }
 
       if (!doc) {
         clearInterval(intervalId)
-        return reject(new RESTError('SERVER_DOC_DELETED'))
+        return reject(new RESTError('DOC_DELETED'))
       }
 
       if (!doc.lock || (lock && lock !== doc.lock)) {

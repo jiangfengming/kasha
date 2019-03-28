@@ -163,7 +163,7 @@ async function main() {
     if (replyTo) {
       if (msgTimestamp + JOB_TIMEOUT < Date.now()) {
         logger.debug(`drop job: ${url} @${profile}`)
-        return handleResult({ error: new RESTError('SERVER_WORKER_BUSY').toJSON() })
+        return handleResult({ error: new RESTError('WORKER_BUSY').toJSON() })
       }
     }
 
@@ -201,7 +201,7 @@ async function main() {
       // 11000: duplicate key on upsert
       if (e.code !== 11000) {
         const { timestamp, eventId } = logger.error(e)
-        return handleResult({ error: new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId).toJSON() })
+        return handleResult({ error: new RESTError('INTERNAL_ERROR', timestamp, eventId).toJSON() })
       }
 
       // the document maybe locked by others, or is valid
@@ -219,7 +219,7 @@ async function main() {
       cacheDoc = await snapshots.findOne({ site, path, profile, status: { $type: 'int' } })
     } catch (e) {
       const { timestamp, eventId } = logger.error(e)
-      return handleResult({ error: new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId).toJSON() })
+      return handleResult({ error: new RESTError('INTERNAL_ERROR', timestamp, eventId).toJSON() })
     }
 
     // render the page
@@ -264,7 +264,7 @@ async function main() {
       }
 
       if (doc.status >= 500) {
-        doc.error = new RESTError('SERVER_FETCH_ERROR', url, 'HTTP ' + doc.status).toJSON()
+        doc.error = new RESTError('FETCH_ERROR', url, 'HTTP ' + doc.status).toJSON()
 
         // discard result if cacheDoc has valid stale resource
         if (cacheDoc && cacheDoc.status < 500) {
@@ -310,7 +310,7 @@ async function main() {
       }
     } catch (e) {
       logger.debug(`prerender ${url} @${profile} failed`)
-      doc = { error: new RESTError('SERVER_RENDER_ERROR', e.message).toJSON() }
+      doc = { error: new RESTError('RENDER_ERROR', e.message).toJSON() }
     }
 
     doc.updatedAt = new Date()

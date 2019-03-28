@@ -56,7 +56,7 @@ async function main() {
       let err = e
       if (!(e instanceof RESTError)) {
         const { timestamp, eventId } = logger.error(e)
-        err = new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId)
+        err = new RESTError('INTERNAL_ERROR', timestamp, eventId)
       }
       ctx.set('Kasha-Code', err.code)
       ctx.status = err.httpStatus
@@ -110,7 +110,7 @@ async function main() {
 
     if (!ctx.state.config) {
       if (config.disallowUnknownHost) {
-        throw new RESTError('CLIENT_HOST_CONFIG_NOT_EXIST')
+        throw new RESTError('HOST_CONFIG_NOT_EXIST')
       } else {
         ctx.state.config = {}
       }
@@ -123,7 +123,7 @@ async function main() {
       try {
         url = new URL(ctx.query.url)
       } catch (e) {
-        throw new RESTError('CLIENT_INVALID_PARAM', 'url')
+        throw new RESTError('INVALID_PARAM', 'url')
       }
 
       await _getSiteConfig(ctx, url.host)
@@ -132,7 +132,7 @@ async function main() {
       return render(ctx, next)
     })
     .get('*', () => {
-      throw new RESTError('CLIENT_NO_SUCH_API')
+      throw new RESTError('NOT_FOUND')
     })
     .routes()
 
@@ -144,7 +144,7 @@ async function main() {
     }
 
     if (ctx.method !== 'GET') {
-      throw new RESTError('CLIENT_METHOD_NOT_ALLOWED', ctx.method)
+      throw new RESTError('METHOD_NOT_ALLOWED', ctx.method)
     }
 
     let host = ctx.host
@@ -160,7 +160,7 @@ async function main() {
       try {
         url = new URL(matchedOrigin[1])
       } catch (e) {
-        throw new RESTError('CLIENT_INVALID_HOST')
+        throw new RESTError('INVALID_HOST')
       }
 
       host = url.host
@@ -178,7 +178,7 @@ async function main() {
             protocol = forwarded.proto
           }
         } catch (e) {
-          throw new RESTError('CLIENT_INVALID_HEADER', 'Forwarded')
+          throw new RESTError('INVALID_HEADER', 'Forwarded')
         }
       } else if (ctx.headers['x-forwarded-host']) {
         host = ctx.headers['x-forwarded-host']
@@ -189,11 +189,11 @@ async function main() {
       }
 
       if (protocol && !['http', 'https'].includes(protocol)) {
-        throw new RESTError('CLIENT_INVALID_PROTOCOL')
+        throw new RESTError('INVALID_PROTOCOL')
       }
 
       if (!host) {
-        throw new RESTError('CLIENT_INVALID_HOST')
+        throw new RESTError('INVALID_HOST')
       }
     }
 
@@ -201,7 +201,7 @@ async function main() {
 
     if (!protocol) {
       if (!ctx.state.config.defaultProtocol) {
-        throw new RESTError('CLIENT_INVALID_PROTOCOL')
+        throw new RESTError('INVALID_PROTOCOL')
       } else {
         protocol = ctx.state.config.defaultProtocol
       }

@@ -71,7 +71,7 @@ const cleanUpInterval = setInterval(() => {
     } else if (req.date + timeout > now) {
       break
     } else { // timed out
-      req.reject(new RESTError('SERVER_WORKER_TIMEOUT'))
+      req.reject(new RESTError('WORKER_TIMEOUT'))
       queue.shift()
     }
   }

@@ -6,7 +6,7 @@ async function getLockError(site, path, profile, lock, updatedAt) {
   if (lock && Date.now() - updatedAt > 25 * 1000) {
     // other process hasn't refreshed the cache in 25 secs
     // remove the lock
-    let error = new RESTError('SERVER_CACHE_LOCK_TIMEOUT', 'snapshot')
+    let error = new RESTError('CACHE_LOCK_TIMEOUT', 'snapshot')
 
     try {
       await db.collection('snapshots').updateOne({
@@ -23,7 +23,7 @@ async function getLockError(site, path, profile, lock, updatedAt) {
       })
     } catch (e) {
       const { timestamp, eventId } = logger.error(e)
-      error = new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId)
+      error = new RESTError('INTERNAL_ERROR', timestamp, eventId)
     }
 
     return error

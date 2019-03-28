@@ -18,7 +18,7 @@ function parseLimitParam(limit, max) {
   if (limit) {
     limit = parseInt(limit)
     if (isNaN(limit) || limit <= 0 || limit > max) {
-      throw new RESTError('CLIENT_INVALID_PARAM', 'limit')
+      throw new RESTError('INVALID_PARAM', 'limit')
     } else {
       return limit
     }
@@ -31,7 +31,7 @@ function parsePageParam(page) {
   if (page) {
     page = parseInt(page)
     if (isNaN(page) || page <= 0) {
-      throw new RESTError('CLIENT_INVALID_PARAM', 'page')
+      throw new RESTError('INVALID_PARAM', 'page')
     } else {
       return page
     }
@@ -423,7 +423,7 @@ async function robotsTxt(ctx) {
         followRedirect: false
       }, (e, res, body) => {
         if (e) {
-          reject(new RESTError('SERVER_FETCH_ERROR', url, e.message))
+          reject(new RESTError('FETCH_ERROR', url, e.message))
         } else {
           resolve(body)
         }
@@ -433,10 +433,10 @@ async function robotsTxt(ctx) {
           resolve('')
         } else if (res.statusCode < 200 || res.statusCode >= 300) {
           req.abort()
-          reject(new RESTError('SERVER_FETCH_ERROR', url, 'HTTP ' + res.statusCode))
+          reject(new RESTError('FETCH_ERROR', url, 'HTTP ' + res.statusCode))
         } else if (!res.headers['content-type'].includes('text/plain')) {
           req.abort()
-          reject(new RESTError('SERVER_FETCH_ERROR', url, 'Content-Type should be text/plain'))
+          reject(new RESTError('FETCH_ERROR', url, 'Content-Type should be text/plain'))
         }
       })
     })

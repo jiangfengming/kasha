@@ -28,14 +28,14 @@ async function render(ctx) {
     url = new URL(url)
     assert(['http:', 'https:'].includes(url.protocol))
   } catch (e) {
-    throw new RESTError('CLIENT_INVALID_PARAM', 'url')
+    throw new RESTError('INVALID_PARAM', 'url')
   }
 
   if (callbackURL) {
     try {
       assert(['http:', 'https:'].includes(new URL(callbackURL).protocol))
     } catch (e) {
-      throw new RESTError('CLIENT_INVALID_PARAM', 'callbackURL')
+      throw new RESTError('INVALID_PARAM', 'callbackURL')
     }
   }
 
@@ -43,29 +43,29 @@ async function render(ctx) {
   const truthyValues = ['', '1']
 
   if (!['html', 'static', 'json'].includes(type)) {
-    throw new RESTError('CLIENT_INVALID_PARAM', 'type')
+    throw new RESTError('INVALID_PARAM', 'type')
   }
 
   if (!validValues.includes(noWait)) {
-    throw new RESTError('CLIENT_INVALID_PARAM', 'noWait')
+    throw new RESTError('INVALID_PARAM', 'noWait')
   } else {
     noWait = truthyValues.includes(noWait)
   }
 
   if (!validValues.includes(metaOnly)) {
-    throw new RESTError('CLIENT_INVALID_PARAM', 'metaOnly')
+    throw new RESTError('INVALID_PARAM', 'metaOnly')
   } else {
     metaOnly = truthyValues.includes(metaOnly)
   }
 
   if (!validValues.includes(followRedirect)) {
-    throw new RESTError('CLIENT_INVALID_PARAM', 'followRedirect')
+    throw new RESTError('INVALID_PARAM', 'followRedirect')
   } else {
     followRedirect = truthyValues.includes(followRedirect)
   }
 
   if (!validValues.includes(refresh)) {
-    throw new RESTError('CLIENT_INVALID_PARAM', 'refresh')
+    throw new RESTError('INVALID_PARAM', 'refresh')
   } else {
     refresh = truthyValues.includes(refresh)
   }
@@ -81,7 +81,7 @@ async function render(ctx) {
   let settings
   if (profile) {
     if (!ctx.state.config.profiles || !ctx.state.config.profiles[profile]) {
-      throw new RESTError('CLIENT_INVALID_PARAM', 'profile')
+      throw new RESTError('INVALID_PARAM', 'profile')
     } else {
       settings = ctx.state.config.profiles[profile]
     }
@@ -172,15 +172,17 @@ async function render(ctx) {
 
       if (exclude) {
         if (rewrites) {
-          let rewrited = urlRewrite(url.origin + url.pathname, rewrites)
+          let rewrited = urlRewrite(url, rewrites)
+
+          if (!rewrited) {
+            throw new RESTError('NOT_FOUND')
+          }
 
           try {
             rewrited = new URL(rewrited)
           } catch (e) {
-            throw new RESTError('SERVER_URL_REWRITE_ERROR', rewrited)
+            throw new RESTError('URL_REWRITE_ERROR', rewrited)
           }
-
-          rewrited.search = url.search
 
           return new Promise((resolve, reject) => {
             const _http = rewrited.protocol === 'http:' ? http : https
@@ -196,7 +198,7 @@ async function render(ctx) {
               resolve()
             })
 
-            req.on('error', e => reject(new RESTError('SERVER_FETCH_ERROR', rewrited.href, e.message)))
+            req.on('error', e => reject(new RESTError('FETCH_ERROR', rewrited.href, e.message)))
             req.end()
           })
         }
@@ -209,7 +211,7 @@ async function render(ctx) {
       doc = await db.collection('snapshots').findOne({ site, path, profile })
     } catch (e) {
       const { timestamp, eventId } = logger.error(e)
-      throw new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId)
+      throw new RESTError('INTERNAL_ERROR', timestamp, eventId)
     }
 
     if (!doc) {
@@ -218,7 +220,7 @@ async function render(ctx) {
 
     if (doc.lock) {
       const lockError = await getLockError(site, path, profile, doc.lock, doc.updatedAt)
-      if (lockError && lockError.code === 'SERVER_CACHE_LOCK_TIMEOUT') {
+      if (lockError && lockError.code === 'CACHE_LOCK_TIMEOUT') {
         doc.lock = null
       }
     }
@@ -309,7 +311,7 @@ async function render(ctx) {
       nsqWriter.writer.publish(topic, msg, e => {
         if (e) {
           const { timestamp, eventId } = logger.error(e)
-          reject(new RESTError('SERVER_INTERNAL_ERROR', timestamp, eventId))
+          reject(new RESTError('INTERNAL_ERROR', timestamp, eventId))
         } else {
           if (options.callbackURL || options.noWait) {
             resolve()
