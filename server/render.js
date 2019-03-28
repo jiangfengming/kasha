@@ -93,10 +93,7 @@ async function render(ctx) {
     rewrites = null,
     excludes = null,
     includes = null,
-    width = null,
-    height = null,
-    userAgent = null,
-    userAgentSuffix = 'kasha'
+    userAgent = null
   } = ctx.state.config
 
   if (settings) {
@@ -105,28 +102,30 @@ async function render(ctx) {
     excludes = mergeSetting(excludes, settings.excludes)
     includes = mergeSetting(includes, settings.includes)
 
-    ;({
-      removeHash = false,
-      width = null,
-      height = null,
-      userAgent = null,
-      userAgentSuffix = 'kasha'
-    } = settings)
+    if (settings.removeHash !== undefined) {
+      removeHash = settings.removeHash
+    }
+
+    if (settings.userAgent) {
+      userAgent = settings.userAgent
+    }
   }
+
+  const site = url.origin
+  let path
 
   if (noWait || callbackURL) {
     ctx.body = { queued: true }
 
     // don't let handler() block the request
     handler().catch(e => {
-      if (callbackURL) callback(callbackURL, e)
+      if (callbackURL) {
+        callback(callbackURL, e)
+      }
     })
   } else {
     return handler()
   }
-
-  const site = url.origin
-  let path
 
   async function handler() {
     if (preserveSearchParams) {
@@ -285,15 +284,13 @@ async function render(ctx) {
         site,
         path,
         profile,
-        width,
-        height,
         userAgent,
-        userAgentSuffix,
-        rewrites: rewrites
-          ? rewrites.map(
+        rewrites: rewrites ?
+          rewrites.map(
             ([search, replace]) =>
               search.constructor === RegExp ? ['regexp', search.toString(), replace] : ['string', search, replace]
-          ) : null,
+          )
+          : null,
         callbackURL: options.callbackURL,
         metaOnly,
         cacheStatus

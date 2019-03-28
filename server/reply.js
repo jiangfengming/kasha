@@ -1,17 +1,18 @@
-const MICRO_CACHE = 3
+const maxStale = require('../shared/config').cache.maxStale
 
 function reply(ctx, type, followRedirect, doc, cacheStatus) {
-  const { privateExpires, updatedAt } = doc
+  const { updatedAt } = doc
+  let { privateExpires } = doc
 
   const age = Math.round((Date.now() - updatedAt) / 1000)
-  let maxage = Math.round((privateExpires - updatedAt) / 1000)
 
-  if (age > maxage) {
-    maxage = age + MICRO_CACHE
+  if (privateExpires < Date.now()) {
+    privateExpires = new Date(Date.now() + maxStale * 1000)
   }
 
   ctx.set('Age', age)
-  ctx.set('Cache-Control', `max-age=${maxage}`)
+  ctx.set('Last-Modified', updatedAt.toUTCString())
+  ctx.set('Expires', privateExpires.toUTCString())
   ctx.set('Kasha-Code', 'OK')
   ctx.set('kasha-Cache-Status', cacheStatus)
 

@@ -93,15 +93,41 @@ async function main() {
   const apiRouter = new Router()
 
   if (config.enableHomepage) {
-    apiRouter.get('/', async ctx => {
-      await send(ctx, 'index.html', { root: path.resolve(__dirname, '../static') })
-    })
+    const root = path.resolve(__dirname, '../static')
 
-    apiRouter.get('/static/*', mount('/static', serve(path.resolve(__dirname, '../static'))))
+    apiRouter
+      .get('/', async ctx => {
+        await send(ctx, 'index.html', { root })
+      })
+      .get('/favicon.ico', async ctx => {
+        await send(ctx, 'favicon.png', { root })
+      })
+      .get('/static/*', mount('/static', serve(root)))
+  }
+
+  async function _getSiteConfig(ctx, host) {
+    ctx.state.config = await getSiteConfig(host)
+
+    if (!ctx.state.config) {
+      if (config.disallowUnknownHost) {
+        throw new RESTError('CLIENT_HOST_CONFIG_NOT_EXIST')
+      } else {
+        ctx.state.config = {}
+      }
+    }
   }
 
   const apiRoutes = apiRouter
-    .get('/render', (ctx, next) => {
+    .get('/render', async(ctx, next) => {
+      let url
+      try {
+        url = new URL(ctx.query.url)
+      } catch (e) {
+        throw new RESTError('CLIENT_INVALID_PARAM', 'url')
+      }
+
+      await _getSiteConfig(ctx, url.host)
+      ctx.state.origin = url.origin
       ctx.state.params = ctx.query
       return render(ctx, next)
     })
@@ -171,15 +197,7 @@ async function main() {
       }
     }
 
-    ctx.state.config = await getSiteConfig(host)
-
-    if (!ctx.state.config) {
-      if (config.disallowUnknownHost) {
-        throw new RESTError('CLIENT_HOST_CONFIG_NOT_EXIST')
-      } else {
-        ctx.state.config = {}
-      }
-    }
+    await _getSiteConfig(ctx, host)
 
     if (!protocol) {
       if (!ctx.state.config.defaultProtocol) {
@@ -198,7 +216,9 @@ async function main() {
   // graceful exit
   let stopping = false
   async function exit() {
-    if (stopping) return
+    if (stopping) {
+      return
+    }
 
     stopping = true
     logger.info('Closing the server. Please wait for finishing the pending requests...')

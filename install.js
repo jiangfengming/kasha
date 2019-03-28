@@ -60,6 +60,22 @@ async function install() {
     logger.info('Upgraded to database schema version 3.')
   })
 
+  schema.version(4, async() => {
+    logger.info('Upgrading database schema to version 4...')
+    await meta.deleteOne({ key: 'cacheClean' })
+    await snapshots.dropIndex({ sharedExpires: 1 })
+    await snapshots.dropIndex({ site: 1, path: 1, deviceType: 1 })
+    await sites.dropIndex({ host: 1, default: -1 })
+    await sites.createIndex({ host: 1 }, { unique: true })
+    await snapshots.createIndex({ removeAt: 1 }, { expireAfterSeconds: 0 })
+    await snapshots.updateMany({}, {
+      $set: { removeAt: new Date(Date.now() + 7 * 60 * 60 * 24 * 1000) },
+      $rename: { deviceType: 'profile' }
+    })
+    await snapshots.createIndex({ site: 1, path: 1, profile: 1 }, { unique: true })
+    logger.info('Upgraded to database schema version 4.')
+  })
+
   const latest = schema.latest()
 
   if (latest === appInfo.version) {
@@ -106,6 +122,8 @@ async function cli() {
   } catch (e) {
     logger.error(e)
     process.exitCode = 1
+  } finally {
+    await mongo.close()
   }
 }
 

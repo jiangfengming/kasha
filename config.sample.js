@@ -58,6 +58,9 @@ module.exports = {
     // if a resource exceeds maxage but in sMaxage, it will be returned and the resource will be refreshed in background.
     sMaxage: 24 * 60 * 60, // 1 day
 
+    // if we failed to refresh the resource, we return the stale resource and set Expires header after N seconds.
+    maxStale: 10, // 10 seconds
+
     // max-age of robots.txt file
     robotsTxt: 24 * 60 * 60, // 1 day
 
@@ -71,17 +74,31 @@ module.exports = {
   sites: [
     {
       host: 'localhost:3000',
-      protocol: 'https',
+      defaultProtocol: 'http',
+      defaultProfile: null,
+
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_3) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/69.0.3494.0 Safari/537.36',
+
       rewrites: [
         ['localhost:3000', 'www.example.com']
       ],
-      includes: [
-        '/',
-        /\/articles\/\d+/
-      ],
+
       excludes: [
         /\/accounts\/.*/
-      ]
+      ],
+
+      includes: [
+        '/accounts/login'
+      ],
+
+      profiles: {
+        desktop: {
+          userAgent: null,
+          rewrites: null,
+          excludes: null,
+          includes: null
+        }
+      }
     }
   ],
 

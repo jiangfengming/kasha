@@ -18,11 +18,15 @@ function connect() {
 
     const data = msg.json()
     const req = queue.find(req => req.correlationId === data.correlationId)
-    if (!req) return
+    if (!req) {
+      return
+    }
 
     const { ctx, resolve, reject, type, followRedirect } = req
 
-    if (data.error) return reject(new RESTError(data.error))
+    if (data.error) {
+      return reject(new RESTError(data.error))
+    }
 
     data.doc.privateExpires = new Date(data.doc.privateExpires)
     data.doc.sharedExpires = new Date(data.doc.sharedExpires)
@@ -31,7 +35,9 @@ function connect() {
     reply(ctx, type, followRedirect, data.doc, data.cacheStatus)
 
     // release resources
-    for (const k in req) delete req[k]
+    for (const k in req) {
+      delete req[k]
+    }
 
     resolve()
   })

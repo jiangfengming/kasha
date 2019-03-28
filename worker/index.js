@@ -3,7 +3,7 @@ const logger = require('../shared/logger')
 const mongo = require('../shared/mongo')
 const nsqWriter = require('../shared/nsqWriter')
 const nsqReader = require('../shared/nsqReader')
-const Prerenderer = require('./Prerenderer')
+const Prerenderer = require('puppeteer-prerender')
 const removeXMLInvalidChars = require('./removeXMLInvalidChars')
 
 const JOB_TIMEOUT = 20 * 1000
@@ -136,9 +136,6 @@ async function main() {
       path,
       profile,
       userAgent,
-      userAgentSuffix,
-      width,
-      height,
       callbackURL,
       metaOnly
     } = req
@@ -193,7 +190,8 @@ async function main() {
         $setOnInsert: {
           renderTimes: 0,
           privateExpires: new Date(),
-          sharedExpires: new Date(Date.now() + 30 * 1000) // set to 30 secs later, prevent from cache cleaning
+          sharedExpires: new Date(),
+          removeAt: new Date(Date.now() + 30 * 1000) // set to 30 secs later, prevent from cache cleaning
         }
       }, { upsert: true })
     } catch (e) {
@@ -234,7 +232,6 @@ async function main() {
         doc = await prerenderer.render(url, {
           timeout: 20000,
           userAgent,
-          userAgentSuffix,
 
           // always followRedirect when caching pages
           // in case of a request with followRedirect=true waits a cache lock of request with followRedirect=false
@@ -308,6 +305,8 @@ async function main() {
         if (!doc.sharedExpires) {
           doc.sharedExpires = new Date(Date.now() + (doc.status < 400 ? config.cache.sMaxage : config.cache.maxStale) * 1000)
         }
+
+        doc.removeAt = new Date(doc.sharedExpires + config.cache.removeAfter * 1000)
       }
     } catch (e) {
       logger.debug(`prerender ${url} @${profile} failed`)

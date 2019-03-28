@@ -159,6 +159,11 @@ body {
     <fieldset class="fieldset">
       <legend>Options</legend>
 
+      <div class="opt"><input type="checkbox" class="checkbox" name="refresh" value="" id="refresh"><label for="refresh">refresh</label></div>
+      <div class="opt"><input type="checkbox" class="checkbox" name="metaOnly" value="" id="metaOnly"><label for="metaOnly">metaOnly</label></div>
+      <div class="opt"><input type="checkbox" class="checkbox" name="noWait" value="" id="noWait"><label for="noWait">noWait</label></div>
+      <div class="opt"><input type="checkbox" class="checkbox" name="followRedirect" value="" id="followRedirect"><label for="followRedirect">followRedirect</label></div>
+
       <div class="opt">
         <label>type:
           <select name="type" class="select">
@@ -172,11 +177,6 @@ body {
       <div class="opt">
         <label>profile: <input type="text" name="profile" placeholder="desktop" class="textbox"></label>
       </div>
-
-      <div class="opt"><input type="checkbox" class="checkbox" name="metaOnly" value="" id="metaOnly"><label for="metaOnly">metaOnly</label></div>
-      <div class="opt"><input type="checkbox" class="checkbox" name="refresh" value="" id="refresh"><label for="refresh">refresh</label></div>
-      <div class="opt"><input type="checkbox" class="checkbox" name="noWait" value="" id="noWait"><label for="noWait">noWait</label></div>
-      <div class="opt"><input type="checkbox" class="checkbox" name="followRedirect" value="" id="followRedirect"><label for="followRedirect">followRedirect</label></div>
 
       <div class="opt"><label>callbackURL: <input type="url" name="callbackURL" placeholder="https://api.example.com/render-callback" class="textbox callback-url-textbox"></label></div>
     </fieldset>

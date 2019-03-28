@@ -1,5 +1,5 @@
-const config = require('./config')
-const { db } = require('./mongo')
+const config = require('../shared/config')
+const { db } = require('../shared/mongo')
 
 if (config.sites) {
   module.exports = function(host) {

@@ -106,9 +106,19 @@ const googleVideoSitemapStream = {
 
 function standardTags(page) {
   let tags = `<loc>${entities.encode(page.site + page.path)}</loc>`
-  if (page.lastmod) tags += `<lastmod>${page.lastmod}</lastmod>`
-  if (page.changefreq) tags += `<changefreq>${page.changefreq}</changefreq>`
-  if (page.priority) tags += `<priority>${page.priority}</priority>`
+
+  if (page.lastmod) {
+    tags += `<lastmod>${page.lastmod}</lastmod>`
+  }
+
+  if (page.changefreq) {
+    tags += `<changefreq>${page.changefreq}</changefreq>`
+  }
+
+  if (page.priority) {
+    tags += `<priority>${page.priority}</priority>`
+  }
+
   return tags
 }
 
@@ -127,10 +137,23 @@ function googleNewsTags(news) {
 function googleImageTags(image) {
   let tags = '<image:image>'
   tags += `<image:loc>${entities.encode(image.loc)}</image:loc>`
-  if (image.caption) tags += `<image:caption>${entities.encode(image.caption)}</image:caption>`
-  if (image.geo_location) tags += `<image:geo_location>${entities.encode(image.geo_location)}</image:geo_location>`
-  if (image.title) tags += `<image:title>${entities.encode(image.title)}</image:title>`
-  if (image.license) tags += `<image:license>${entities.encode(image.license)}</image:license>`
+
+  if (image.caption) {
+    tags += `<image:caption>${entities.encode(image.caption)}</image:caption>`
+  }
+
+  if (image.geo_location) {
+    tags += `<image:geo_location>${entities.encode(image.geo_location)}</image:geo_location>`
+  }
+
+  if (image.title) {
+    tags += `<image:title>${entities.encode(image.title)}</image:title>`
+  }
+
+  if (image.license) {
+    tags += `<image:license>${entities.encode(image.license)}</image:license>`
+  }
+
   tags += '</image:image>'
   return tags
 }
@@ -140,23 +163,75 @@ function googleVideoTags(video) {
   tags += `<video:thumbnail_loc>${entities.encode(video.thumbnail_loc)}</video:thumbnail_loc>`
   tags += `<video:title>${entities.encode(video.title)}</video:title>`
   tags += `<video:description>${entities.encode(video.description)}</video:description>`
-  if (video.content_loc) tags += `<video:content_loc>${entities.encode(video.content_loc)}</video:content_loc>`
-  if (video.player_loc) tags += `<video:player_loc${video.player_loc.allow_embed ? ` allow_embed="${video.player_loc.allow_embed}"` : ''}>${entities.encode(video.player_loc._)}</video:player_loc>`
-  if (video.duration) tags += `<video:duration>${video.duration}</video:duration>`
-  if (video.expiration_date) tags += `<video:expiration_date>${video.expiration_date}</video:expiration_date>`
-  if (video.rating) tags += `<video:rating>${video.rating}</video:rating>`
-  if (video.view_count) tags += `<video:view_count>${video.view_count}</video:view_count>`
-  if (video.publication_date) tags += `<video:publication_date>${video.publication_date}</video:publication_date>`
-  if (video.family_friendly) tags += `<video:family_friendly>${video.family_friendly}</video:family_friendly>`
-  if (video.restriction) tags += `<video:restriction relationship="${video.restriction.relationship}">${video.restriction._}</video:restriction>`
-  if (video.platform) tags += `<video:platform relationship="${video.platform.relationship}">${video.platform._}</video:platform>`
-  if (video.price) tags += `<video:price currency="${video.price.currency}"${video.price.type ? ` type="${video.price.type}"` : ''}${video.price.resolution ? ` resolution="${video.price.resolution}"` : ''}>${video.price._}</video:price>`
-  if (video.requires_subscription) tags += `<video:requires_subscription>${video.requires_subscription}</video:requires_subscription>`
-  if (video.uploader) tags += `<video:uploader${video.uploader.info ? ` info="${entities.encode(video.uploader.info)}"` : ''}>${entities.encode(video.uploader._)}</video:uploader>`
-  if (video.live) tags += `<video:live>${video.live}</video:live>`
-  if (video.tag) tags += video.tag.map(t => `<video:tag>${entities.encode(t)}</video:tag>`).join('')
-  if (video.category) tags += `<video:category>${entities.encode(video.category)}</video:category>`
-  if (video.gallery_loc) tags += `<video:gallery_loc>${entities.encode(video.gallery_loc)}</video:gallery_loc>`
+
+  if (video.content_loc) {
+    tags += `<video:content_loc>${entities.encode(video.content_loc)}</video:content_loc>`
+  }
+
+  if (video.player_loc) {
+    tags += `<video:player_loc${video.player_loc.allow_embed ? ` allow_embed="${video.player_loc.allow_embed}"` : ''}>${entities.encode(video.player_loc._)}</video:player_loc>`
+  }
+
+  if (video.duration) {
+    tags += `<video:duration>${video.duration}</video:duration>`
+  }
+
+  if (video.expiration_date) {
+    tags += `<video:expiration_date>${video.expiration_date}</video:expiration_date>`
+  }
+
+  if (video.rating) {
+    tags += `<video:rating>${video.rating}</video:rating>`
+  }
+
+  if (video.view_count) {
+    tags += `<video:view_count>${video.view_count}</video:view_count>`
+  }
+
+  if (video.publication_date) {
+    tags += `<video:publication_date>${video.publication_date}</video:publication_date>`
+  }
+
+  if (video.family_friendly) {
+    tags += `<video:family_friendly>${video.family_friendly}</video:family_friendly>`
+  }
+
+  if (video.restriction) {
+    tags += `<video:restriction relationship="${video.restriction.relationship}">${video.restriction._}</video:restriction>`
+  }
+
+  if (video.platform) {
+    tags += `<video:platform relationship="${video.platform.relationship}">${video.platform._}</video:platform>`
+  }
+
+  if (video.price) {
+    tags += `<video:price currency="${video.price.currency}"${video.price.type ? ` type="${video.price.type}"` : ''}${video.price.resolution ? ` resolution="${video.price.resolution}"` : ''}>${video.price._}</video:price>`
+  }
+
+  if (video.requires_subscription) {
+    tags += `<video:requires_subscription>${video.requires_subscription}</video:requires_subscription>`
+  }
+
+  if (video.uploader) {
+    tags += `<video:uploader${video.uploader.info ? ` info="${entities.encode(video.uploader.info)}"` : ''}>${entities.encode(video.uploader._)}</video:uploader>`
+  }
+
+  if (video.live) {
+    tags += `<video:live>${video.live}</video:live>`
+  }
+
+  if (video.tag) {
+    tags += video.tag.map(t => `<video:tag>${entities.encode(t)}</video:tag>`).join('')
+  }
+
+  if (video.category) {
+    tags += `<video:category>${entities.encode(video.category)}</video:category>`
+  }
+
+  if (video.gallery_loc) {
+    tags += `<video:gallery_loc>${entities.encode(video.gallery_loc)}</video:gallery_loc>`
+  }
+
   tags += '</video:video>'
   return tags
 }
@@ -199,10 +274,12 @@ async function sitemap(ctx) {
   const page = parsePageParam(ctx.params.page)
 
   const query = { site }
+
   const options = {
     skip: (page - 1) * limit,
     limit
   }
+
   logger.debug('query sitemaps', query, options)
   const data = await sitemaps.find(query, options)
 
@@ -215,10 +292,12 @@ async function googleSitemap(ctx) {
   const page = parsePageParam(ctx.params.page)
 
   const query = { site }
+
   const options = {
     skip: (page - 1) * limit,
     limit
   }
+
   logger.debug('query sitemaps', query, options)
   const data = await sitemaps.find(query, options)
 
@@ -246,10 +325,12 @@ async function googleNewsSitemap(ctx) {
     site,
     'news.publication_date': { $gte: twoDaysAgo() }
   }
+
   const options = {
     skip: (page - 1) * limit,
     limit
   }
+
   logger.debug('query sitemaps', query, options)
   const data = await sitemaps.find(query, options)
 
@@ -269,10 +350,12 @@ async function googleImageSitemap(ctx) {
     site,
     hasImages: true
   }
+
   const options = {
     skip: (page - 1) * limit,
     limit
   }
+
   logger.debug('query sitemaps', query, options)
   const data = await sitemaps.find(query, options)
 
@@ -288,10 +371,12 @@ async function googleVideoSitemap(ctx) {
     site,
     hasVideos: true
   }
+
   const options = {
     skip: (page - 1) * limit,
     limit
   }
+
   logger.debug('query sitemaps', query, options)
   const data = await sitemaps.find(query, options)
 
@@ -431,16 +516,24 @@ async function _sitemapIndex(ctx, type) {
     stream.write('<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
 
     let prefix
-    if (type === 'normal') prefix = site + '/sitemap'
-    else if (type === 'google') prefix = site + '/sitemap.google'
-    else prefix = site + '/sitemap.google.' + type
+    if (type === 'normal') {
+      prefix = site + '/sitemap'
+    } else if (type === 'google') {
+      prefix = site + '/sitemap.google'
+    } else {
+      prefix = site + '/sitemap.google.' + type
+    }
 
     const start = (page - 1) * limit
     const pageCount = Math.ceil(docCount / limit)
 
     for (let n = 1; n <= pageCount; n++) {
       stream.write(`<sitemap><loc>${prefix}.${start + n}.xml`)
-      if (limit !== MAX) stream.write(`?limit=${limit}`)
+
+      if (limit !== MAX) {
+        stream.write(`?limit=${limit}`)
+      }
+
       stream.write('</loc></sitemap>')
     }
 

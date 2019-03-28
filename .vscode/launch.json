@@ -31,13 +31,6 @@
       "name": "install",
       "program": "${workspaceFolder}/bin/kasha",
       "args": ["install", "--config=config.dev.js"]
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "clean",
-      "program": "${workspaceFolder}/bin/kasha",
-      "args": ["clean", "--config=config.dev.js"]
     }
   ]
 }
