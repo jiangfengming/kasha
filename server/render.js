@@ -13,7 +13,7 @@ const uid = require('../shared/uid')
 const callback = require('../shared/callback')
 const poll = require('../shared/poll')
 const normalizeDoc = require('../shared/normalizeDoc')
-const urlRewrite = require('../shared/urlRewrite')
+const urlRewrite = require('url-rewrite/es6')
 const inArray = require('./inArray')
 const getLockError = require('../shared/getLockError')
 
@@ -172,16 +172,15 @@ async function render(ctx) {
 
       if (exclude) {
         if (rewrites) {
-          let rewrited = urlRewrite(url, rewrites)
+          let rewrited
+          try {
+            rewrited = urlRewrite(url, rewrites, true)
+          } catch (e) {
+            throw new RESTError('URL_REWRITE_ERROR', url.href)
+          }
 
           if (!rewrited) {
             throw new RESTError('NOT_FOUND')
-          }
-
-          try {
-            rewrited = new URL(rewrited)
-          } catch (e) {
-            throw new RESTError('URL_REWRITE_ERROR', rewrited)
           }
 
           return new Promise((resolve, reject) => {

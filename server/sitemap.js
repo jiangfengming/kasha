@@ -4,7 +4,7 @@ const request = require('request')
 const { db } = require('../shared/mongo')
 const RESTError = require('../shared/RESTError')
 const config = require('../shared/config')
-const urlRewrite = require('../shared/urlRewrite')
+const urlRewrite = require('url-rewrite/es6')
 const logger = require('../shared/logger')
 
 const sitemaps = db.collection('sitemaps')
