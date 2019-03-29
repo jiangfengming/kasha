@@ -21,7 +21,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Worker --async",
+      "name": "Async Worker",
       "program": "${workspaceFolder}/bin/kasha",
       "args": ["worker", "--config=config.dev.js", "--async", "--no-headless"]
     },
