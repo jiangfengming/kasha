@@ -1,6 +1,9 @@
 FROM kasha/node-chromium
 
-RUN yarn global add kasha@next
+COPY . /kasha
+WORKDIR /kasha
+RUN npm link
+
 RUN kasha --version
 
 ENTRYPOINT ["kasha"]

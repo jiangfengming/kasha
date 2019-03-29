@@ -1,5 +1,5 @@
 config.dev.js
-.vscode/sftp.json
+.vscode
 
 # Mac
 .DS_Store
