@@ -20,7 +20,7 @@ const getLockError = require('../shared/getLockError')
 async function render(ctx) {
   const now = Date.now()
   const { callbackURL } = ctx.state.params
-  let { url, type = 'json', profile, noWait, metaOnly, followRedirect, refresh } = ctx.state.params
+  let { url, type = 'json', profile = '', noWait, metaOnly, followRedirect, refresh } = ctx.state.params
 
   try {
     // mongodb index size must be less than 1024 bytes (includes structural overhead)
