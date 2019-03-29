@@ -57,8 +57,7 @@ Prerenders the page.
 #### Query string params:  
 `url`: The encoded URL of the webpage to render.
 
-`deviceType`: `desktop` | `mobile`. Use what type of device to render the page. Defaults to `desktop`.
-  It mainly sets the `User-Agent` of the browser.
+`profile`: The profile to use.
 
 `type`: Set the response type. Defaults to `json`.
   * `html`: Returns html with header `Content-Type: text/html`.
@@ -79,13 +78,13 @@ If `callbackURL` is set, `type` is ignored.
 To the boolean parameters, if the param is absent or set to `0`, it means `false`.
 If set to `1` or empty value (e.g., `&refresh`, `&refresh=`, `&refresh=1`), it means `true`.   
 
-Example: `http://localhost:3000/render?url=https%3A%2F%2Fdavidwalsh.name%2Ffacebook-meta-tags&deviceType=mobile&callbackURL=http%3A%2F%2Flocalhost%3A8080%2F&followRedirect`
+Example: `http://localhost:3000/render?url=https%3A%2F%2Fdavidwalsh.name%2Ffacebook-meta-tags`
 
 #### The returned JSON format example:
 ```json
 {
   "url": "https://davidwalsh.name/facebook-meta-tags",
-  "deviceType": "desktop",
+  "profile": "",
   "status": 200,
   "redirect": null,
   "meta": {
