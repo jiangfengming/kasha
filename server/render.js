@@ -88,8 +88,8 @@ async function render(ctx) {
   }
 
   let {
-    preserveSearchParams = true,
-    removeHash = false,
+    keepQueries = true,
+    keepHash = true,
     rewrites = null,
     excludes = null,
     includes = null,
@@ -97,13 +97,13 @@ async function render(ctx) {
   } = ctx.state.config
 
   if (settings) {
-    preserveSearchParams = mergeSetting(preserveSearchParams, settings.preserveSearchParams)
+    keepQueries = mergeSetting(keepQueries, settings.keepQueries)
     rewrites = mergeSetting(rewrites, settings.rewrites)
     excludes = mergeSetting(excludes, settings.excludes)
     includes = mergeSetting(includes, settings.includes)
 
-    if (settings.removeHash !== undefined) {
-      removeHash = settings.removeHash
+    if (settings.keepHash !== undefined) {
+      keepHash = settings.keepHash
     }
 
     if (settings.userAgent) {
@@ -128,9 +128,9 @@ async function render(ctx) {
   }
 
   async function handler() {
-    if (preserveSearchParams) {
-      if (preserveSearchParams.constructor === Array) {
-        const matched = preserveSearchParams.find(([rule]) =>
+    if (keepQueries) {
+      if (keepQueries.constructor === Array) {
+        const matched = keepQueries.find(([rule]) =>
           rule instanceof RegExp ? rule.test(url.pathname) : rule === url.pathname
         )
 
@@ -152,7 +152,7 @@ async function render(ctx) {
       url.search = ''
     }
 
-    if (removeHash) {
+    if (!keepHash) {
       url.hash = ''
     }
 
