@@ -147,10 +147,40 @@ async function main() {
       throw new RESTError('METHOD_NOT_ALLOWED', ctx.method)
     }
 
-    let host = ctx.host
-    let protocol
+    let host, protocol
 
-    if (host && config.apiHost && config.apiHost.includes(host)) {
+    if (ctx.headers.forwarded) {
+      try {
+        const forwarded = parseForwardedHeader(ctx.headers.forwarded)[0]
+        if (forwarded.host) {
+          host = forwarded.host
+        }
+
+        if (forwarded.proto) {
+          protocol = forwarded.proto
+        }
+      } catch (e) {
+        throw new RESTError('INVALID_HEADER', 'Forwarded')
+      }
+    } else if (ctx.headers['x-forwarded-host']) {
+      host = ctx.headers['x-forwarded-host']
+    } else {
+      host = ctx.host
+    }
+
+    if (!host) {
+      throw new RESTError('INVALID_HOST')
+    }
+
+    if (!protocol && ctx.headers['x-forwarded-proto']) {
+      protocol = ctx.headers['x-forwarded-proto']
+    }
+
+    if (protocol && !['http', 'https'].includes(protocol)) {
+      throw new RESTError('INVALID_PROTOCOL')
+    }
+
+    if (config.apiHost && config.apiHost.includes(host)) {
       const matchedOrigin = ctx.path.match(/^\/(https?:\/\/[^/]+)/)
       if (!matchedOrigin) {
         return apiRoutes(ctx, next)
@@ -166,35 +196,6 @@ async function main() {
       host = url.host
       protocol = url.protocol
       ctx.path = ctx.path.replace(matchedOrigin[0], '')
-    } else {
-      if (ctx.headers.forwarded) {
-        try {
-          const forwarded = parseForwardedHeader(ctx.headers.forwarded)[0]
-          if (forwarded.host) {
-            host = forwarded.host
-          }
-
-          if (forwarded.proto) {
-            protocol = forwarded.proto
-          }
-        } catch (e) {
-          throw new RESTError('INVALID_HEADER', 'Forwarded')
-        }
-      } else if (ctx.headers['x-forwarded-host']) {
-        host = ctx.headers['x-forwarded-host']
-      }
-
-      if (!protocol && ctx.headers['x-forwarded-proto']) {
-        protocol = ctx.headers['x-forwarded-proto']
-      }
-
-      if (protocol && !['http', 'https'].includes(protocol)) {
-        throw new RESTError('INVALID_PROTOCOL')
-      }
-
-      if (!host) {
-        throw new RESTError('INVALID_HOST')
-      }
     }
 
     await _getSiteConfig(ctx, host)
