@@ -110,5 +110,7 @@ module.exports = {
   },
   */
 
+  chromiumPath: '',
+
   logLevel: 'log' // critical, fatal, error, warning, info, log, debug
 }

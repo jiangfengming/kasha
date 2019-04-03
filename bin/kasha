@@ -8,6 +8,9 @@ require('yargs')
     describe: 'path to the config file',
     demandOption: true
   })
+  .option('chromium-path', {
+    describe: 'Chromium executable path'
+  })
   .command(['install', 'upgrade'], 'Create or upgrade the MongoDB database', {}, () => {
     require('../install').cli()
   })

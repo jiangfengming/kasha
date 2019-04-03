@@ -13,6 +13,7 @@ const prerendererOpts = {
 
   puppeteerLaunchOptions: {
     headless: global.argv.headless,
+    executablePath: global.argv.chromiumPath || config.chromiumPath || undefined,
 
     handleSIGINT: false,
     args: [
