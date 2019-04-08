@@ -135,7 +135,7 @@ async function render(ctx) {
         )
 
         if (matched) {
-          const whitelist = matched[1]
+          const whitelist = matched.slice(1)
           for (const [q] of url.searchParams) {
             if (!whitelist.includes(q)) {
               url.searchParams.delete(q)
