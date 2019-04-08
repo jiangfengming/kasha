@@ -8,9 +8,6 @@ require('yargs')
     describe: 'path to the config file',
     demandOption: true
   })
-  .option('chromium-path', {
-    describe: 'Chromium executable path'
-  })
   .command(['install', 'upgrade'], 'Create or upgrade the MongoDB database', {}, () => {
     require('../install').cli()
   })
@@ -28,12 +25,13 @@ require('yargs')
       describe: 'Start the chromium browser in headless mode',
       type: 'boolean',
       default: true
+    },
+
+    'chromium-path': {
+      describe: 'Chromium executable path'
     }
   }, () => {
     require('../worker')
-  })
-  .command('clean', 'Clean expired caches', {}, () => {
-    require('../clean').cli()
   })
   .demandCommand(1, '<command> is required')
   .middleware(argv => global.argv = argv)
