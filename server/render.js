@@ -188,7 +188,7 @@ async function render(ctx) {
             const req = _http.request(rewrited.href, res => {
               delete res.headers.connection
               delete res.headers['keep-alive']
-              if (res.headers['content-type'].includes('text/html')) {
+              if (res.headers['content-type'] && res.headers['content-type'].includes('text/html')) {
                 delete res.headers['content-disposition']
               }
               ctx.status = res.statusCode
