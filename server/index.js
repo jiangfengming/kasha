@@ -38,6 +38,18 @@ async function main() {
   const stoppable = require('stoppable')
   const parseForwardedHeader = require('forwarded-parse')
 
+  async function _getSiteConfig(ctx, host) {
+    ctx.state.config = await getSiteConfig(host)
+
+    if (!ctx.state.config) {
+      if (config.disallowUnknownHost) {
+        throw new RESTError('HOST_CONFIG_NOT_EXIST')
+      } else {
+        ctx.state.config = {}
+      }
+    }
+  }
+
   const app = new Koa()
 
   app.on('error', e => {
@@ -66,7 +78,7 @@ async function main() {
   })
 
   // proxy routes
-  const proxyRoutes = new Router()
+  const proxyRouter = new Router()
     .get(/^\/sitemap\.(?<page>\d+)\.xml$/, sitemap.sitemap)
     .get(/^\/sitemap\.google\.(?<page>\d+)\.xml$/, sitemap.googleSitemap)
     .get(/^\/sitemap\.google\.news\.(?<page>\d+)\.xml$/, sitemap.googleNewsSitemap)
@@ -87,7 +99,6 @@ async function main() {
       }
       return render(ctx, next)
     })
-    .routes()
 
   // api routes
   const apiRouter = new Router()
@@ -105,19 +116,7 @@ async function main() {
       .get('/static/*', mount('/static', serve(root)))
   }
 
-  async function _getSiteConfig(ctx, host) {
-    ctx.state.config = await getSiteConfig(host)
-
-    if (!ctx.state.config) {
-      if (config.disallowUnknownHost) {
-        throw new RESTError('HOST_CONFIG_NOT_EXIST')
-      } else {
-        ctx.state.config = {}
-      }
-    }
-  }
-
-  const apiRoutes = apiRouter
+  apiRouter
     .get('/render', async(ctx, next) => {
       let url
       try {
@@ -134,7 +133,6 @@ async function main() {
     .get('*', () => {
       throw new RESTError('NOT_FOUND')
     })
-    .routes()
 
   app.use(async(ctx, next) => {
     if (ctx.method === 'HEAD') {
@@ -183,7 +181,7 @@ async function main() {
     if (config.apiHost && config.apiHost.includes(host)) {
       const matchedOrigin = ctx.path.match(/^\/(https?:\/\/[^/]+)/)
       if (!matchedOrigin) {
-        return apiRoutes(ctx, next)
+        return apiRouter.routes(ctx, next)
       }
 
       let url
@@ -209,7 +207,7 @@ async function main() {
     }
 
     ctx.state.origin = protocol + '://' + host
-    return proxyRoutes(ctx, next)
+    return proxyRouter.routes(ctx, next)
   })
 
   const server = stoppable(app.listen(config.port))
