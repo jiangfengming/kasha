@@ -1,11 +1,11 @@
 const { PassThrough, Transform } = require('stream')
 const { XmlEntities } = require('html-entities')
 const request = require('request')
-const { db } = require('../shared/mongo')
-const RESTError = require('../shared/RESTError')
-const config = require('../shared/config')
+const { db } = require('../lib/mongo')
+const RESTError = require('../lib/RESTError')
+const config = require('../lib/config')
 const urlRewrite = require('url-rewrite/es6')
-const logger = require('../shared/logger')
+const logger = require('../lib/logger')
 
 const sitemaps = db.collection('sitemaps')
 

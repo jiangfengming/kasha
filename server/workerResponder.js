@@ -1,7 +1,7 @@
-const nsqReader = require('../shared/nsqReader')
+const nsqReader = require('../lib/nsqReader')
 const { hostname } = require('os')
-const RESTError = require('../shared/RESTError')
-const { nsq: { reader: options } } = require('../shared/config')
+const RESTError = require('../lib/RESTError')
+const { nsq: { reader: options } } = require('../lib/config')
 const reply = require('./reply')
 
 const timeout = 28 * 1000

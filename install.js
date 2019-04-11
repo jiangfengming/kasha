@@ -1,7 +1,7 @@
 const Schema = require('schema-upgrade')
-const config = require('./shared/config')
-const logger = require('./shared/logger')
-const mongo = require('./shared/mongo')
+const config = require('./lib/config')
+const logger = require('./lib/logger')
+const mongo = require('./lib/mongo')
 
 async function install() {
   const db = await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)

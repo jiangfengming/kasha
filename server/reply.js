@@ -1,4 +1,4 @@
-const maxStale = require('../shared/config').cache.maxStale
+const maxStale = require('../lib/config').cache.maxStale
 
 function reply(ctx, type, followRedirect, doc, cacheStatus) {
   const { updatedAt } = doc

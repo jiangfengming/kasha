@@ -1,7 +1,7 @@
-const config = require('../shared/config')
-const logger = require('../shared/logger')
-const mongo = require('../shared/mongo')
-const nsqWriter = require('../shared/nsqWriter')
+const config = require('../lib/config')
+const logger = require('../lib/logger')
+const mongo = require('../lib/mongo')
+const nsqWriter = require('../lib/nsqWriter')
 const workerResponder = require('./workerResponder')
 
 ;(async() => {
@@ -25,7 +25,7 @@ async function closeConnections() {
 }
 
 async function main() {
-  const RESTError = require('../shared/RESTError')
+  const RESTError = require('../lib/RESTError')
   const getSiteConfig = require('./getSiteConfig')
   const Koa = require('koa')
   const Router = require('koa-pilot')
