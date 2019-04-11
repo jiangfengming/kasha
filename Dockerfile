@@ -1,4 +1,4 @@
-FROM kasha/node-chromium
+FROM kasha/kasha:base
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=1
 COPY . /kasha

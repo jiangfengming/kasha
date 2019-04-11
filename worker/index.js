@@ -1,8 +1,8 @@
-const config = require('../shared/config')
-const logger = require('../shared/logger')
-const mongo = require('../shared/mongo')
-const nsqWriter = require('../shared/nsqWriter')
-const nsqReader = require('../shared/nsqReader')
+const config = require('../lib/config')
+const logger = require('../lib/logger')
+const mongo = require('../lib/mongo')
+const nsqWriter = require('../lib/nsqWriter')
+const nsqReader = require('../lib/nsqReader')
 const Prerenderer = require('puppeteer-prerender')
 const removeXMLInvalidChars = require('./removeXMLInvalidChars')
 
@@ -79,12 +79,12 @@ async function closeConnections() {
 
 async function main() {
   const { URL } = require('url')
-  const config = require('../shared/config')
-  const RESTError = require('../shared/RESTError')
-  const normalizeDoc = require('../shared/normalizeDoc')
-  const uid = require('../shared/uid')
-  const callback = require('../shared/callback')
-  const poll = require('../shared/poll')
+  const config = require('../lib/config')
+  const RESTError = require('../lib/RESTError')
+  const normalizeDoc = require('../lib/normalizeDoc')
+  const uid = require('../lib/uid')
+  const callback = require('../lib/callback')
+  const poll = require('../lib/poll')
 
   /*
   snapshots schema:
