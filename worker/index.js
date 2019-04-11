@@ -242,7 +242,8 @@ async function main() {
             location: { selector: 'meta[http-equiv="Location" i]', property: 'content' },
             lastModified: { selector: 'meta[http-equiv="Last-Modified" i]', property: 'content' },
             cacheControl: { selector: 'meta[http-equiv="Cache-Control" i]', property: 'content' },
-            expires: { selector: 'meta[http-equiv="Expires" i]', property: 'content' }
+            expires: { selector: 'meta[http-equiv="Expires" i]', property: 'content' },
+            error: { selector: 'meta[name="error"]', property: 'content' }
           },
           rewrites
         })
@@ -265,7 +266,13 @@ async function main() {
       }
 
       if (doc.status >= 500) {
-        doc.error = new RESTError('FETCH_ERROR', url, 'HTTP ' + doc.status).toJSON()
+        let message = 'HTTP ' + doc.status
+
+        if (doc.meta && doc.meta.error) {
+          message += '. ' + doc.meta.error
+        }
+
+        doc.error = new RESTError('FETCH_ERROR', url, message).toJSON()
 
         // discard result if cacheDoc has valid stale resource
         if (cacheDoc && cacheDoc.status < 500) {
