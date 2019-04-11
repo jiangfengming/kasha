@@ -9,7 +9,7 @@ function reply(ctx, type, followRedirect, doc, cacheStatus) {
   }
 
   const age = Math.round((Date.now() - updatedAt) / 1000)
-  let maxage = Math.round((privateExpires - Date.now()) / 1000)
+  const maxage = Math.round((privateExpires - Date.now()) / 1000)
 
   ctx.set('Age', age)
   ctx.set('Last-Modified', updatedAt.toUTCString())
