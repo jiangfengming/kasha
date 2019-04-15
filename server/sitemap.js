@@ -269,7 +269,7 @@ async function respond(ctx, data, { header, transform }) {
 }
 
 async function sitemap(ctx) {
-  const site = ctx.site
+  const site = ctx.state.origin
   const limit = parseLimitParam(ctx.query.limit, PAGE_LIMIT)
   const page = parsePageParam(ctx.params.page)
 
@@ -287,7 +287,7 @@ async function sitemap(ctx) {
 }
 
 async function googleSitemap(ctx) {
-  const site = ctx.site
+  const site = ctx.state.origin
   const limit = parseLimitParam(ctx.query.limit, GOOGLE_LIMIT)
   const page = parsePageParam(ctx.params.page)
 
@@ -305,7 +305,7 @@ async function googleSitemap(ctx) {
 }
 
 async function googleSitemapItem(ctx) {
-  const site = ctx.site
+  const site = ctx.state.origin
   const path = '/' + (ctx.params.path || '')
 
   const query = { site, path }
@@ -317,7 +317,7 @@ async function googleSitemapItem(ctx) {
 }
 
 async function googleNewsSitemap(ctx) {
-  const site = ctx.site
+  const site = ctx.state.origin
   const limit = parseLimitParam(ctx.query.limit, GOOGLE_LIMIT)
   const page = parsePageParam(ctx.params.page)
 
@@ -342,7 +342,7 @@ function twoDaysAgo() {
 }
 
 async function googleImageSitemap(ctx) {
-  const site = ctx.site
+  const site = ctx.state.origin
   const limit = parseLimitParam(ctx.query.limit, GOOGLE_LIMIT)
   const page = parsePageParam(ctx.params.page)
 
@@ -363,7 +363,7 @@ async function googleImageSitemap(ctx) {
 }
 
 async function googleVideoSitemap(ctx) {
-  const site = ctx.site
+  const site = ctx.state.origin
   const limit = parseLimitParam(ctx.query.limit, GOOGLE_LIMIT)
   const page = parsePageParam(ctx.params.page)
 
@@ -384,7 +384,7 @@ async function googleVideoSitemap(ctx) {
 }
 
 async function robotsTxt(ctx) {
-  const site = ctx.site
+  const site = ctx.state.origin
   const limit = parseLimitParam(ctx.query.limit, PAGE_LIMIT)
   const googleLimit = parseLimitParam(ctx.query.googleLimit, GOOGLE_LIMIT)
 
@@ -402,8 +402,8 @@ async function robotsTxt(ctx) {
 
     new Promise((resolve, reject) => {
       let url = site + '/robots.txt'
-      if (ctx.siteConfig && ctx.siteConfig.rewrites) {
-        url = urlRewrite(url, ctx.siteConfig.rewrites)
+      if (ctx.state.config && ctx.state.config.rewrites) {
+        url = urlRewrite(url, ctx.state.config.rewrites)
 
         if (!url) {
           return resolve('')
@@ -485,7 +485,7 @@ async function robotsTxt(ctx) {
 async function _sitemapIndex(ctx, type) {
   const MAX = type === 'normal' ? PAGE_LIMIT : GOOGLE_LIMIT
 
-  const site = ctx.site
+  const site = ctx.state.origin
   const limit = parseLimitParam(ctx.query.limit, MAX)
   const page = parsePageParam(ctx.params.page)
 
