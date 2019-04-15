@@ -88,7 +88,7 @@ async function render(ctx) {
   }
 
   let {
-    keepQueries = true,
+    keepQuery = true,
     keepHash = true,
     rewrites = null,
     excludes = null,
@@ -97,7 +97,7 @@ async function render(ctx) {
   } = ctx.state.config
 
   if (settings) {
-    keepQueries = mergeSetting(keepQueries, settings.keepQueries)
+    keepQuery = mergeSetting(keepQuery, settings.keepQuery)
     rewrites = mergeSetting(rewrites, settings.rewrites)
     excludes = mergeSetting(excludes, settings.excludes)
     includes = mergeSetting(includes, settings.includes)
@@ -128,9 +128,9 @@ async function render(ctx) {
   }
 
   async function handler() {
-    if (keepQueries) {
-      if (keepQueries.constructor === Array) {
-        const matched = keepQueries.find(([rule]) =>
+    if (keepQuery) {
+      if (keepQuery.constructor === Array) {
+        const matched = keepQuery.find(([rule]) =>
           rule instanceof RegExp ? rule.test(url.pathname) : rule === url.pathname
         )
 
