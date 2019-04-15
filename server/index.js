@@ -192,7 +192,7 @@ async function main() {
       }
 
       host = url.host
-      protocol = url.protocol
+      protocol = url.protocol.slice(0, -1)
       ctx.path = ctx.path.replace(matchedOrigin[0], '')
     }
 
