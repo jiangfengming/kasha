@@ -5,6 +5,12 @@ const nsqWriter = require('../lib/nsqWriter')
 const nsqReader = require('../lib/nsqReader')
 const Prerenderer = require('puppeteer-prerender')
 const removeXMLInvalidChars = require('./removeXMLInvalidChars')
+const { URL } = require('url')
+const RESTError = require('../lib/RESTError')
+const normalizeDoc = require('../lib/normalizeDoc')
+const uid = require('../lib/uid')
+const callback = require('../lib/callback')
+const poll = require('../lib/poll')
 
 const JOB_TIMEOUT = 20 * 1000
 
@@ -41,7 +47,8 @@ const prerendererOpts = {
   }
 }
 
-let db, reader, prerenderer
+let db, reader, prerenderer, jobCounter = 0, stopping = false, browserCheckInterval
+
 ;(async() => {
   try {
     db = await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.workerOptions)
@@ -50,20 +57,55 @@ let db, reader, prerenderer
     logger.info('Launching chromium...')
     prerenderer = new Prerenderer(prerendererOpts)
     await prerenderer.launch()
+
     prerenderer.on('disconnected', () => {
       logger.error('Chromium disconnected')
     })
+
+    browserCheckInterval = setInterval(async() => {
+      const pageCount = (await prerenderer.browser.pages()).length
+      logger.debug('Opened pages:', pageCount)
+
+      if (pageCount > config.nsq.reader.maxInFlight * 2) {
+        logger.warn('Opened too many pages:', pageCount)
+      }
+    }, 60 * 1000)
+
     logger.info('Chromium launched')
 
     reader = nsqReader.connect(global.argv.async ? 'kasha-async-queue' : 'kasha-sync-queue', 'worker', config.nsq.reader)
 
-    await main()
+    main()
+
+    process.once('SIGINT', exit)
+    process.once('SIGTERM', exit)
+
+    logger.info('Kasha Worker started')
   } catch (e) {
     logger.error(e)
     await closeConnections()
     process.exitCode = 1
   }
 })()
+
+// graceful exit
+async function exit() {
+  if (stopping) {
+    return
+  }
+
+  stopping = true
+  logger.info('Closing the worker... Please wait for finishing the in-flight jobs...')
+  reader.pause()
+
+  const interval = setInterval(async() => {
+    if (jobCounter === 0) {
+      clearInterval(interval)
+      await closeConnections()
+      logger.info('exit successfully')
+    }
+  }, 1000)
+}
 
 async function closeConnections() {
   await mongo.close()
@@ -72,20 +114,13 @@ async function closeConnections() {
 
   if (prerenderer) {
     logger.info('Closing prerenderer...')
+    clearInterval(browserCheckInterval)
     await prerenderer.close()
     logger.info('Prerender closed')
   }
 }
 
-async function main() {
-  const { URL } = require('url')
-  const config = require('../lib/config')
-  const RESTError = require('../lib/RESTError')
-  const normalizeDoc = require('../lib/normalizeDoc')
-  const uid = require('../lib/uid')
-  const callback = require('../lib/callback')
-  const poll = require('../lib/poll')
-
+function main() {
   /*
   snapshots schema:
   site: String
@@ -121,8 +156,6 @@ async function main() {
   updatedAt: Date
   */
   const sitemaps = db.collection('sitemaps')
-
-  let jobCounter = 0
 
   reader.on('message', async msg => {
     jobCounter++
@@ -169,6 +202,7 @@ async function main() {
     }
 
     const lock = uid()
+
     const lockQuery = {
       site,
       path,
@@ -183,6 +217,7 @@ async function main() {
 
     try {
       logger.debug(`lock: ${url} @${profile} with ${lock}`)
+
       await snapshots.updateOne(lockQuery, {
         $set: {
           updatedAt: new Date(),
@@ -207,6 +242,7 @@ async function main() {
 
       // the document maybe locked by others, or is valid
       let doc
+
       try {
         doc = await poll(site, path, profile)
       } catch (e) {
@@ -256,6 +292,7 @@ async function main() {
 
       if (doc.meta && doc.meta.status) {
         const s = parseInt(doc.meta.status)
+
         if (!isNaN(s) && s >= 100 && s < 600) {
           doc.status = s
 
@@ -284,22 +321,33 @@ async function main() {
         if (doc.meta) {
           if (doc.meta.cacheControl) {
             let maxage = doc.meta.cacheControl.match(/max-age=(\d+)/)
+
             if (maxage) {
               maxage = parseInt(maxage[1])
-              if (maxage >= 0) doc.privateExpires = new Date(Date.now() + maxage * 1000)
-              else maxage = null
+
+              if (maxage >= 0) {
+                doc.privateExpires = new Date(Date.now() + maxage * 1000)
+              } else {
+                maxage = null
+              }
             }
 
             let sMaxage = doc.meta.cacheControl.match(/s-maxage=(\d+)/)
+
             if (sMaxage) {
               sMaxage = parseInt(sMaxage[1])
-              if (sMaxage >= 0) doc.sharedExpires = new Date(Date.now() + sMaxage * 1000)
-              else sMaxage = null
+
+              if (sMaxage >= 0) {
+                doc.sharedExpires = new Date(Date.now() + sMaxage * 1000)
+              } else {
+                sMaxage = null
+              }
             }
           }
 
           if (!doc.privateExpires && doc.meta.expires) {
             const d = new Date(doc.meta.expires)
+
             if (!isNaN(d.getTime())) {
               doc.privateExpires = d
             }
@@ -326,6 +374,7 @@ async function main() {
     const query = { site, path, profile, lock }
 
     logger.debug('update snapshot:', query)
+
     snapshots.updateOne(query, {
       $set: {
         ...doc,
@@ -363,6 +412,7 @@ async function main() {
 
           if (sitemap.news) {
             const date = new Date(sitemap.news.publication_date)
+
             if (!sitemap.news.title || isNaN(date.getTime())) {
               delete sitemap.news
             } else {
@@ -373,6 +423,7 @@ async function main() {
 
           if (!sitemap.image && doc.openGraph.og && doc.openGraph.og.image) {
             sitemap.image = []
+
             for (const img of doc.openGraph.og.image) {
               sitemap.image.push({
                 loc: img.secure_url || img.url
@@ -407,7 +458,7 @@ async function main() {
 
       if (callbackURL || replyTo) {
         // if fetch the document failed, we try to use the cached document if mode is not BYPASS
-        if ((!doc.status || doc.status >= 500 && cacheDoc.status < 500) && cacheStatus !== 'BYPASS' && cacheDoc) {
+        if (cacheDoc && cacheStatus !== 'BYPASS' && (!doc.status || doc.status >= 500 && cacheDoc.status < 500)) {
           doc = cacheDoc
           if (cacheStatus === 'EXPIRED') {
             cacheStatus = 'STALE'
@@ -415,6 +466,7 @@ async function main() {
         }
 
         let error = null
+
         if (doc.status) {
           doc = normalizeDoc(doc, metaOnly)
         } else {
@@ -433,31 +485,11 @@ async function main() {
         }
       }
 
-      if (!msg.hasResponded) msg.finish()
+      if (!msg.hasResponded) {
+        msg.finish()
+      }
+
       jobCounter--
     }
   })
-
-  // graceful exit
-  let stopping = false
-  async function exit() {
-    if (stopping) return
-
-    stopping = true
-    logger.info('Closing the worker... Please wait for finishing the in-flight jobs...')
-    reader.pause()
-
-    const interval = setInterval(async() => {
-      if (jobCounter === 0) {
-        clearInterval(interval)
-        await closeConnections()
-        logger.info('exit successfully')
-      }
-    }, 1000)
-  }
-
-  process.once('SIGINT', exit)
-  process.once('SIGTERM', exit)
-
-  logger.info('Kasha Worker started')
 }
