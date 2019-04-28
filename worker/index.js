@@ -223,6 +223,7 @@ function main() {
           updatedAt: new Date(),
           lock
         },
+
         $setOnInsert: {
           renderTimes: 0,
           privateExpires: new Date(),
@@ -267,7 +268,7 @@ function main() {
 
       try {
         doc = await prerenderer.render(url, {
-          timeout: 20000,
+          timeout: JOB_TIMEOUT,
           userAgent,
 
           // always followRedirect when caching pages
@@ -380,10 +381,11 @@ function main() {
         ...doc,
         lock: null
       },
+
       $inc: {
         renderTimes: 1
       }
-    }, { upsert: true }).catch(e => {
+    }).catch(e => {
       logger.error(e)
     })
 
