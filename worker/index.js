@@ -12,7 +12,7 @@ const uid = require('../lib/uid')
 const callback = require('../lib/callback')
 const poll = require('../lib/poll')
 
-const JOB_TIMEOUT = 20 * 1000
+const JOB_TIMEOUT = 15 * 1000
 
 const prerendererOpts = {
   debug: config.logLevel === 'debug' ? logger.debug.bind(logger) : false,
