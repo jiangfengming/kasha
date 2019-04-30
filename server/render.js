@@ -14,7 +14,7 @@ const callback = require('../lib/callback')
 const poll = require('../lib/poll')
 const normalizeDoc = require('../lib/normalizeDoc')
 const urlRewrite = require('url-rewrite/es6')
-const urlRewriteEncoder = require('../lib/urlRewriteEncoder')
+const rewriteRuleParser = require('../lib/rewriteRuleParser')
 const inArray = require('./inArray')
 const getLockError = require('../lib/getLockError')
 
@@ -287,7 +287,7 @@ async function render(ctx) {
         path,
         profile,
         userAgent,
-        rewrites: urlRewriteEncoder.escape(rewrites),
+        rewrites: rewriteRuleParser.escape(rewrites),
         callbackURL: options.callbackURL,
         metaOnly,
         cacheStatus

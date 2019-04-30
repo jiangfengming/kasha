@@ -4,13 +4,14 @@ const mongo = require('../lib/mongo')
 const nsqWriter = require('../lib/nsqWriter')
 const nsqReader = require('../lib/nsqReader')
 const RESTError = require('../lib/RESTError')
-const urlRewriteEncoder = require('../lib/urlRewriteEncoder')
+const rewriteRuleParser = require('../lib/rewriteRuleParser')
 const normalizeDoc = require('../lib/normalizeDoc')
 const uid = require('../lib/uid')
 const callback = require('../lib/callback')
 const poll = require('../lib/poll')
 const prerenderer = require('./prerenderer')
-const handleSitemap = require('./handleSitemap')
+const updateSitemap = require('./updateSitemap')
+const validHTTPStatus = require('./validHTTPStatus')
 
 const JOB_TIMEOUT = 15 * 1000
 
@@ -127,7 +128,7 @@ function main() {
 
     const url = site + path
     let { rewrites, cacheStatus } = req
-    rewrites = urlRewriteEncoder.unescape(rewrites)
+    rewrites = rewriteRuleParser.unescape(rewrites)
     const msgTimestamp = msg.timestamp.dividedBy(1000000).integerValue().toNumber()
     const msgAttemps = msg.attempts
     const jobStartTime = Date.now()
@@ -218,12 +219,29 @@ function main() {
     } catch (e) {
       logger.debug(`prerender ${url} @${profile} failed.`, e)
 
-      if (cacheStatus !== 'BYPASS') {
-        const staleDoc = fetchStaleDoc()
+      doc = {
+        error: new RESTError('RENDER_ERROR', e.message).toJSON(),
+        updatedAt: new Date()
       }
 
-      return handleResult({ error: new RESTError('RENDER_ERROR', e.message).toJSON() })
+      updateSitemap(site, path, doc)
+      updateSnapshot(doc)
+
+      if (cacheStatus === 'BYPASS') {
+        return handleResult(doc)
+      }
+
+      const staleDoc = await fetchStaleDoc()
+
+      if (staleDoc) {
+        cacheStatus = 'STALE'
+        return handleResult(staleDoc)
+      }
+
+      return handleResult(doc)
     }
+
+    doc.updatedAt = new Date()
 
     if (doc.meta && doc.meta.status) {
       const s = parseInt(doc.meta.status)
@@ -237,7 +255,7 @@ function main() {
       }
     }
 
-    if (doc.status >= 500) {
+    if (!validHTTPStatus.includes(doc.status)) {
       let message = 'HTTP ' + doc.status
 
       if (doc.meta && doc.meta.error) {
@@ -245,70 +263,86 @@ function main() {
       }
 
       doc.error = new RESTError('FETCH_ERROR', url, message).toJSON()
-    } else {
-      doc.error = null
 
-      if (doc.meta) {
-        if (doc.meta.cacheControl) {
-          let maxage = doc.meta.cacheControl.match(/max-age=(\d+)/)
+      updateSitemap(doc)
 
-          if (maxage) {
-            maxage = parseInt(maxage[1])
+      const staleDoc = await fetchStaleDoc()
 
-            if (maxage >= 0) {
-              doc.privateExpires = new Date(Date.now() + maxage * 1000)
-            } else {
-              maxage = null
-            }
-          }
+      if (staleDoc && validHTTPStatus.includes(staleDoc.status)) {
+        updateSnapshot({
+          error: doc.error,
+          updatedAt: doc.updatedAt
+        })
 
-          let sMaxage = doc.meta.cacheControl.match(/s-maxage=(\d+)/)
-
-          if (sMaxage) {
-            sMaxage = parseInt(sMaxage[1])
-
-            if (sMaxage >= 0) {
-              doc.sharedExpires = new Date(Date.now() + sMaxage * 1000)
-            } else {
-              sMaxage = null
-            }
-          }
+        if (cacheStatus === 'BYPASS') {
+          return handleResult(doc)
         }
 
-        if (!doc.privateExpires && doc.meta.expires) {
-          const d = new Date(doc.meta.expires)
-
-          if (!isNaN(d.getTime())) {
-            doc.privateExpires = d
-          }
-        }
+        cacheStatus = 'STALE'
+        return handleResult(staleDoc)
       }
 
-      if (!doc.privateExpires) {
-        doc.privateExpires = new Date(Date.now() + (doc.status < 400 ? config.cache.maxage : config.cache.maxStale) * 1000)
-      }
-
-      if (!doc.sharedExpires) {
-        doc.sharedExpires = new Date(Date.now() + (doc.status < 400 ? config.cache.sMaxage : config.cache.maxStale) * 1000)
-      }
-
-      doc.removeAt = new Date(doc.sharedExpires + config.cache.removeAfter * 1000)
+      updateSnapshot(doc)
+      return handleResult(doc)
     }
 
-    handleSitemap(site, path, doc).catch(e => logger.error(e))
+    doc.error = null
 
-    handleResult(doc)
+    if (doc.meta) {
+      if (doc.meta.cacheControl) {
+        let maxage = doc.meta.cacheControl.match(/max-age=(\d+)/)
 
-    async function handleResult(doc) {
+        if (maxage) {
+          maxage = parseInt(maxage[1])
+
+          if (maxage >= 0) {
+            doc.privateExpires = new Date(Date.now() + maxage * 1000)
+          } else {
+            maxage = null
+          }
+        }
+
+        let sMaxage = doc.meta.cacheControl.match(/s-maxage=(\d+)/)
+
+        if (sMaxage) {
+          sMaxage = parseInt(sMaxage[1])
+
+          if (sMaxage >= 0) {
+            doc.sharedExpires = new Date(Date.now() + sMaxage * 1000)
+          } else {
+            sMaxage = null
+          }
+        }
+      }
+
+      if (!doc.privateExpires && doc.meta.expires) {
+        const d = new Date(doc.meta.expires)
+
+        if (!isNaN(d.getTime())) {
+          doc.privateExpires = d
+        }
+      }
+    }
+
+    if (!doc.privateExpires) {
+      doc.privateExpires = new Date(Date.now() + (doc.status < 400 ? config.cache.maxage : config.cache.maxStale) * 1000)
+    }
+
+    if (!doc.sharedExpires) {
+      doc.sharedExpires = new Date(Date.now() + (doc.status < 400 ? config.cache.sMaxage : config.cache.maxStale) * 1000)
+    }
+
+    doc.removeAt = new Date(doc.sharedExpires + config.cache.removeAfter * 1000)
+
+    updateSitemap(site, path, doc)
+    updateSnapshot(doc)
+
+    return handleResult(doc)
+
+    function handleResult(doc) {
       logger.log(`${url} @${profile} ${doc.error ? doc.error.code : doc.status}. queue: ${jobStartTime - msgTimestamp}ms, render: ${Date.now() - jobStartTime}ms, attemps: ${msgAttemps}`)
 
       if (callbackURL || replyTo) {
-        // if fetch the document failed, we try to use the cached document if mode is not BYPASS
-        if (cacheStatus !== 'BYPASS' && (!doc.status || doc.status >= 500)) {
-          let cacheDoc
-
-        }
-
         let error = null
 
         if (doc.status) {
@@ -337,13 +371,10 @@ function main() {
     }
 
     function updateSnapshot(doc) {
-      doc.updatedAt = new Date()
-
       const query = { site, path, profile, lock }
-
       logger.debug('update snapshot:', query)
 
-      snapshots.updateOne(query, {
+      return snapshots.updateOne(query, {
         $set: {
           ...doc,
           lock: null
@@ -356,20 +387,7 @@ function main() {
     }
 
     function fetchStaleDoc() {
-      try {
-        cacheDoc = await snapshots.findOne({ site, path, profile, status: { $type: 'int' } })
-
-        if (cacheDoc && cacheDoc.status < 500) {
-          doc = cacheDoc
-
-          if (cacheStatus === 'EXPIRED') {
-            cacheStatus = 'STALE'
-          }
-        }
-      } catch (e) {
-        const { timestamp, eventId } = logger.error(e)
-        return handleResult({ error: new RESTError('INTERNAL_ERROR', timestamp, eventId).toJSON() })
-      }
+      return snapshots.findOne({ site, path, profile, status: { $type: 'int' } }).catch(e => logger.error(e))
     }
   })
 }

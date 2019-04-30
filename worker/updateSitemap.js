@@ -1,10 +1,13 @@
 const { URL } = require('url')
 const mongo = require('../lib/mongo')
+const logger = require('../lib/logger')
 const removeXMLInvalidChars = require('./removeXMLInvalidChars')
+const validHTTPStatus = require('./validHTTPStatus')
 
 module.exports = (site, path, doc) => {
   /*
-  sitemaps schema:
+  schema:
+
   site: String
   path: String
   lastmod: String
@@ -13,12 +16,13 @@ module.exports = (site, path, doc) => {
   news: Array
   images: Array
   videos: Array
+  failed: Number
   updatedAt: Date
   */
   const sitemaps = mongo.db.collection('sitemaps')
 
-  // sitemap
   let canonicalURL
+
   if (doc.meta && doc.meta.canonicalURL) {
     try {
       canonicalURL = new URL(doc.meta.canonicalURL)
@@ -57,21 +61,44 @@ module.exports = (site, path, doc) => {
 
     if (!sitemap.lastmod && doc.meta.lastModified) {
       const date = new Date(doc.meta.lastModified)
+
       if (!isNaN(date.getTime())) {
         sitemap.lastmod = date.toISOString()
       }
     }
 
-    return sitemaps.updateOne({
-      site: canonicalURL.origin,
-      path: canonicalURL.pathname + canonicalURL.search
-    }, {
-      $set: {
-        ...sitemap,
-        updatedAt: new Date()
-      }
-    }, { upsert: true })
-  } else {
-    return sitemaps.deleteOne({ site, path })
+    return sitemaps
+      .updateOne(
+        {
+          site: canonicalURL.origin,
+          path: canonicalURL.pathname + canonicalURL.search
+        },
+
+        {
+          $set: {
+            ...sitemap,
+            failed: 0,
+            updatedAt: new Date()
+          }
+        },
+
+        {
+          upsert: true
+        }
+      )
+      .catch(e => logger.error(e))
   }
+
+  if (validHTTPStatus.includes(doc.status)) {
+    return sitemaps.deleteOne({ site, path }).catch(e => logger.error(e))
+  }
+
+  return sitemaps
+    .updateOne({ site, path }, {
+      $inc: {
+        failed: 1
+      }
+    })
+    .then(() => sitemaps.deleteOne({ site, path, failed: { $gt: 3 } }))
+    .catch(e => logger.error(e))
 }
