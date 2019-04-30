@@ -4,11 +4,11 @@ const logger = require('./lib/logger')
 const mongo = require('./lib/mongo')
 
 async function install() {
-  const db = await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
-  const meta = db.collection('meta')
-  const sites = db.collection('sites')
-  const snapshots = db.collection('snapshots')
-  const sitemaps = db.collection('sitemaps')
+  await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
+  const meta = mongo.db.collection('meta')
+  const sites = mongo.db.collection('sites')
+  const snapshots = mongo.db.collection('snapshots')
+  const sitemaps = mongo.db.collection('sitemaps')
 
   logger.info('Checking current database schema version...')
   let appInfo = await meta.findOne({ key: 'appInfo' })
@@ -25,7 +25,7 @@ async function install() {
     await meta.insertOne(appInfo)
   }
 
-  const schema = new Schema(db, appInfo.version)
+  const schema = new Schema(appInfo.version)
 
   schema.version(1, async() => {
     logger.info('Upgrading database schema to version 1...')

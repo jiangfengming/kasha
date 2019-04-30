@@ -1,5 +1,5 @@
 const config = require('../lib/config')
-const { db } = require('../lib/mongo')
+const mongo = require('../lib/mongo')
 
 if (config.sites) {
   module.exports = function(host) {
@@ -7,6 +7,6 @@ if (config.sites) {
   }
 } else {
   module.exports = function(host) {
-    return db.collection('sites').findOne({ host })
+    return mongo.db.collection('sites').findOne({ host })
   }
 }

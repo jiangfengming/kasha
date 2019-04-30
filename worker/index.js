@@ -15,11 +15,11 @@ const validHTTPStatus = require('./validHTTPStatus')
 
 const JOB_TIMEOUT = 15 * 1000
 
-let db, reader, jobCounter = 0, stopping = false, browserCheckInterval
+let reader, jobCounter = 0, stopping = false, browserCheckInterval
 
 ;(async() => {
   try {
-    db = await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.workerOptions)
+    await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.workerOptions)
     await nsqWriter.connect()
 
     logger.info('Launching chromium...')
@@ -108,7 +108,7 @@ function main() {
   removeAt: Date
   lock: String
   */
-  const snapshots = db.collection('snapshots')
+  const snapshots = mongo.db.collection('snapshots')
 
   reader.on('message', async msg => {
     jobCounter++

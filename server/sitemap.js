@@ -1,13 +1,11 @@
 const { PassThrough, Transform } = require('stream')
 const { XmlEntities } = require('html-entities')
 const request = require('request')
-const { db } = require('../lib/mongo')
+const urlRewrite = require('url-rewrite/es6')
+const mongo = require('../lib/mongo')
 const RESTError = require('../lib/RESTError')
 const config = require('../lib/config')
-const urlRewrite = require('url-rewrite/es6')
 const logger = require('../lib/logger')
-
-const sitemaps = db.collection('sitemaps')
 
 const PAGE_LIMIT = 50000
 const GOOGLE_LIMIT = 1000
@@ -281,7 +279,7 @@ async function sitemap(ctx) {
   }
 
   logger.debug('query sitemaps', query, options)
-  const data = await sitemaps.find(query, options)
+  const data = await mongo.db.collection('sitemaps').find(query, options)
 
   await respond(ctx, data, standardSitemapStream)
 }
@@ -299,7 +297,7 @@ async function googleSitemap(ctx) {
   }
 
   logger.debug('query sitemaps', query, options)
-  const data = await sitemaps.find(query, options)
+  const data = await mongo.db.collection('sitemaps').find(query, options)
 
   await respond(ctx, data, googleSitemapStream)
 }
@@ -311,7 +309,7 @@ async function googleSitemapItem(ctx) {
   const query = { site, path }
   const options = { limit: 1 }
   logger.debug('query sitemaps', query, options)
-  const data = await sitemaps.find(query, options)
+  const data = await mongo.db.collection('sitemaps').find(query, options)
 
   await respond(ctx, data, googleSitemapStream)
 }
@@ -332,7 +330,7 @@ async function googleNewsSitemap(ctx) {
   }
 
   logger.debug('query sitemaps', query, options)
-  const data = await sitemaps.find(query, options)
+  const data = await mongo.db.collection('sitemaps').find(query, options)
 
   await respond(ctx, data, googleNewsSitemapStream)
 }
@@ -357,7 +355,7 @@ async function googleImageSitemap(ctx) {
   }
 
   logger.debug('query sitemaps', query, options)
-  const data = await sitemaps.find(query, options)
+  const data = await mongo.db.collection('sitemaps').find(query, options)
 
   await respond(ctx, data, googleImageSitemapStream)
 }
@@ -378,7 +376,7 @@ async function googleVideoSitemap(ctx) {
   }
 
   logger.debug('query sitemaps', query, options)
-  const data = await sitemaps.find(query, options)
+  const data = await mongo.db.collection('sitemaps').find(query, options)
 
   await respond(ctx, data, googleVideoSitemapStream)
 }
@@ -393,6 +391,8 @@ async function robotsTxt(ctx) {
   const queryImages = { site, hasImages: true }
   const queryVideos = { site, hasVideos: true }
   logger.debug('count sitemaps', queryAll, queryNews, queryImages, queryVideos)
+
+  const sitemaps = mongo.db.collection('sitemaps')
 
   const [allCount, newsCount, imageCount, videoCount, rules] = await Promise.all([
     sitemaps.countDocuments(queryAll),
@@ -504,7 +504,7 @@ async function _sitemapIndex(ctx, type) {
   }
 
   logger.debug('count sitemaps', query, options)
-  const docCount = await sitemaps.countDocuments(query, options)
+  const docCount = await mongo.db.collection('sitemaps').countDocuments(query, options)
 
   if (docCount) {
     ctx.set('Content-Type', 'text/xml; charset=utf-8')

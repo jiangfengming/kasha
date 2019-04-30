@@ -1,8 +1,20 @@
+const Koa = require('koa')
+const Router = require('koa-pilot')
+const mount = require('koa-mount')
+const serve = require('koa-static')
+const send = require('koa-send')
+const path = require('path')
+const stoppable = require('stoppable')
+const parseForwardedHeader = require('forwarded-parse')
 const config = require('../lib/config')
 const logger = require('../lib/logger')
 const mongo = require('../lib/mongo')
 const nsqWriter = require('../lib/nsqWriter')
 const workerResponder = require('./workerResponder')
+const RESTError = require('../lib/RESTError')
+const getSiteConfig = require('./getSiteConfig')
+const render = require('./render')
+const sitemap = require('./sitemap')
 
 ;(async() => {
   try {
@@ -25,19 +37,6 @@ async function closeConnections() {
 }
 
 async function main() {
-  const RESTError = require('../lib/RESTError')
-  const getSiteConfig = require('./getSiteConfig')
-  const Koa = require('koa')
-  const Router = require('koa-pilot')
-  const mount = require('koa-mount')
-  const serve = require('koa-static')
-  const send = require('koa-send')
-  const path = require('path')
-  const render = require('./render')
-  const sitemap = require('./sitemap')
-  const stoppable = require('stoppable')
-  const parseForwardedHeader = require('forwarded-parse')
-
   async function _getSiteConfig(ctx, host) {
     ctx.state.config = await getSiteConfig(host)
 

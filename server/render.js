@@ -2,21 +2,21 @@ const { URL } = require('url')
 const assert = require('assert')
 const http = require('http')
 const https = require('https')
-const workerResponder = require('./workerResponder')
+const urlRewrite = require('url-rewrite/es6')
 const nsqWriter = require('../lib/nsqWriter')
-const reply = require('./reply')
 const RESTError = require('../lib/RESTError')
 const logger = require('../lib/logger')
-const mergeSetting = require('./mergeSetting')
-const { db } = require('../lib/mongo')
+const mongo = require('../lib/mongo')
 const uid = require('../lib/uid')
 const callback = require('../lib/callback')
 const poll = require('../lib/poll')
 const normalizeDoc = require('../lib/normalizeDoc')
-const urlRewrite = require('url-rewrite/es6')
 const rewriteRuleParser = require('../lib/rewriteRuleParser')
-const inArray = require('./inArray')
 const getLockError = require('../lib/getLockError')
+const inArray = require('./inArray')
+const workerResponder = require('./workerResponder')
+const reply = require('./reply')
+const mergeSetting = require('./mergeSetting')
 
 async function render(ctx) {
   const now = Date.now()
@@ -208,7 +208,7 @@ async function render(ctx) {
     let doc
 
     try {
-      doc = await db.collection('snapshots').findOne({ site, path, profile })
+      doc = await mongo.db.collection('snapshots').findOne({ site, path, profile })
     } catch (e) {
       const { timestamp, eventId } = logger.error(e)
       throw new RESTError('INTERNAL_ERROR', timestamp, eventId)
