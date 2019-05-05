@@ -264,7 +264,7 @@ function main() {
 
       doc.error = new RESTError('FETCH_ERROR', url, message).toJSON()
 
-      updateSitemap(doc)
+      updateSitemap(site, path, doc)
 
       const staleDoc = await fetchStaleDoc()
 
