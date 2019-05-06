@@ -30,6 +30,10 @@ let reader, jobCounter = 0, stopping = false, browserCheckInterval
     })
 
     browserCheckInterval = setInterval(async() => {
+      if (!prerenderer.browser) {
+        return
+      }
+
       const pageCount = (await prerenderer.browser.pages()).length
       logger.debug('Opened pages:', pageCount)
 
