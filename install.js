@@ -20,59 +20,26 @@ async function install() {
       version: 0,
       upgrading: false
     }
-
-    await meta.createIndex({ key: 1 }, { unique: true })
-    await meta.insertOne(appInfo)
   }
 
   const schema = new Schema(appInfo.version)
 
-  schema.version(1, async() => {
-    logger.info('Upgrading database schema to version 1...')
-    await sites.createIndex({ host: 1, default: -1 }, { unique: true })
-    await snapshots.createIndex({ site: 1, path: 1, deviceType: 1 }, { unique: true })
-    await sitemaps.createIndex({ site: 1, path: 1 }, { unique: true })
-    await sitemaps.createIndex({ 'news.publication_date': -1 })
-    logger.info('Upgraded to database schema version 1.')
-  })
-
-  schema.version(2, async() => {
-    logger.info('Upgrading database schema to version 2...')
-    await snapshots.createIndex({ sharedExpires: 1 })
-    await meta.insertOne({
-      key: 'cacheClean',
-      cronTime: null,
-      cleaning: false,
-      cleaningAt: null,
-      nextAt: null
-    })
-    logger.info('Upgraded to database schema version 2.')
-  })
-
-  schema.version(3, async() => {
-    logger.info('Upgrading database schema to version 3...')
-    await sitemaps.createIndex({ site: 1, 'news.publication_date': -1 })
-    await sitemaps.dropIndex({ 'news.publication_date': -1 })
-    await sitemaps.createIndex({ site: 1, hasImages: 1 })
-    await sitemaps.createIndex({ site: 1, hasVideos: 1 })
-    await sitemaps.updateMany({ image: { $exists: true } }, { $set: { hasImages: true } })
-    await sitemaps.updateMany({ video: { $exists: true } }, { $set: { hasVideos: true } })
-    logger.info('Upgraded to database schema version 3.')
-  })
-
   schema.version(4, async() => {
     logger.info('Upgrading database schema to version 4...')
-    await meta.deleteOne({ key: 'cacheClean' })
-    await snapshots.dropIndex({ sharedExpires: 1 })
-    await snapshots.dropIndex({ site: 1, path: 1, deviceType: 1 })
-    await sites.dropIndex({ host: 1, default: -1 })
+
+    await meta.createIndex({ key: 1 }, { unique: true })
+    await meta.insertOne(appInfo)
+
     await sites.createIndex({ host: 1 }, { unique: true })
+
     await snapshots.createIndex({ removeAt: 1 }, { expireAfterSeconds: 0 })
-    await snapshots.updateMany({}, {
-      $set: { removeAt: new Date(Date.now() + 7 * 60 * 60 * 24 * 1000) },
-      $rename: { deviceType: 'profile' }
-    })
     await snapshots.createIndex({ site: 1, path: 1, profile: 1 }, { unique: true })
+
+    await sitemaps.createIndex({ site: 1, path: 1 }, { unique: true })
+    await sitemaps.createIndex({ site: 1, 'news.publication_date': -1 })
+    await sitemaps.createIndex({ site: 1, hasImages: 1 })
+    await sitemaps.createIndex({ site: 1, hasVideos: 1 })
+
     logger.info('Upgraded to database schema version 4.')
   })
 
