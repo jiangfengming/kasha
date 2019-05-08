@@ -15,20 +15,21 @@ async function install() {
 
   if (!appInfo) {
     logger.info('Database doesn\'t exist. Initialized...')
+
     appInfo = {
       key: 'appInfo',
       version: 0,
       upgrading: false
     }
+
+    await meta.createIndex({ key: 1 }, { unique: true })
+    await meta.insertOne(appInfo)
   }
 
   const schema = new Schema(appInfo.version)
 
   schema.version(4, async() => {
     logger.info('Upgrading database schema to version 4...')
-
-    await meta.createIndex({ key: 1 }, { unique: true })
-    await meta.insertOne(appInfo)
 
     await sites.createIndex({ host: 1 }, { unique: true })
 
@@ -64,10 +65,6 @@ async function install() {
       $set: {
         upgrading: true
       }
-    },
-
-    {
-      upsert: true
     }
   )
 
