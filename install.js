@@ -53,15 +53,23 @@ async function install() {
   logger.info(`Upgrade database schema from verion ${appInfo.version} to ${latest}.`)
 
   logger.info('Setting upgrade lock...')
-  const result = await meta.updateOne({
-    key: 'appInfo',
-    version: appInfo.version,
-    upgrading: false
-  }, {
-    $set: {
-      upgrading: true
+  const result = await meta.updateOne(
+    {
+      key: 'appInfo',
+      version: appInfo.version,
+      upgrading: false
+    },
+
+    {
+      $set: {
+        upgrading: true
+      }
+    },
+
+    {
+      upsert: true
     }
-  })
+  )
 
   if (!result.modifiedCount) {
     throw new Error('Other process is upgrading the database. Please wait.')
