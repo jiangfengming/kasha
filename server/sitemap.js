@@ -304,7 +304,7 @@ async function googleSitemap(ctx) {
 
 async function googleSitemapItem(ctx) {
   const site = ctx.state.origin
-  const path = '/' + (ctx.params.path || '')
+  const path = ctx.params.path
 
   const query = { site, path }
   const options = { limit: 1 }
