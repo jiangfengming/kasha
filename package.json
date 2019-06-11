@@ -7,7 +7,7 @@
     "kasha": "bin/kasha"
   },
   "dependencies": {
-    "@sentry/node": "^5.2.0",
+    "@sentry/node": "^5.4.0",
     "forwarded-parse": "^2.1.0",
     "html-entities": "^1.2.1",
     "koa": "^2.7.0",
@@ -16,11 +16,11 @@
     "koa-send": "^5.0.0",
     "koa-static": "^5.0.0",
     "moment": "^2.24.0",
-    "mongodb": "^3.2.5",
+    "mongodb": "^3.2.7",
     "node-fetch": "^2.6.0",
     "nsqjs": "^0.12.0",
     "parse-open-graph": "^0.3.2",
-    "puppeteer-prerender": "^0.12.13",
+    "puppeteer-prerender": "^0.12.14",
     "raven-logger": "^0.3.2",
     "request": "^2.88.0",
     "rest-api-error-factory": "^0.1.2",
@@ -31,9 +31,8 @@
     "yargs": "^13.2.4"
   },
   "devDependencies": {
-    "babel-eslint": "^10.0.1",
     "eslint": "^5.16.0",
-    "eslint-config-enough": "^0.3.4",
+    "eslint-config-enough": "^0.3.5",
     "mocha": "^6.1.4"
   },
   "eslintConfig": {
