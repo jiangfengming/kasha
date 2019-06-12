@@ -1,6 +1,6 @@
 {
   "name": "kasha",
-  "version": "0.12.6",
+  "version": "0.12.7",
   "description": "Prerender your Single-Page Application.",
   "main": "index.js",
   "bin": {
