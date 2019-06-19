@@ -1,7 +1,5 @@
 const { URL } = require('url')
 const assert = require('assert')
-const http = require('http')
-const https = require('https')
 const urlRewrite = require('url-rewrite/es6')
 const nsqWriter = require('../lib/nsqWriter')
 const RESTError = require('../lib/RESTError')
