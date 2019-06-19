@@ -17,11 +17,12 @@ const inArray = require('./inArray')
 const workerResponder = require('./workerResponder')
 const reply = require('./reply')
 const mergeSetting = require('./mergeSetting')
+const proxy = require('./proxy')
 
 async function render(ctx) {
   const now = Date.now()
   const { callbackURL } = ctx.state.params
-  let { url, type = 'json', profile = '', noWait, metaOnly, followRedirect, refresh } = ctx.state.params
+  let { url, type = 'json', profile = '', noWait, metaOnly, followRedirect, refresh, fallback } = ctx.state.params
 
   try {
     // mongodb index size must be less than 1024 bytes (includes structural overhead)
@@ -71,6 +72,12 @@ async function render(ctx) {
     refresh = truthyValues.includes(refresh)
   }
 
+  if (!validValues.includes(fallback)) {
+    throw new RESTError('INVALID_PARAM', 'fallback')
+  } else {
+    fallback = truthyValues.includes(fallback)
+  }
+
   if ((callbackURL || metaOnly) && type !== 'json') {
     type = 'json'
   }
@@ -80,6 +87,7 @@ async function render(ctx) {
   }
 
   let settings
+
   if (profile) {
     if (!ctx.state.config.profiles || !ctx.state.config.profiles[profile]) {
       throw new RESTError('INVALID_PARAM', 'profile')
@@ -137,11 +145,13 @@ async function render(ctx) {
 
         if (matched) {
           const whitelist = matched.slice(1)
+
           for (const [q] of url.searchParams) {
             if (!whitelist.includes(q)) {
               url.searchParams.delete(q)
             }
           }
+
           url.searchParams.sort()
         } else {
           url.search = ''
@@ -162,18 +172,20 @@ async function render(ctx) {
     logger.debug({ site, path, profile, callbackURL, type, noWait, metaOnly, followRedirect })
 
     if (excludes) {
-      let exclude
+      let excluded
+
       if (includes && inArray(includes, url.pathname)) {
-        exclude = false
+        excluded = false
       }
 
-      if (exclude === undefined) {
-        exclude = inArray(excludes, url.pathname)
+      if (excluded === undefined) {
+        excluded = inArray(excludes, url.pathname)
       }
 
-      if (exclude) {
+      if (excluded) {
         if (rewrites) {
           let rewrited
+
           try {
             rewrited = urlRewrite(url, rewrites, true)
           } catch (e) {
@@ -184,23 +196,13 @@ async function render(ctx) {
             throw new RESTError('NOT_FOUND')
           }
 
-          return new Promise((resolve, reject) => {
-            const _http = rewrited.protocol === 'http:' ? http : https
-            const req = _http.request(rewrited.href, res => {
-              delete res.headers.connection
-              delete res.headers['keep-alive']
-              if (res.headers['content-type'] && res.headers['content-type'].includes('text/html')) {
-                delete res.headers['content-disposition']
-              }
-              ctx.status = res.statusCode
-              ctx.set(res.headers)
-              ctx.body = res
-              resolve()
-            })
+          url = rewrited
+        }
 
-            req.on('error', e => reject(new RESTError('FETCH_ERROR', rewrited.href, e.message)))
-            req.end()
-          })
+        try {
+          return await proxy(url)
+        } catch (e) {
+          throw new RESTError('FETCH_ERROR', url.href, e.message)
         }
       }
     }
@@ -215,11 +217,21 @@ async function render(ctx) {
     }
 
     if (!doc) {
+      if (fallback) {
+        try {
+          ctx.set('Cache-Control', 'no-cache')
+          return await proxy(url, { setHeaders: false })
+        } catch (e) {
+          throw new RESTError('FETCH_ERROR', url.href, e.message)
+        }
+      }
+
       return sendToWorker(refresh ? 'BYPASS' : 'MISS')
     }
 
     if (doc.lock) {
       const lockError = await getLockError(site, path, profile, doc.lock, doc.updatedAt)
+
       if (lockError && lockError.code === 'CACHE_LOCK_TIMEOUT') {
         doc.lock = null
       }
@@ -294,6 +306,7 @@ async function render(ctx) {
       }
 
       let topic
+
       if (options.callbackURL || options.noWait) {
         topic = 'kasha-async-queue'
       } else {
@@ -303,6 +316,7 @@ async function render(ctx) {
       }
 
       logger.debug('sendToWorker', topic, msg)
+
       nsqWriter.writer.publish(topic, msg, e => {
         if (e) {
           const { timestamp, eventId } = logger.error(e)

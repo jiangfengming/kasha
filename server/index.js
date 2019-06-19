@@ -94,7 +94,8 @@ async function main() {
       ctx.state.params = {
         url: ctx.state.origin + ctx.url,
         type: 'html',
-        profile: ctx.headers['kasha-profile']
+        profile: ctx.headers['kasha-profile'],
+        fallback: ctx.headers['kasha-fallback']
       }
       return render(ctx, next)
     })
