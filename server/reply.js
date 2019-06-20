@@ -10,10 +10,11 @@ function reply(ctx, type, followRedirect, doc, cacheStatus) {
 
   const age = Math.round((Date.now() - updatedAt) / 1000)
   const maxage = Math.round((privateExpires - Date.now()) / 1000)
+  const sMaxage = maxage <= 60 ? maxage : 60
 
   ctx.set('Age', age)
   ctx.set('Last-Modified', updatedAt.toUTCString())
-  ctx.set('Cache-Control', `max-age=${maxage}`)
+  ctx.set('Cache-Control', `max-age=${maxage}, s-maxage=${sMaxage}`)
   ctx.set('Expires', privateExpires.toUTCString())
   ctx.set('Kasha-Code', 'OK')
   ctx.set('kasha-Cache-Status', cacheStatus)
