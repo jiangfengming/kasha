@@ -1,4 +1,4 @@
-<p align="center"><img src="static/kasha.svg" width="256" height="256"></p>
+<p align="center"><img src="static/kasha.png" width="256" height="256"></p>
 
 # Kasha
 Prerender your Single-Page Application.
