@@ -1,6 +1,6 @@
 const request = require('./request')
 
-module.exports = (url, { setHeaders = true } = {}) => async ctx => {
+module.exports = async(ctx, url) => {
   const res = await request(url, {
     method: ctx.method,
     headers: ctx.headers,
@@ -9,10 +9,7 @@ module.exports = (url, { setHeaders = true } = {}) => async ctx => {
 
   delete res.headers['content-disposition']
   ctx.status = res.statusCode
-
-  if (setHeaders) {
-    ctx.set(res.headers)
-  }
-
+  ctx.set(res.headers)
   ctx.body = res
+  return res
 }

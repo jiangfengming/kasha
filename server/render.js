@@ -169,6 +169,20 @@ async function render(ctx) {
 
     logger.debug({ site, path, profile, callbackURL, type, noWait, metaOnly, followRedirect })
 
+    let rewrited = url
+
+    if (rewrites) {
+      try {
+        rewrited = urlRewrite(url, rewrites, true)
+      } catch (e) {
+        throw new RESTError('URL_REWRITE_ERROR', url.href)
+      }
+
+      if (!rewrited) {
+        throw new RESTError('NOT_FOUND')
+      }
+    }
+
     if (excludes) {
       let excluded
 
@@ -181,26 +195,10 @@ async function render(ctx) {
       }
 
       if (excluded) {
-        if (rewrites) {
-          let rewrited
-
-          try {
-            rewrited = urlRewrite(url, rewrites, true)
-          } catch (e) {
-            throw new RESTError('URL_REWRITE_ERROR', url.href)
-          }
-
-          if (!rewrited) {
-            throw new RESTError('NOT_FOUND')
-          }
-
-          url = rewrited
-        }
-
         try {
-          return await proxy(url)
+          return await proxy(ctx, rewrited)
         } catch (e) {
-          throw new RESTError('FETCH_ERROR', url.href, e.message)
+          throw new RESTError('FETCH_ERROR', rewrited.href, e.message)
         }
       }
     }
@@ -214,16 +212,18 @@ async function render(ctx) {
       throw new RESTError('INTERNAL_ERROR', timestamp, eventId)
     }
 
-    if (!doc) {
-      if (fallback) {
-        try {
-          ctx.set('Cache-Control', 'no-cache')
-          return await proxy(url, { setHeaders: false })
-        } catch (e) {
-          throw new RESTError('FETCH_ERROR', url.href, e.message)
-        }
+    if (fallback && (!doc || !doc.status || doc.privateExpires < now)) {
+      try {
+        noWait = true
+        await proxy(ctx, rewrited)
+        ctx.set('Cache-Control', 'no-cache')
+        ctx.remove('Expires')
+      } catch (e) {
+        throw new RESTError('FETCH_ERROR', rewrited.href, e.message)
       }
+    }
 
+    if (!doc) {
       return sendToWorker(refresh ? 'BYPASS' : 'MISS')
     }
 

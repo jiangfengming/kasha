@@ -1,6 +1,6 @@
 const { PassThrough, Transform } = require('stream')
 const { XmlEntities } = require('html-entities')
-const request = require('request')
+const fetch = require('node-fetch')
 const urlRewrite = require('url-rewrite/es6')
 const mongo = require('../lib/mongo')
 const RESTError = require('../lib/RESTError')
@@ -400,46 +400,35 @@ async function robotsTxt(ctx) {
     sitemaps.countDocuments(queryImages),
     sitemaps.countDocuments(queryVideos),
 
-    new Promise((resolve, reject) => {
+    (async() => {
       let url = site + '/robots.txt'
+
       if (ctx.state.config && ctx.state.config.rewrites) {
         url = urlRewrite(url, ctx.state.config.rewrites)
 
         if (!url) {
-          return resolve('')
+          return ''
         }
       }
 
       logger.debug('fetch robots.txt:', url)
 
-      const req = request({
-        url,
-        headers: {
-          accept: 'text/plain',
-          'User-Agent': 'kasha'
-        },
-        gzip: true,
-        timeout: 20 * 1000,
-        followRedirect: false
-      }, (e, res, body) => {
-        if (e) {
-          reject(new RESTError('FETCH_ERROR', url, e.message))
-        } else {
-          resolve(body)
+      try {
+        const res = await fetch(url, {
+          headers: {
+            accept: 'text/plain'
+          }
+        })
+
+        if (!res.ok || !res.headers.get('content-type').includes('text/plain')) {
+          return ''
         }
-      }).on('response', res => {
-        if (res.statusCode === 404) {
-          req.abort()
-          resolve('')
-        } else if (res.statusCode < 200 || res.statusCode >= 300) {
-          req.abort()
-          reject(new RESTError('FETCH_ERROR', url, 'HTTP ' + res.statusCode))
-        } else if (!res.headers['content-type'].includes('text/plain')) {
-          req.abort()
-          reject(new RESTError('FETCH_ERROR', url, 'Content-Type should be text/plain'))
-        }
-      })
-    })
+
+        return res.text()
+      } catch (e) {
+        return ''
+      }
+    })()
   ])
 
   const normalSitemapIndexCount = Math.ceil(allCount / limit / PAGE_LIMIT)

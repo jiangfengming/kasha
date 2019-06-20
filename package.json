@@ -7,7 +7,6 @@
     "kasha": "bin/kasha"
   },
   "dependencies": {
-    "@sentry/node": "^5.4.0",
     "forwarded-parse": "^2.1.0",
     "html-entities": "^1.2.1",
     "koa": "^2.7.0",
@@ -22,7 +21,6 @@
     "parse-open-graph": "^0.3.2",
     "puppeteer-prerender": "^0.12.15",
     "raven-logger": "^0.3.2",
-    "request": "^2.88.0",
     "rest-api-error-factory": "^0.1.2",
     "schema-upgrade": "^0.3.0",
     "stoppable": "^1.1.0",

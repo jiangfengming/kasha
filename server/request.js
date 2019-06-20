@@ -22,7 +22,7 @@ module.exports = function(url, { method, headers, body } = {}) {
     headers = { ...headers }
     delete headers.host
 
-    const req = request(url.href, { method, headers }, res => {
+    const req = request(url, { method, headers }, res => {
       const headers = {}
 
       for (const k in res.headers) {
