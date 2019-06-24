@@ -110,9 +110,6 @@ async function main() {
       .get('/', async ctx => {
         await send(ctx, 'index.html', { root })
       })
-      .get('/favicon.ico', async ctx => {
-        await send(ctx, 'favicon.png', { root })
-      })
       .get('/static/*', mount('/static', serve(root)))
   }
 
