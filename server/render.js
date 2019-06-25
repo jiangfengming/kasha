@@ -167,7 +167,7 @@ async function render(ctx) {
 
     path = url.pathname + url.search + url.hash
 
-    logger.debug({ site, path, profile, callbackURL, type, noWait, metaOnly, followRedirect })
+    logger.debug({ site, path, profile, refresh, fallback, type, noWait, metaOnly, followRedirect, callbackURL })
 
     let rewrited = url
 
