@@ -239,19 +239,13 @@ async function render(ctx) {
       return sendToWorker('BYPASS')
     }
 
-    if (!refresh && doc.status) {
-      if (doc.privateExpires >= now) {
-        return handleResult(doc, 'HIT')
+    if (!refresh && doc.status && doc.sharedExpires >= now) {
+      // refresh the cache in background
+      if (!doc.lock && doc.privateExpires < now + 10 * 1000 || doc.sharedExpires < now) {
+        sendToWorker(null, { noWait: true, callbackURL: null })
       }
 
-      if (doc.sharedExpires >= now) {
-        if (!doc.lock) {
-          // refresh the cache in background
-          sendToWorker(null, { noWait: true, callbackURL: null })
-        }
-
-        return handleResult(doc, doc.error ? 'STALE' : 'UPDATING')
-      }
+      return handleResult(doc, doc.privateExpires >= now ? 'HIT' : doc.error ? 'STALE' : 'UPDATING')
     }
 
     if (doc.lock) {

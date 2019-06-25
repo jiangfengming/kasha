@@ -55,10 +55,12 @@ module.exports = {
     maxage: 3 * 60, // 3 minutes
 
     // how long to cache the resources by default.
-    // if a resource exceeds maxage but in sMaxage, it will be returned and the resource will be refreshed in background.
+    // if a resource exceeds maxage but in sMaxage,
+    // it will be returned and the resource will be refreshed in background.
     sMaxage: 24 * 60 * 60, // 1 day
 
-    // if we failed to refresh the resource, we return the stale resource and set Expires header after N seconds.
+    // if we failed to refresh the resource or response status code >= 400,
+    // we return the stale resource / error response and set Expires header after N seconds.
     maxStale: 10, // 10 seconds
 
     // max-age of robots.txt file

@@ -336,6 +336,10 @@ function main() {
       doc.sharedExpires = new Date(Date.now() + (doc.status < 400 ? config.cache.sMaxage : config.cache.maxStale) * 1000)
     }
 
+    if (doc.sharedExpires < doc.privateExpires) {
+      doc.sharedExpires = doc.privateExpires
+    }
+
     doc.removeAt = new Date(doc.sharedExpires + config.cache.removeAfter * 1000)
 
     updateSitemap(site, path, doc)
