@@ -216,7 +216,8 @@ async function render(ctx) {
       try {
         noWait = true
         await proxy(ctx, rewrited)
-        ctx.set('Cache-Control', 'no-cache')
+        ctx.set('Cache-Control', 'max-age=10')
+        ctx.set('Vary', 'Kasha-Profile, Kasha-Fallback')
         ctx.remove('Expires')
       } catch (e) {
         throw new RESTError('FETCH_ERROR', rewrited.href, e.message)

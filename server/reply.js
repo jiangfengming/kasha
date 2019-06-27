@@ -15,6 +15,7 @@ function reply(ctx, type, followRedirect, doc, cacheStatus) {
   ctx.set('Age', age)
   ctx.set('Last-Modified', updatedAt.toUTCString())
   ctx.set('Cache-Control', `max-age=${maxage}, s-maxage=${sMaxage}`)
+  ctx.set('Vary', 'Kasha-Profile, Kasha-Fallback')
   ctx.set('Expires', privateExpires.toUTCString())
   ctx.set('Kasha-Code', 'OK')
   ctx.set('kasha-Cache-Status', cacheStatus)
