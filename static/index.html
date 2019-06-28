@@ -209,62 +209,72 @@ body {
     el.addEventListener('change', updateInputsState)
   )
 
-  updateInputsState()
-
   function updateInputsState() {
-    if (form.type.value !== 'html' || form.refresh.checked || form.noWait.checked || form.callbackURL.value) {
-      form.fallback.disabled = true
-      form.fallback.checked = false
-    } else {
-      form.fallback.disabled = false
+    if (this !== form.fallback) {
+      if (form.type.value !== 'html' || form.refresh.checked || form.noWait.checked || form.callbackURL.value) {
+        form.fallback.disabled = true
+        form.fallback.checked = false
+      } else {
+        form.fallback.disabled = false
+      }
     }
 
-    if (form.fallback.checked) {
-      form.refresh.disabled = true
-      form.refresh.checked = false
-    } else {
-      form.refresh.disabled = false
+    if (this !== form.refresh) {
+      if (form.fallback.checked) {
+        form.refresh.disabled = true
+        form.refresh.checked = false
+      } else {
+        form.refresh.disabled = false
+      }
     }
 
-    if (form.type.value !== 'json' || form.noWait.checked) {
-      form.metaOnly.disabled = true
-      form.metaOnly.checked = false
-    } else {
-      form.metaOnly.disabled = false
+    if (this !== form.metaOnly) {
+      if (form.type.value !== 'json' || form.noWait.checked) {
+        form.metaOnly.disabled = true
+        form.metaOnly.checked = false
+      } else {
+        form.metaOnly.disabled = false
+      }
     }
 
-    if (form.fallback.checked || form.callbackURL.value) {
-      form.noWait.disabled = true
-      form.noWait.checked = false
-    } else {
-      form.noWait.disabled = false
+    if (this !== form.noWait) {
+      if (form.fallback.checked || form.callbackURL.value) {
+        form.noWait.disabled = true
+        form.noWait.checked = false
+      } else {
+        form.noWait.disabled = false
+      }
     }
 
-    if (form.fallback.checked) {
-      form.type.value = 'html'
-      form.type.options[0].disabled = form.type.options[2].disabled = true
-    } else if (form.metaOnly.checked) {
-      form.type.disabled = true
-      form.type.value = 'json'
-    } else if (form.noWait.checked) {
-      form.type.disabled = true
-      form.type.value = 'json'
-    } else if (form.callbackURL.value) {
-      form.type.disabled = true
-      form.type.value = 'json'
-    } else {
-      form.type.disabled = false
+    if (this !== form.type) {
+      if (form.fallback.checked) {
+        form.type.value = 'html'
+        form.type.options[0].disabled = form.type.options[2].disabled = true
+      } else if (form.metaOnly.checked) {
+        form.type.disabled = true
+        form.type.value = 'json'
+      } else if (form.noWait.checked) {
+        form.type.disabled = true
+        form.type.value = 'json'
+      } else if (form.callbackURL.value) {
+        form.type.disabled = true
+        form.type.value = 'json'
+      } else {
+        form.type.disabled = false
 
-      form.type.options[0].disabled =
-      form.type.options[1].disabled =
-      form.type.options[2].disabled = false
+        form.type.options[0].disabled =
+        form.type.options[1].disabled =
+        form.type.options[2].disabled = false
+      }
     }
 
-    if (form.fallback.checked || form.noWait.checked || ['html', 'static'].includes(form.type.value)) {
-      form.callbackURL.disabled = true
-      form.callbackURL.value = ''
-    } else {
-      form.callbackURL.disabled = false
+    if (this !== form.callbackURL) {
+      if (form.fallback.checked || form.noWait.checked || ['html', 'static'].includes(form.type.value)) {
+        form.callbackURL.disabled = true
+        form.callbackURL.value = ''
+      } else {
+        form.callbackURL.disabled = false
+      }
     }
   }
 
