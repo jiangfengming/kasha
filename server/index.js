@@ -103,7 +103,7 @@ async function main() {
   // api routes
   const apiRouter = new Router()
 
-  if (config.enableHomepage) {
+  if (config.enableDebugPage) {
     const root = path.resolve(__dirname, '../static')
 
     apiRouter

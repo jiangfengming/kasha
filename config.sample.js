@@ -7,9 +7,9 @@ module.exports = {
   apiHost: '127.0.0.1:3000',
   // apiHost: ['127.0.0.1:3000', 'kasha.example.com']
 
-  // enable homepage of API service
+  // enable debug page of API service
   // for example: http://127.0.0.1:3000/
-  enableHomepage: true,
+  enableDebugPage: true,
 
   disallowUnknownHost: false,
 
