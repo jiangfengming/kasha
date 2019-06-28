@@ -150,102 +150,157 @@ body {
 </head>
 
 <body>
-  <form name="render" action="render" method="get" class="form" target="_blank">
-    <img src="/static/kasha.svg" alt="kasha logo" width="200">
-    <h1>Kasha</h1>
+<form name="render" action="render" method="get" class="form" target="_blank">
+  <img src="/static/kasha.svg" alt="kasha logo" width="200">
+  <h1>Kasha</h1>
 
-    <input type="url" name="url" required placeholder="https://www.example.com/" class="address-box"><button type="submit" class="btn-render">Render</button>
+  <input type="url" name="url" required placeholder="https://www.example.com/" class="address-box"><button type="submit" class="btn-render">Render</button>
 
-    <fieldset class="fieldset">
-      <legend>Options</legend>
+  <fieldset class="fieldset">
+    <legend>Options</legend>
 
-      <div class="opt"><input type="checkbox" class="checkbox" name="fallback" value="" id="fallback"><label for="fallback">fallback</label></div>
-      <div class="opt"><input type="checkbox" class="checkbox" name="refresh" value="" id="refresh"><label for="refresh">refresh</label></div>
-      <div class="opt"><input type="checkbox" class="checkbox" name="metaOnly" value="" id="metaOnly"><label for="metaOnly">metaOnly</label></div>
-      <div class="opt"><input type="checkbox" class="checkbox" name="noWait" value="" id="noWait"><label for="noWait">noWait</label></div>
-      <div class="opt"><input type="checkbox" class="checkbox" name="followRedirect" value="" id="followRedirect"><label for="followRedirect">followRedirect</label></div>
+    <div class="opt"><input type="checkbox" class="checkbox" name="fallback" value="" id="fallback"><label for="fallback">fallback</label></div>
+    <div class="opt"><input type="checkbox" class="checkbox" name="refresh" value="" id="refresh"><label for="refresh">refresh</label></div>
+    <div class="opt"><input type="checkbox" class="checkbox" name="metaOnly" value="" id="metaOnly"><label for="metaOnly">metaOnly</label></div>
+    <div class="opt"><input type="checkbox" class="checkbox" name="noWait" value="" id="noWait"><label for="noWait">noWait</label></div>
+    <div class="opt"><input type="checkbox" class="checkbox" name="followRedirect" value="" id="followRedirect"><label for="followRedirect">followRedirect</label></div>
 
-      <div class="opt">
-        <label>type:
-          <select name="type" class="select">
-            <option value="json">json</option>
-            <option value="html">html</option>
-            <option value="static">static (js stripped html)</option>
-          </select>
-        </label>
-      </div>
+    <div class="opt">
+      <label>type:
+        <select name="type" class="select">
+          <option value="json">json</option>
+          <option value="html">html</option>
+          <option value="static">static (js stripped html)</option>
+        </select>
+      </label>
+    </div>
 
-      <div class="opt">
-        <label>profile: <input type="text" name="profile" placeholder="desktop" class="textbox"></label>
-      </div>
+    <div class="opt">
+      <label>profile: <input type="text" name="profile" placeholder="desktop" class="textbox"></label>
+    </div>
 
-      <div class="opt"><label>callbackURL: <input type="url" name="callbackURL" placeholder="https://api.example.com/render-callback" class="textbox callback-url-textbox"></label></div>
-    </fieldset>
+    <div class="opt"><label>callbackURL: <input type="url" name="callbackURL" placeholder="https://api.example.com/callback" class="textbox callback-url-textbox"></label></div>
+  </fieldset>
 
-    <fieldset class="fieldset">
-      <legend>Sitemaps</legend>
+  <fieldset class="fieldset">
+    <legend>Sitemaps</legend>
 
-      <ul>
-        <li><a href="#" data-href="/robots.txt" target="_blank">/robots.txt</a></li>
-        <li><a href="#" data-href="/sitemap.index.1.xml" target="_blank">/sitemap.index.1.xml</a></li>
-        <li><a href="#" data-href="/sitemap.index.google.1.xml" target="_blank">/sitemap.index.google.1.xml</a></li>
-        <li><a href="#" data-href="/sitemap.index.google.news.1.xml" target="_blank">/sitemap.index.google.news.1.xml</a></li>
-        <li><a href="#" data-href="/sitemap.index.google.image.1.xml" target="_blank">/sitemap.index.google.image.1.xml</a></li>
-        <li><a href="#" data-href="/sitemap.index.google.video.1.xml" target="_blank">/sitemap.index.google.video.1.xml</a></li>
-        <li><a href="#" data-href="/sitemap.1.xml" target="_blank">/sitemap.1.xml</a></li>
-        <li><a href="#" data-href="/sitemap.google.1.xml" target="_blank">/sitemap.google.1.xml</a></li>
-        <li><a href="#" data-href="/sitemap.google.news.1.xml" target="_blank">/sitemap.google.news.1.xml</a></li>
-        <li><a href="#" data-href="/sitemap.google.image.1.xml" target="_blank">/sitemap.google.image.1.xml</a></li>
-        <li><a href="#" data-href="/sitemap.google.video.1.xml" target="_blank">/sitemap.google.video.1.xml</a></li>
-        <li><a href="#" data-href="/sitemap.debug" data-append-path target="_blank">/sitemap.debug</a></li>
-      </ul>
-    </fieldset>
+    <ul>
+      <li><a href="#" data-href="/robots.txt" target="_blank">/robots.txt</a></li>
+      <li><a href="#" data-href="/sitemap.index.1.xml" target="_blank">/sitemap.index.1.xml</a></li>
+      <li><a href="#" data-href="/sitemap.index.google.1.xml" target="_blank">/sitemap.index.google.1.xml</a></li>
+      <li><a href="#" data-href="/sitemap.index.google.news.1.xml" target="_blank">/sitemap.index.google.news.1.xml</a></li>
+      <li><a href="#" data-href="/sitemap.index.google.image.1.xml" target="_blank">/sitemap.index.google.image.1.xml</a></li>
+      <li><a href="#" data-href="/sitemap.index.google.video.1.xml" target="_blank">/sitemap.index.google.video.1.xml</a></li>
+      <li><a href="#" data-href="/sitemap.1.xml" target="_blank">/sitemap.1.xml</a></li>
+      <li><a href="#" data-href="/sitemap.google.1.xml" target="_blank">/sitemap.google.1.xml</a></li>
+      <li><a href="#" data-href="/sitemap.google.news.1.xml" target="_blank">/sitemap.google.news.1.xml</a></li>
+      <li><a href="#" data-href="/sitemap.google.image.1.xml" target="_blank">/sitemap.google.image.1.xml</a></li>
+      <li><a href="#" data-href="/sitemap.google.video.1.xml" target="_blank">/sitemap.google.video.1.xml</a></li>
+      <li><a href="#" data-href="/sitemap.debug" data-append-path target="_blank">/sitemap.debug</a></li>
+    </ul>
+  </fieldset>
+</form>
 
-    <script>
-      const form = document.forms.render.elements
+<script>
+  const form = document.forms.render.elements
 
-      form.noWait.addEventListener('change', function() {
-        form.type.disabled = form.metaOnly.disabled = form.callbackURL.disabled = this.checked
-      })
+  ;[form.fallback, form.refresh, form.metaOnly, form.noWait, form.type, form.callbackURL].forEach(el =>
+    el.addEventListener('change', updateInputsState)
+  )
 
-      form.callbackURL.addEventListener('change', function() {
-        form.type.disabled = form.noWait.disabled = Boolean(this.value)
-      })
+  updateInputsState()
 
-      const urlInput = form.url
-      const sitemapLinks = document.querySelectorAll('a[data-href]')
+  function updateInputsState() {
+    if (form.type.value !== 'html' || form.refresh.checked || form.noWait.checked || form.callbackURL.value) {
+      form.fallback.disabled = true
+      form.fallback.checked = false
+    } else {
+      form.fallback.disabled = false
+    }
 
-      for (const link of sitemapLinks) {
-        link.addEventListener('click', e => {
-          if (!urlInput.reportValidity()) {
-            e.preventDefault()
-          }
-        })
+    if (form.fallback.checked) {
+      form.refresh.disabled = true
+      form.refresh.checked = false
+    } else {
+      form.refresh.disabled = false
+    }
+
+    if (form.type.value !== 'json' || form.noWait.checked) {
+      form.metaOnly.disabled = true
+      form.metaOnly.checked = false
+    } else {
+      form.metaOnly.disabled = false
+    }
+
+    if (form.fallback.checked || form.callbackURL.value) {
+      form.noWait.disabled = true
+      form.noWait.checked = false
+    } else {
+      form.noWait.disabled = false
+    }
+
+    if (form.fallback.checked) {
+      form.type.value = 'html'
+      form.type.options[0].disabled = form.type.options[2].disabled = true
+    } else if (form.metaOnly.checked) {
+      form.type.disabled = true
+      form.type.value = 'json'
+    } else if (form.noWait.checked) {
+      form.type.disabled = true
+      form.type.value = 'json'
+    } else if (form.callbackURL.value) {
+      form.type.disabled = true
+      form.type.value = 'json'
+    } else {
+      form.type.disabled = false
+
+      form.type.options[0].disabled =
+      form.type.options[1].disabled =
+      form.type.options[2].disabled = false
+    }
+
+    if (form.fallback.checked || form.noWait.checked || ['html', 'static'].includes(form.type.value)) {
+      form.callbackURL.disabled = true
+      form.callbackURL.value = ''
+    } else {
+      form.callbackURL.disabled = false
+    }
+  }
+
+  const urlInput = form.url
+  const sitemapLinks = document.querySelectorAll('a[data-href]')
+
+  for (const link of sitemapLinks) {
+    link.addEventListener('click', e => {
+      if (!urlInput.reportValidity()) {
+        e.preventDefault()
       }
+    })
+  }
 
-      urlInput.addEventListener('change', function() {
-        let url
-        try {
-          url = new URL(this.value)
-        } catch (e) {}
+  urlInput.addEventListener('change', function() {
+    let url
+    try {
+      url = new URL(this.value)
+    } catch (e) {}
 
-        for (const link of sitemapLinks) {
-          if (url) {
-            if (link.dataset.appendPath === '') {
-              link.href = `/${url.origin}${link.dataset.href}${url.pathname}`
-              link.textContent = `${link.dataset.href}${url.pathname}`
-            } else {
-              link.href = `/${url.origin}${link.dataset.href}`
-            }
-          } else {
-            link.href = '#'
-            if (link.dataset.appendPath === '') {
-              link.textContent = link.dataset.href
-            }
-          }
+    for (const link of sitemapLinks) {
+      if (url) {
+        if (link.dataset.appendPath === '') {
+          link.href = `/${url.origin}${link.dataset.href}${url.pathname}`
+          link.textContent = `${link.dataset.href}${url.pathname}`
+        } else {
+          link.href = `/${url.origin}${link.dataset.href}`
         }
-      })
-    </script>
-  </form>
+      } else {
+        link.href = '#'
+        if (link.dataset.appendPath === '') {
+          link.textContent = link.dataset.href
+        }
+      }
+    }
+  })
+</script>
 </body>
 </html>
