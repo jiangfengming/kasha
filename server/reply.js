@@ -1,11 +1,9 @@
-const maxStale = require('../lib/config').cache.maxStale
-
 function reply(ctx, type, followRedirect, doc, cacheStatus) {
   const { updatedAt } = doc
   let { privateExpires } = doc
 
   if (privateExpires < Date.now()) {
-    privateExpires = new Date(Date.now() + maxStale * 1000)
+    privateExpires = new Date(Date.now() + 10 * 1000)
   }
 
   const age = Math.round((Date.now() - updatedAt) / 1000)

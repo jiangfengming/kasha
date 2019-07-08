@@ -403,8 +403,8 @@ async function robotsTxt(ctx) {
     (async() => {
       let url = site + '/robots.txt'
 
-      if (ctx.state.config && ctx.state.config.rewrites) {
-        url = urlRewrite(url, ctx.state.config.rewrites)
+      if (ctx.state.site && ctx.state.site.rewrites) {
+        url = urlRewrite(url, ctx.state.site.rewrites)
 
         if (!url) {
           return ''

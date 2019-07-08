@@ -59,10 +59,6 @@ module.exports = {
     // it will be returned and the resource will be refreshed in background.
     sMaxage: 24 * 60 * 60, // 1 day
 
-    // if we failed to refresh the resource or response status code >= 400,
-    // we return the stale resource / error response and set Expires header after N seconds.
-    maxStale: 10, // 10 seconds
-
     // max-age of robots.txt file
     robotsTxt: 24 * 60 * 60, // 1 day
 
@@ -71,38 +67,6 @@ module.exports = {
 
     removeAfter: 24 * 60 * 60 // 1 day
   },
-
-  // You can comment out `sites` config here, and store the sites config in db's `sites` collection.
-  sites: [
-    {
-      host: 'localhost:3000',
-      defaultProtocol: 'http',
-      defaultProfile: null,
-
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_3) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/69.0.3494.0 Safari/537.36',
-
-      rewrites: [
-        ['localhost:3000', 'www.example.com']
-      ],
-
-      excludes: [
-        /\/accounts\/.*/
-      ],
-
-      includes: [
-        '/accounts/login'
-      ],
-
-      profiles: {
-        desktop: {
-          userAgent: null,
-          rewrites: null,
-          excludes: null,
-          includes: null
-        }
-      }
-    }
-  ],
 
   // Sentry error tracking
   // https://sentry.io/

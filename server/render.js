@@ -80,17 +80,17 @@ async function render(ctx) {
     type = 'json'
   }
 
-  if (!profile && ctx.state.config.defaultProfile) {
-    profile = ctx.state.config.defaultProfile
+  if (!profile && ctx.state.site.defaultProfile) {
+    profile = ctx.state.site.defaultProfile
   }
 
   let settings
 
   if (profile) {
-    if (!ctx.state.config.profiles || !ctx.state.config.profiles[profile]) {
+    if (!ctx.state.site.profiles || !ctx.state.site.profiles[profile]) {
       throw new RESTError('INVALID_PARAM', 'profile')
     } else {
-      settings = ctx.state.config.profiles[profile]
+      settings = ctx.state.site.profiles[profile]
     }
   }
 
@@ -100,14 +100,16 @@ async function render(ctx) {
     rewrites = null,
     excludes = null,
     includes = null,
-    userAgent = null
-  } = ctx.state.config
+    userAgent = null,
+    serviceUnavailable = null
+  } = ctx.state.site
 
   if (settings) {
     keepQuery = mergeSetting(keepQuery, settings.keepQuery)
     rewrites = mergeSetting(rewrites, settings.rewrites)
     excludes = mergeSetting(excludes, settings.excludes)
     includes = mergeSetting(includes, settings.includes)
+    serviceUnavailable = settings.serviceUnavailable
 
     if (settings.keepHash !== undefined) {
       keepHash = settings.keepHash
@@ -117,6 +119,8 @@ async function render(ctx) {
       userAgent = settings.userAgent
     }
   }
+
+  serviceUnavailable = Boolean(serviceUnavailable && serviceUnavailable.getTime() + 10 * 1000 > now)
 
   const site = url.origin
   let path
@@ -240,9 +244,9 @@ async function render(ctx) {
       return sendToWorker('BYPASS')
     }
 
-    if (!refresh && doc.status && doc.sharedExpires >= now) {
+    if (!refresh && doc.status && (doc.sharedExpires >= now || serviceUnavailable)) {
       // refresh the cache in background
-      if (!doc.lock && doc.privateExpires < now + 10 * 1000 || doc.sharedExpires < now) {
+      if (!serviceUnavailable && !doc.lock && (doc.privateExpires < now + 10 * 1000 || doc.sharedExpires < now)) {
         sendToWorker(null, { noWait: true, callbackURL: null })
       }
 

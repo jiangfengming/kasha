@@ -255,6 +255,14 @@ function main() {
 
         if ([301, 302].includes(doc.status) && doc.meta.location) {
           doc.redirect = doc.meta.location
+        } else if (doc.status === 503) {
+          mongo.db.collection('sites').updateOne(
+            { host: new URL(site).host },
+
+            {
+              $set: { [profile ? `profiles.${profile}.serviceUnavailable` : 'serviceUnavailable']: new Date() }
+            }
+          )
         }
       }
     }
@@ -329,11 +337,11 @@ function main() {
     }
 
     if (!doc.privateExpires) {
-      doc.privateExpires = new Date(Date.now() + (doc.status < 400 ? config.cache.maxage : config.cache.maxStale) * 1000)
+      doc.privateExpires = new Date(Date.now() + (doc.status < 400 ? config.cache.maxage : 10) * 1000)
     }
 
     if (!doc.sharedExpires) {
-      doc.sharedExpires = new Date(Date.now() + (doc.status < 400 ? config.cache.sMaxage : config.cache.maxStale) * 1000)
+      doc.sharedExpires = new Date(Date.now() + (doc.status < 400 ? config.cache.sMaxage : 10) * 1000)
     }
 
     if (doc.sharedExpires < doc.privateExpires) {

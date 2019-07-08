@@ -12,7 +12,6 @@ const mongo = require('../lib/mongo')
 const nsqWriter = require('../lib/nsqWriter')
 const workerResponder = require('./workerResponder')
 const RESTError = require('../lib/RESTError')
-const getSiteConfig = require('./getSiteConfig')
 const render = require('./render')
 const sitemap = require('./sitemap')
 
@@ -37,14 +36,16 @@ async function closeConnections() {
 }
 
 async function main() {
-  async function _getSiteConfig(ctx, host) {
-    ctx.state.config = await getSiteConfig(host)
+  async function getSiteConfig(host) {
+    const site = await mongo.db.collection('sites').findOne({ host })
 
-    if (!ctx.state.config) {
+    if (site) {
+      return site
+    } else {
       if (config.disallowUnknownHost) {
         throw new RESTError('HOST_CONFIG_NOT_EXIST')
       } else {
-        ctx.state.config = {}
+        return {}
       }
     }
   }
@@ -122,7 +123,7 @@ async function main() {
         throw new RESTError('INVALID_PARAM', 'url')
       }
 
-      await _getSiteConfig(ctx, url.host)
+      ctx.state.site = await getSiteConfig(url.host)
       ctx.state.origin = url.origin
       ctx.state.params = ctx.query
       return render(ctx, next)
@@ -193,13 +194,13 @@ async function main() {
       ctx.path = ctx.path.replace(matchedOrigin[0], '')
     }
 
-    await _getSiteConfig(ctx, host)
+    ctx.state.site = await getSiteConfig(host)
 
     if (!protocol) {
-      if (!ctx.state.config.defaultProtocol) {
+      if (!ctx.state.site.defaultProtocol) {
         throw new RESTError('INVALID_PROTOCOL')
       } else {
-        protocol = ctx.state.config.defaultProtocol
+        protocol = ctx.state.site.defaultProtocol
       }
     }
 
