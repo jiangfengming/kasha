@@ -122,6 +122,10 @@ async function render(ctx) {
 
   serviceUnavailable = Boolean(serviceUnavailable && serviceUnavailable.getTime() + 10 * 1000 > now)
 
+  if (serviceUnavailable) {
+    fallback = false
+  }
+
   const site = url.origin
   let path
 
