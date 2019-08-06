@@ -2,7 +2,7 @@ const { URL } = require('url')
 const mongo = require('../lib/mongo')
 const logger = require('../lib/logger')
 const removeXMLInvalidChars = require('./removeXMLInvalidChars')
-const validHTTPStatus = require('./validHTTPStatus')
+const validHTTPStatus = require('../lib/validHTTPStatus')
 
 module.exports = (site, path, doc) => {
   /*

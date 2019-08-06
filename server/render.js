@@ -11,6 +11,7 @@ const poll = require('../lib/poll')
 const normalizeDoc = require('../lib/normalizeDoc')
 const rewriteRuleParser = require('../lib/rewriteRuleParser')
 const getLockError = require('../lib/getLockError')
+const validHTTPStatus = require('../lib/validHTTPStatus')
 const inArray = require('./inArray')
 const workerResponder = require('./workerResponder')
 const reply = require('./reply')
@@ -220,7 +221,7 @@ async function render(ctx) {
       throw new RESTError('INTERNAL_ERROR', timestamp, eventId)
     }
 
-    if (fallback && (!doc || !doc.status || doc.privateExpires < now)) {
+    if (fallback && (!doc || !validHTTPStatus.includes(doc.status) || doc.privateExpires < now)) {
       try {
         noWait = true
         await proxy(ctx, rewrited)

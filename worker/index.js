@@ -11,7 +11,7 @@ const callback = require('../lib/callback')
 const poll = require('../lib/poll')
 const prerenderer = require('./prerenderer')
 const updateSitemap = require('./updateSitemap')
-const validHTTPStatus = require('./validHTTPStatus')
+const validHTTPStatus = require('../lib/validHTTPStatus')
 
 const JOB_TIMEOUT = 15 * 1000
 
