@@ -79,17 +79,17 @@ async function main() {
 
   // proxy routes
   const proxyRouter = new Router()
-    .get(/^\/sitemap\.(?<page>\d+)\.xml$/, sitemap.sitemap)
-    .get(/^\/sitemap\.google\.(?<page>\d+)\.xml$/, sitemap.googleSitemap)
-    .get(/^\/sitemap\.google\.news\.(?<page>\d+)\.xml$/, sitemap.googleNewsSitemap)
-    .get(/^\/sitemap\.google\.image\.(?<page>\d+)\.xml$/, sitemap.googleImageSitemap)
-    .get(/^\/sitemap\.google\.video\.(?<page>\d+)\.xml$/, sitemap.googleVideoSitemap)
-    .get(/^\/sitemap\.debug(?<path>\/.*)/, sitemap.googleSitemapItem)
-    .get(/^\/sitemap\.index\.(?<page>\d+)\.xml$/, sitemap.sitemapIndex)
-    .get(/^\/sitemap\.index\.google\.(?<page>\d+)\.xml$/, sitemap.googleSitemapIndex)
-    .get(/^\/sitemap\.index\.google\.news\.(?<page>\d+)\.xml$/, sitemap.googleNewsSitemapIndex)
-    .get(/^\/sitemap\.index\.google\.image\.(?<page>\d+)\.xml$/, sitemap.googleImageSitemapIndex)
-    .get(/^\/sitemap\.index\.google\.video\.(?<page>\d+)\.xml$/, sitemap.googleVideoSitemapIndex)
+    .get('/sitemap.:page(\\d+).xml', sitemap.sitemap)
+    .get('/sitemap.google.:page(\\d+).xml', sitemap.googleSitemap)
+    .get('/sitemap.google.news.:page(\\d+).xml', sitemap.googleNewsSitemap)
+    .get('/sitemap.google.image.:page(\\d+).xml', sitemap.googleImageSitemap)
+    .get('/sitemap.google.video.:page(\\d+).xml', sitemap.googleVideoSitemap)
+    .get('/sitemap.debug:path(/.*)', sitemap.googleSitemapItem)
+    .get('/sitemap.index.:page(\\d+).xml', sitemap.sitemapIndex)
+    .get('/sitemap.index.google.:page(\\d+).xml', sitemap.googleSitemapIndex)
+    .get('/sitemap.index.google.news.:page(\\d+).xml', sitemap.googleNewsSitemapIndex)
+    .get('/sitemap.index.google.image.:page(\\d+).xml', sitemap.googleImageSitemapIndex)
+    .get('/sitemap.index.google.video.:page(\\d+).xml', sitemap.googleVideoSitemapIndex)
     .get('/robots.txt', sitemap.robotsTxt)
     .get('*', (ctx, next) => {
       ctx.state.params = {
