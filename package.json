@@ -9,29 +9,29 @@
   "dependencies": {
     "forwarded-parse": "^2.1.0",
     "html-entities": "^1.2.1",
-    "koa": "^2.7.0",
+    "koa": "^2.11.0",
     "koa-mount": "^4.0.0",
-    "koa-pilot": "^0.2.1",
+    "koa-pilot": "^0.4.1",
     "koa-send": "^5.0.0",
     "koa-static": "^5.0.0",
     "moment": "^2.24.0",
-    "mongodb": "^3.3.0-beta2",
+    "mongodb": "^3.3.4",
     "node-fetch": "^2.6.0",
-    "nsqjs": "^0.12.0",
+    "nsqjs": "^0.12.1",
     "parse-open-graph": "^0.3.2",
-    "puppeteer-prerender": "^0.12.18",
+    "puppeteer-prerender": "^0.13.0",
     "raven-logger": "^0.3.2",
     "rest-api-error-factory": "^0.1.2",
     "schema-upgrade": "^0.3.0",
     "stoppable": "^1.1.0",
     "through": "^2.3.8",
-    "url-rewrite": "^0.1.2",
-    "yargs": "^13.3.0"
+    "url-rewrite": "^0.4.0",
+    "yargs": "^14.2.0"
   },
   "devDependencies": {
-    "eslint": "^5.16.0",
-    "eslint-config-enough": "^0.3.5",
-    "mocha": "^6.2.0"
+    "eslint": "^6.6.0",
+    "eslint-config-enough": "^0.3.8",
+    "mocha": "^6.2.2"
   },
   "eslintConfig": {
     "extends": "enough",

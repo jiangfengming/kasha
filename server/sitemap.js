@@ -1,7 +1,7 @@
 const { PassThrough, Transform } = require('stream')
 const { XmlEntities } = require('html-entities')
 const fetch = require('node-fetch')
-const urlRewrite = require('url-rewrite/es6')
+const URLRewriter = require('url-rewrite')
 const mongo = require('../lib/mongo')
 const RESTError = require('../lib/RESTError')
 const config = require('../lib/config')
@@ -404,7 +404,7 @@ async function robotsTxt(ctx) {
       let url = site + '/robots.txt'
 
       if (ctx.state.site && ctx.state.site.rewrites) {
-        url = urlRewrite(url, ctx.state.site.rewrites)
+        url = new URLRewriter(ctx.state.site.rewrites).from(url)
 
         if (!url) {
           return ''

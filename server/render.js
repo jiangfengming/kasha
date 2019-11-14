@@ -1,6 +1,6 @@
 const { URL } = require('url')
 const assert = require('assert')
-const urlRewrite = require('url-rewrite/es6')
+const URLRewriter = require('url-rewrite')
 const nsqWriter = require('../lib/nsqWriter')
 const RESTError = require('../lib/RESTError')
 const logger = require('../lib/logger')
@@ -9,7 +9,6 @@ const uid = require('../lib/uid')
 const callback = require('../lib/callback')
 const poll = require('../lib/poll')
 const normalizeDoc = require('../lib/normalizeDoc')
-const rewriteRuleParser = require('../lib/rewriteRuleParser')
 const getLockError = require('../lib/getLockError')
 const validHTTPStatus = require('../lib/validHTTPStatus')
 const inArray = require('./inArray')
@@ -178,16 +177,16 @@ async function render(ctx) {
 
     logger.debug({ site, path, profile, refresh, fallback, type, noWait, metaOnly, followRedirect, callbackURL })
 
-    let rewrited = url
+    let rewrited = url.href
 
     if (rewrites) {
       try {
-        rewrited = urlRewrite(url, rewrites, true)
+        rewrited = new URLRewriter(rewrites).from(url.href)
       } catch (e) {
         throw new RESTError('URL_REWRITE_ERROR', url.href)
       }
 
-      if (!rewrited) {
+      if (rewrited) {
         throw new RESTError('NOT_FOUND')
       }
     }
@@ -207,7 +206,7 @@ async function render(ctx) {
         try {
           return await proxy(ctx, rewrited)
         } catch (e) {
-          throw new RESTError('FETCH_ERROR', rewrited.href, e.message)
+          throw new RESTError('FETCH_ERROR', url.href, e.message)
         }
       }
     }
@@ -229,7 +228,7 @@ async function render(ctx) {
         ctx.set('Vary', 'Kasha-Profile, Kasha-Fallback')
         ctx.remove('Expires')
       } catch (e) {
-        throw new RESTError('FETCH_ERROR', rewrited.href, e.message)
+        throw new RESTError('FETCH_ERROR', url.href, e.message)
       }
     }
 
@@ -301,7 +300,7 @@ async function render(ctx) {
         path,
         profile,
         userAgent,
-        rewrites: rewriteRuleParser.escape(rewrites),
+        rewrites,
         callbackURL: options.callbackURL,
         metaOnly,
         cacheStatus

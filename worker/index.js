@@ -15,7 +15,7 @@ const validHTTPStatus = require('../lib/validHTTPStatus')
 
 const JOB_TIMEOUT = 15 * 1000
 
-let reader, jobCounter = 0, stopping = false, browserCheckInterval
+let reader, jobCounter = 0, stopping = false
 
 ;(async() => {
   try {
@@ -28,19 +28,6 @@ let reader, jobCounter = 0, stopping = false, browserCheckInterval
     prerenderer.on('disconnected', () => {
       logger.error('Chromium disconnected')
     })
-
-    browserCheckInterval = setInterval(async() => {
-      if (!prerenderer.browser) {
-        return
-      }
-
-      const pageCount = (await prerenderer.browser.pages()).length
-      logger.debug('Opened pages:', pageCount)
-
-      if (pageCount > config.nsq.reader.maxInFlight * 2) {
-        logger.warn('Opened too many pages:', pageCount)
-      }
-    }, 60 * 1000)
 
     logger.info('Chromium launched')
 
@@ -85,7 +72,6 @@ async function closeConnections() {
 
   if (prerenderer) {
     logger.info('Closing prerenderer...')
-    clearInterval(browserCheckInterval)
     await prerenderer.close()
     logger.info('Prerender closed')
   }
