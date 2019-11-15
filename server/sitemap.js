@@ -12,29 +12,15 @@ const GOOGLE_LIMIT = 1000
 
 const entities = new XmlEntities()
 
-function parseLimitParam(limit, max) {
-  if (limit) {
-    limit = parseInt(limit)
-    if (isNaN(limit) || limit <= 0 || limit > max) {
-      throw new RESTError('INVALID_PARAM', 'limit')
-    } else {
-      return limit
-    }
-  } else {
-    return max
+function checkLimitParam(limit, max) {
+  if (limit <= 0 || limit > max) {
+    throw new RESTError('INVALID_PARAM', 'limit')
   }
 }
 
-function parsePageParam(page) {
-  if (page) {
-    page = parseInt(page)
-    if (isNaN(page) || page <= 0) {
-      throw new RESTError('INVALID_PARAM', 'page')
-    } else {
-      return page
-    }
-  } else {
-    return 1
+function checkPageParam(page) {
+  if (page <= 0) {
+    throw new RESTError('INVALID_PARAM', 'page')
   }
 }
 
@@ -235,7 +221,9 @@ function googleVideoTags(video) {
 }
 
 async function respond(ctx, data, { header, transform }) {
-  if (!await data.hasNext()) return
+  if (!await data.hasNext()) {
+    return
+  }
 
   ctx.set('Content-Type', 'text/xml; charset=utf-8')
   ctx.set('Cache-Control', `max-age=${config.cache.sitemap}`)
@@ -268,8 +256,10 @@ async function respond(ctx, data, { header, transform }) {
 
 async function sitemap(ctx) {
   const site = ctx.state.origin
-  const limit = parseLimitParam(ctx.query.limit, PAGE_LIMIT)
-  const page = parsePageParam(ctx.params.page)
+  const limit = ctx.queries.int('limit', { defaults: PAGE_LIMIT })
+  checkLimitParam(limit, PAGE_LIMIT)
+  const page = ctx.params.int('page', { defaults: 1 })
+  checkPageParam(page)
 
   const query = { site }
 
@@ -286,8 +276,10 @@ async function sitemap(ctx) {
 
 async function googleSitemap(ctx) {
   const site = ctx.state.origin
-  const limit = parseLimitParam(ctx.query.limit, GOOGLE_LIMIT)
-  const page = parsePageParam(ctx.params.page)
+  const limit = ctx.queries.int('limit', { defaults: GOOGLE_LIMIT })
+  checkLimitParam(limit, GOOGLE_LIMIT)
+  const page = ctx.params.int('page', { defaults: 1 })
+  checkPageParam(page)
 
   const query = { site }
 
@@ -304,7 +296,7 @@ async function googleSitemap(ctx) {
 
 async function googleSitemapItem(ctx) {
   const site = ctx.state.origin
-  const path = ctx.params.path
+  const path = ctx.params.string('path')
 
   const query = { site, path }
   const options = { limit: 1 }
@@ -316,8 +308,10 @@ async function googleSitemapItem(ctx) {
 
 async function googleNewsSitemap(ctx) {
   const site = ctx.state.origin
-  const limit = parseLimitParam(ctx.query.limit, GOOGLE_LIMIT)
-  const page = parsePageParam(ctx.params.page)
+  const limit = ctx.queries.int('limit', { defaults: GOOGLE_LIMIT })
+  checkLimitParam(limit, GOOGLE_LIMIT)
+  const page = ctx.params.int('page', { defaults: 1 })
+  checkPageParam(page)
 
   const query = {
     site,
@@ -341,8 +335,10 @@ function twoDaysAgo() {
 
 async function googleImageSitemap(ctx) {
   const site = ctx.state.origin
-  const limit = parseLimitParam(ctx.query.limit, GOOGLE_LIMIT)
-  const page = parsePageParam(ctx.params.page)
+  const limit = ctx.queries.int('limit', { defaults: GOOGLE_LIMIT })
+  checkLimitParam(limit, GOOGLE_LIMIT)
+  const page = ctx.params.int('page', { defaults: 1 })
+  checkPageParam(page)
 
   const query = {
     site,
@@ -362,8 +358,10 @@ async function googleImageSitemap(ctx) {
 
 async function googleVideoSitemap(ctx) {
   const site = ctx.state.origin
-  const limit = parseLimitParam(ctx.query.limit, GOOGLE_LIMIT)
-  const page = parsePageParam(ctx.params.page)
+  const limit = ctx.queries.int('limit', { defaults: GOOGLE_LIMIT })
+  checkLimitParam(limit, GOOGLE_LIMIT)
+  const page = ctx.params.int('page', { defaults: 1 })
+  checkPageParam(page)
 
   const query = {
     site,
@@ -383,8 +381,10 @@ async function googleVideoSitemap(ctx) {
 
 async function robotsTxt(ctx) {
   const site = ctx.state.origin
-  const limit = parseLimitParam(ctx.query.limit, PAGE_LIMIT)
-  const googleLimit = parseLimitParam(ctx.query.googleLimit, GOOGLE_LIMIT)
+  const limit = ctx.queries.int('limit', { defaults: PAGE_LIMIT })
+  checkLimitParam(limit, PAGE_LIMIT)
+  const googleLimit = ctx.queries.int('googleLimit', { defaults: GOOGLE_LIMIT })
+  checkLimitParam(googleLimit, GOOGLE_LIMIT)
 
   const queryAll = { site }
   const queryNews = { site, 'news.publication_date': { $gte: twoDaysAgo() } }
@@ -442,43 +442,64 @@ async function robotsTxt(ctx) {
 
   for (let n = 1; n <= normalSitemapIndexCount; n++) {
     ctx.body += `Sitemap: ${site}/sitemap.index.${n}.xml`
-    if (limit !== PAGE_LIMIT) ctx.body += `?limit=${limit}`
+
+    if (limit !== PAGE_LIMIT) {
+      ctx.body += `?limit=${limit}`
+    }
+
     ctx.body += '\n'
   }
 
   for (let n = 1; n <= googleSitemapIndexCount; n++) {
     ctx.body += `Sitemap: ${site}/sitemap.index.google.${n}.xml`
-    if (googleLimit !== GOOGLE_LIMIT) ctx.body += `?limit=${googleLimit}`
+
+    if (googleLimit !== GOOGLE_LIMIT) {
+      ctx.body += `?limit=${googleLimit}`
+    }
+
     ctx.body += '\n'
   }
 
   for (let n = 1; n <= newsSitemapIndexCount; n++) {
     ctx.body += `Sitemap: ${site}/sitemap.index.google.news.${n}.xml`
-    if (googleLimit !== GOOGLE_LIMIT) ctx.body += `?limit=${googleLimit}`
+
+    if (googleLimit !== GOOGLE_LIMIT) {
+      ctx.body += `?limit=${googleLimit}`
+    }
+
     ctx.body += '\n'
   }
 
   for (let n = 1; n <= imageSitemapIndexCount; n++) {
     ctx.body += `Sitemap: ${site}/sitemap.index.google.image.${n}.xml`
-    if (googleLimit !== GOOGLE_LIMIT) ctx.body += `?limit=${googleLimit}`
+
+    if (googleLimit !== GOOGLE_LIMIT) {
+      ctx.body += `?limit=${googleLimit}`
+    }
+
     ctx.body += '\n'
   }
 
   for (let n = 1; n <= videoSitemapIndexCount; n++) {
     ctx.body += `Sitemap: ${site}/sitemap.index.google.video.${n}.xml`
-    if (googleLimit !== GOOGLE_LIMIT) ctx.body += `?limit=${googleLimit}`
+
+    if (googleLimit !== GOOGLE_LIMIT) {
+      ctx.body += `?limit=${googleLimit}`
+    }
+
     ctx.body += '\n'
   }
 }
 
 async function _sitemapIndex(ctx, type) {
   const MAX = type === 'normal' ? PAGE_LIMIT : GOOGLE_LIMIT
-
   const site = ctx.state.origin
-  const limit = parseLimitParam(ctx.query.limit, MAX)
-  const page = parsePageParam(ctx.params.page)
-
+  const limit = ctx.queries.int('limit', { defaults: MAX })
+  checkLimitParam(limit, MAX)
+  const page = ctx.params.int('page', { defaults: 1 })
+  checkPageParam(page)
   const query = { site }
+
   if (type === 'news') {
     query['news.publication_date'] = { $gte: twoDaysAgo() }
   } else if (type === 'image') {
@@ -497,14 +518,12 @@ async function _sitemapIndex(ctx, type) {
 
   if (docCount) {
     ctx.set('Content-Type', 'text/xml; charset=utf-8')
-
     ctx.set('Cache-Control', `max-age=${config.cache.sitemap}`)
     const stream = new PassThrough()
     ctx.body = stream
-
     stream.write('<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
-
     let prefix
+
     if (type === 'normal') {
       prefix = site + '/sitemap'
     } else if (type === 'google') {

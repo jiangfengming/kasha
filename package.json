@@ -7,6 +7,7 @@
     "kasha": "bin/kasha"
   },
   "dependencies": {
+    "cast-string": "^0.3.0",
     "forwarded-parse": "^2.1.0",
     "html-entities": "^1.2.1",
     "koa": "^2.11.0",

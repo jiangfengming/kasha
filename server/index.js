@@ -6,6 +6,7 @@ const send = require('koa-send')
 const path = require('path')
 const stoppable = require('stoppable')
 const parseForwardedHeader = require('forwarded-parse')
+const { bool } = require('cast-string')
 const config = require('../lib/config')
 const logger = require('../lib/logger')
 const mongo = require('../lib/mongo')
@@ -91,13 +92,14 @@ async function main() {
     .get('/sitemap.index.google.image.:page(\\d+).xml', sitemap.googleImageSitemapIndex)
     .get('/sitemap.index.google.video.:page(\\d+).xml', sitemap.googleVideoSitemapIndex)
     .get('/robots.txt', sitemap.robotsTxt)
-    .get('*', (ctx, next) => {
+    .get('(.*)', (ctx, next) => {
       ctx.state.params = {
         url: ctx.state.origin + ctx.url,
         type: 'html',
         profile: ctx.headers['kasha-profile'],
-        fallback: ctx.headers['kasha-fallback']
+        fallback: bool(ctx.headers['kasha-fallback'])
       }
+
       return render(ctx, next)
     })
 
@@ -111,7 +113,7 @@ async function main() {
       .get('/', async ctx => {
         await send(ctx, 'index.html', { root })
       })
-      .get('/static/*', mount('/static', serve(root)))
+      .get('/static/(.*)', mount('/static', serve(root)))
   }
 
   apiRouter
@@ -125,7 +127,18 @@ async function main() {
 
       ctx.state.site = await getSiteConfig(url.host)
       ctx.state.origin = url.origin
-      ctx.state.params = ctx.query
+
+      ctx.state.params = {
+        url: ctx.queries.string('url'),
+        type: ctx.queries.string('type', { defaults: 'json' }),
+        profile: ctx.queries.string('profile'),
+        noWait: ctx.queries.bool('noWait'),
+        metaOnly: ctx.queries.bool('metaOnly'),
+        followRedirect: ctx.queries.bool('followRedirect'),
+        refresh: ctx.queries.bool('refresh'),
+        fallback: ctx.queries.bool('fallback')
+      }
+
       return render(ctx, next)
     })
     .get('*', () => {
@@ -179,7 +192,7 @@ async function main() {
     if (config.apiHost && config.apiHost.includes(host)) {
       const matchedOrigin = ctx.path.match(/^\/(https?:\/\/[^/]+)/)
       if (!matchedOrigin) {
-        return apiRouter.routes(ctx, next)
+        return apiRouter.middleware(ctx, next)
       }
 
       let url
@@ -205,7 +218,7 @@ async function main() {
     }
 
     ctx.state.origin = protocol + '://' + host
-    return proxyRouter.routes(ctx, next)
+    return proxyRouter.middleware(ctx, next)
   })
 
   const server = stoppable(app.listen(config.port))

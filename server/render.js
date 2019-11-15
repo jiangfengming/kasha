@@ -20,7 +20,7 @@ const proxy = require('./proxy')
 async function render(ctx) {
   const now = Date.now()
   const { callbackURL } = ctx.state.params
-  let { url, type = 'json', profile = '', noWait, metaOnly, followRedirect, refresh, fallback } = ctx.state.params
+  let { url, type, profile, noWait, metaOnly, followRedirect, refresh, fallback } = ctx.state.params
 
   try {
     // mongodb index size must be less than 1024 bytes (includes structural overhead)
@@ -39,41 +39,8 @@ async function render(ctx) {
     }
   }
 
-  const validValues = [undefined, '', '0', '1']
-  const truthyValues = ['', '1']
-
   if (!['html', 'static', 'json'].includes(type)) {
     throw new RESTError('INVALID_PARAM', 'type')
-  }
-
-  if (!validValues.includes(noWait)) {
-    throw new RESTError('INVALID_PARAM', 'noWait')
-  } else {
-    noWait = truthyValues.includes(noWait)
-  }
-
-  if (!validValues.includes(metaOnly)) {
-    throw new RESTError('INVALID_PARAM', 'metaOnly')
-  } else {
-    metaOnly = truthyValues.includes(metaOnly)
-  }
-
-  if (!validValues.includes(followRedirect)) {
-    throw new RESTError('INVALID_PARAM', 'followRedirect')
-  } else {
-    followRedirect = truthyValues.includes(followRedirect)
-  }
-
-  if (!validValues.includes(refresh)) {
-    throw new RESTError('INVALID_PARAM', 'refresh')
-  } else {
-    refresh = truthyValues.includes(refresh)
-  }
-
-  if (!validValues.includes(fallback)) {
-    throw new RESTError('INVALID_PARAM', 'fallback')
-  } else {
-    fallback = truthyValues.includes(fallback)
   }
 
   if ((callbackURL || metaOnly) && type !== 'json') {
