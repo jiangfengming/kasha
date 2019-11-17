@@ -4,7 +4,6 @@ const mongo = require('../lib/mongo')
 const nsqWriter = require('../lib/nsqWriter')
 const nsqReader = require('../lib/nsqReader')
 const RESTError = require('../lib/RESTError')
-const rewriteRuleParser = require('../lib/rewriteRuleParser')
 const normalizeDoc = require('../lib/normalizeDoc')
 const uid = require('../lib/uid')
 const callback = require('../lib/callback')
@@ -113,12 +112,12 @@ function main() {
       profile,
       userAgent,
       callbackURL,
-      metaOnly
+      metaOnly,
+      rewrites
     } = req
 
     const url = site + path
-    let { rewrites, cacheStatus } = req
-    rewrites = rewriteRuleParser.unescape(rewrites)
+    let { cacheStatus } = req
     const msgTimestamp = msg.timestamp.dividedBy(1000000).integerValue().toNumber()
     const msgAttemps = msg.attempts
     const jobStartTime = Date.now()
