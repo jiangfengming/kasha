@@ -19,8 +19,8 @@ const proxy = require('./proxy')
 
 async function render(ctx) {
   const now = Date.now()
-  const { callbackURL } = ctx.state.params
-  let { url, type, profile, noWait, metaOnly, followRedirect, refresh, fallback } = ctx.state.params
+  const { callbackURL, metaOnly, followRedirect, refresh } = ctx.state.params
+  let { url, type, profile, noWait, fallback } = ctx.state.params
 
   try {
     // mongodb index size must be less than 1024 bytes (includes structural overhead)
@@ -112,16 +112,21 @@ async function render(ctx) {
   async function handler() {
     if (keepQuery) {
       if (keepQuery.constructor === Array) {
-        const matched = keepQuery.find(([rule]) =>
-          rule instanceof RegExp ? rule.test(url.pathname) : rule === url.pathname
-        )
+        const matched = new URLRewriter(
+          keepQuery.map(q => q instanceof Array
+            ? [q[0], q.slice(1)]
+            : [q[0], []]
+          )
+        ).find(url.pathname)
 
         if (matched) {
-          const whitelist = matched.slice(1)
+          const whitelist = matched.handler
 
-          for (const [q] of url.searchParams) {
-            if (!whitelist.includes(q)) {
-              url.searchParams.delete(q)
+          if (whitelist && whitelist.length) {
+            for (const k of [...url.searchParams.keys()]) {
+              if (whitelist.includes(k)) {
+                url.searchParams.delete(k)
+              }
             }
           }
 
@@ -153,7 +158,7 @@ async function render(ctx) {
         throw new RESTError('URL_REWRITE_ERROR', url.href)
       }
 
-      if (rewrited) {
+      if (!rewrited) {
         throw new RESTError('NOT_FOUND')
       }
     }

@@ -12,7 +12,7 @@
     "html-entities": "^1.2.1",
     "koa": "^2.11.0",
     "koa-mount": "^4.0.0",
-    "koa-pilot": "^0.4.1",
+    "koa-pilot": "^0.6.1",
     "koa-send": "^5.0.0",
     "koa-static": "^5.0.0",
     "moment": "^2.24.0",
@@ -40,6 +40,9 @@
       "node": true,
       "browser": true,
       "mocha": true
+    },
+    "rules": {
+      "require-atomic-updates": "off"
     }
   },
   "scripts": {
