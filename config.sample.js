@@ -68,15 +68,7 @@ module.exports = {
     removeAfter: 24 * 60 * 60 // 1 day
   },
 
-  // Sentry error tracking
-  // https://sentry.io/
-  /*
-  sentry: {
-    dsn: 'https://<key>@sentry.io/<project>'
-  },
-  */
-
   chromiumPath: '',
 
-  logLevel: 'log' // critical, fatal, error, warning, info, log, debug
+  logLevel: 'info' // fatal, error, warn, info, debug, trace, silent
 }

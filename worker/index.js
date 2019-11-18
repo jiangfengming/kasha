@@ -1,3 +1,4 @@
+const cuuid = require('cuuid')
 const config = require('../lib/config')
 const logger = require('../lib/logger')
 const mongo = require('../lib/mongo')
@@ -5,7 +6,6 @@ const nsqWriter = require('../lib/nsqWriter')
 const nsqReader = require('../lib/nsqReader')
 const RESTError = require('../lib/RESTError')
 const normalizeDoc = require('../lib/normalizeDoc')
-const uid = require('../lib/uid')
 const callback = require('../lib/callback')
 const poll = require('../lib/poll')
 const prerenderer = require('./prerenderer')
@@ -129,7 +129,7 @@ function main() {
       }
     }
 
-    const lock = uid()
+    const lock = cuuid()
 
     const lockQuery = {
       site,
@@ -159,14 +159,15 @@ function main() {
           removeAt: new Date(Date.now() + 30 * 1000) // set to 30 secs later, prevent from cache cleaning
         }
       }, { upsert: true })
-    } catch (e) {
+    } catch (err) {
       // don't block the queue
       msg.finish()
 
       // 11000: duplicate key on upsert
-      if (e.code !== 11000) {
-        const { timestamp, eventId } = logger.error(e)
-        return handleResult({ error: new RESTError('INTERNAL_ERROR', timestamp, eventId).toJSON() })
+      if (err.code !== 11000) {
+        const id = cuuid()
+        logger.error({ err, id })
+        return handleResult({ error: new RESTError('INTERNAL_ERROR', id).toJSON() })
       }
 
       // the document maybe locked by others, or is valid
@@ -341,7 +342,7 @@ function main() {
     return handleResult(doc)
 
     function handleResult(doc) {
-      logger.log(`${url} @${profile} ${doc.error ? doc.error.code : doc.status}. queue: ${jobStartTime - msgTimestamp}ms, render: ${Date.now() - jobStartTime}ms, attemps: ${msgAttemps}`)
+      logger.debug(`${url} @${profile} ${doc.error ? doc.error.code : doc.status}. queue: ${jobStartTime - msgTimestamp}ms, render: ${Date.now() - jobStartTime}ms, attemps: ${msgAttemps}`)
 
       if (callbackURL || replyTo) {
         let error = null

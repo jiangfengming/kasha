@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "cast-string": "^0.3.0",
+    "cuuid": "^0.3.0",
     "forwarded-parse": "^2.1.0",
     "html-entities": "^1.2.1",
     "koa": "^2.11.0",
@@ -20,8 +21,8 @@
     "node-fetch": "^2.6.0",
     "nsqjs": "^0.12.1",
     "parse-open-graph": "^0.3.2",
+    "pino": "^5.13.6",
     "puppeteer-prerender": "^0.13.0",
-    "raven-logger": "^0.3.2",
     "rest-api-error-factory": "^0.1.2",
     "schema-upgrade": "^0.3.0",
     "stoppable": "^1.1.0",

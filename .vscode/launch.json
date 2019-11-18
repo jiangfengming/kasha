@@ -9,28 +9,32 @@
       "request": "launch",
       "name": "Server",
       "program": "${workspaceFolder}/bin/kasha",
-      "args": ["server", "--config=config.dev.js"]
+      "args": ["server", "--config=config.dev.js"],
+      "outputCapture": "std"
     },
     {
       "type": "node",
       "request": "launch",
       "name": "Worker",
       "program": "${workspaceFolder}/bin/kasha",
-      "args": ["worker", "--config=config.dev.js", "--no-headless"]
+      "args": ["worker", "--config=config.dev.js", "--no-headless"],
+      "outputCapture": "std"
     },
     {
       "type": "node",
       "request": "launch",
       "name": "Async Worker",
       "program": "${workspaceFolder}/bin/kasha",
-      "args": ["worker", "--config=config.dev.js", "--async", "--no-headless"]
+      "args": ["worker", "--config=config.dev.js", "--async", "--no-headless"],
+      "outputCapture": "std"
     },
     {
       "type": "node",
       "request": "launch",
       "name": "install",
       "program": "${workspaceFolder}/bin/kasha",
-      "args": ["install", "--config=config.dev.js"]
+      "args": ["install", "--config=config.dev.js"],
+      "outputCapture": "std"
     }
   ]
 }

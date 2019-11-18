@@ -7,6 +7,7 @@ const path = require('path')
 const stoppable = require('stoppable')
 const parseForwardedHeader = require('forwarded-parse')
 const { bool } = require('cast-string')
+const cuuid = require('cuuid')
 const config = require('../lib/config')
 const logger = require('../lib/logger')
 const mongo = require('../lib/mongo')
@@ -67,14 +68,17 @@ async function main() {
       await next()
     } catch (e) {
       let err = e
-      if (!(e instanceof RESTError)) {
-        const { timestamp, eventId } = logger.error(e)
-        err = new RESTError('INTERNAL_ERROR', timestamp, eventId)
+
+      if (!(err instanceof RESTError)) {
+        const id = cuuid()
+        logger.error({ err, id })
+        err = new RESTError('INTERNAL_ERROR', id)
       }
+
       ctx.set('Kasha-Code', err.code)
       ctx.status = err.httpStatus
       ctx.body = err.toJSON()
-      logger.log(`${ctx.method} ${ctx.href} ${ctx.status}: ${err.code}`)
+      logger.debug(`${ctx.method} ${ctx.href} ${ctx.status}: ${err.code}`)
     }
   })
 
