@@ -71,7 +71,7 @@ async function main() {
         method: ctx.method,
         url: ctx.href,
         status: ctx.status,
-        headers: ctx.headers
+        headers: filterHeaders(ctx.headers)
       })
     } catch (e) {
       let err = e
@@ -91,8 +91,20 @@ async function main() {
         url: ctx.href,
         status: ctx.status,
         code: err.code,
-        headers: ctx.headers
+        headers: filterHeaders(ctx.headers)
       })
+    }
+
+    function filterHeaders(headers) {
+      const result = {}
+
+      for (const k in headers) {
+        if (k.startsWith('kasha-') || k === 'forwarded' || k.startsWith('x-forwarded-')) {
+          result[k] = headers[k]
+        }
+      }
+
+      return result
     }
   })
 
