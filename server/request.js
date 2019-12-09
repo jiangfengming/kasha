@@ -21,6 +21,10 @@ module.exports = function(url, { method, headers, body } = {}) {
 
     headers = { ...headers }
     delete headers.host
+    delete headers['if-match']
+    delete headers['if-none-match']
+    delete headers['if-modified-since']
+    delete headers['if-unmodified-since']
 
     const req = request(url, { method, headers }, res => {
       const headers = {}
