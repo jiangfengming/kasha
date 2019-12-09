@@ -21,14 +21,14 @@ let reader, jobCounter = 0, stopping = false
     await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.workerOptions)
     await nsqWriter.connect()
 
-    logger.info('Launching chromium...')
+    logger.warn('Launching chromium...')
     await prerenderer.launch()
 
     prerenderer.on('disconnected', () => {
       logger.error('Chromium disconnected')
     })
 
-    logger.info('Chromium launched')
+    logger.warn('Chromium launched')
 
     reader = nsqReader.connect(global.argv.async ? 'kasha-async-queue' : 'kasha-sync-queue', 'worker', config.nsq.reader)
 
@@ -37,7 +37,7 @@ let reader, jobCounter = 0, stopping = false
     process.once('SIGINT', exit)
     process.once('SIGTERM', exit)
 
-    logger.info('Kasha Worker started')
+    logger.warn('Kasha Worker started')
   } catch (e) {
     logger.error(e)
     await closeConnections()
@@ -52,14 +52,14 @@ async function exit() {
   }
 
   stopping = true
-  logger.info('Closing the worker... Please wait for finishing the in-flight jobs...')
+  logger.warn('Closing the worker... Please wait for finishing the in-flight jobs...')
   reader.pause()
 
   const interval = setInterval(async() => {
     if (jobCounter === 0) {
       clearInterval(interval)
       await closeConnections()
-      logger.info('exit successfully')
+      logger.warn('exit successfully')
     }
   }, 1000)
 }
@@ -70,9 +70,9 @@ async function closeConnections() {
   await nsqReader.close()
 
   if (prerenderer) {
-    logger.info('Closing prerenderer...')
+    logger.warn('Closing prerenderer...')
     await prerenderer.close()
-    logger.info('Prerender closed')
+    logger.warn('Prerender closed')
   }
 }
 
@@ -102,7 +102,7 @@ function main() {
   reader.on('message', async msg => {
     jobCounter++
     const req = msg.json()
-    logger.debug('receive job:', req)
+    logger.debug(req, 'receive job')
 
     const {
       replyTo,
@@ -342,7 +342,15 @@ function main() {
     return handleResult(doc)
 
     function handleResult(doc) {
-      logger.debug(`${url} @${profile} ${doc.error ? doc.error.code : doc.status}. queue: ${jobStartTime - msgTimestamp}ms, render: ${Date.now() - jobStartTime}ms, attemps: ${msgAttemps}`)
+      logger.info({
+        url,
+        profile,
+        code: doc.error && doc.error.code,
+        status: doc.status,
+        queued: jobStartTime - msgTimestamp + 'ms',
+        render: Date.now() - jobStartTime + 'ms',
+        attemps: msgAttemps
+      })
 
       if (callbackURL || replyTo) {
         let error = null

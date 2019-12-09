@@ -10,11 +10,11 @@ async function install() {
   const snapshots = mongo.db.collection('snapshots')
   const sitemaps = mongo.db.collection('sitemaps')
 
-  logger.info('Checking current database schema version...')
+  logger.warn('Checking current database schema version...')
   let appInfo = await meta.findOne({ key: 'appInfo' })
 
   if (!appInfo) {
-    logger.info('Database doesn\'t exist. Initialized...')
+    logger.warn('Database doesn\'t exist. Initialized...')
 
     appInfo = {
       key: 'appInfo',
@@ -29,7 +29,7 @@ async function install() {
   const schema = new Schema(appInfo.version)
 
   schema.version(4, async() => {
-    logger.info('Upgrading database schema to version 4...')
+    logger.warn('Upgrading database schema to version 4...')
 
     await sites.createIndex({ host: 1 }, { unique: true })
 
@@ -41,19 +41,19 @@ async function install() {
     await sitemaps.createIndex({ site: 1, hasImages: 1 })
     await sitemaps.createIndex({ site: 1, hasVideos: 1 })
 
-    logger.info('Upgraded to database schema version 4.')
+    logger.warn('Upgraded to database schema version 4.')
   })
 
   const latest = schema.latest()
 
   if (latest === appInfo.version) {
-    logger.info('Database schema is up to date.')
+    logger.warn('Database schema is up to date.')
     return
   }
 
-  logger.info(`Upgrade database schema from verion ${appInfo.version} to ${latest}.`)
+  logger.warn(`Upgrade database schema from verion ${appInfo.version} to ${latest}.`)
 
-  logger.info('Setting upgrade lock...')
+  logger.warn('Setting upgrade lock...')
   const result = await meta.updateOne(
     {
       key: 'appInfo',
@@ -74,7 +74,7 @@ async function install() {
 
   await schema.upgrade()
 
-  logger.info('Releasing upgrade lock...')
+  logger.warn('Releasing upgrade lock...')
   await meta.updateOne({
     key: 'appInfo',
     version: appInfo.version,
@@ -85,7 +85,7 @@ async function install() {
       upgrading: false
     }
   })
-  logger.info('Database schema upgraded successfully.')
+  logger.warn('Database schema upgraded successfully.')
 }
 
 async function cli() {

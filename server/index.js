@@ -66,6 +66,13 @@ async function main() {
   app.use(async(ctx, next) => {
     try {
       await next()
+
+      logger.info({
+        method: ctx.method,
+        url: ctx.href,
+        status: ctx.status,
+        headers: ctx.headers
+      })
     } catch (e) {
       let err = e
 
@@ -78,7 +85,14 @@ async function main() {
       ctx.set('Kasha-Code', err.code)
       ctx.status = err.httpStatus
       ctx.body = err.toJSON()
-      logger.debug(`${ctx.method} ${ctx.href} ${ctx.status}: ${err.code}`)
+
+      logger.info({
+        method: ctx.method,
+        url: ctx.href,
+        status: ctx.status,
+        code: err.code,
+        headers: ctx.headers
+      })
     }
   })
 
@@ -235,16 +249,16 @@ async function main() {
     }
 
     stopping = true
-    logger.info('Closing the server. Please wait for finishing the pending requests...')
+    logger.warn('Closing the server. Please wait for finishing the pending requests...')
 
     server.stop(async() => {
       await closeConnections()
-      logger.info('exit successfully')
+      logger.warn('exit successfully')
     })
   }
 
   process.on('SIGINT', exit)
   process.on('SIGTERM', exit)
 
-  logger.info(`Kasha http server started at port ${config.port}`)
+  logger.warn(`Kasha http server started at port ${config.port}`)
 }
