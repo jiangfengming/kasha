@@ -13,27 +13,27 @@
     "html-entities": "^1.2.1",
     "koa": "^2.11.0",
     "koa-mount": "^4.0.0",
-    "koa-pilot": "^0.6.1",
+    "koa-pilot": "^0.6.4",
     "koa-send": "^5.0.0",
     "koa-static": "^5.0.0",
     "moment": "^2.24.0",
-    "mongodb": "^3.3.5",
+    "mongodb": "^3.5.4",
     "node-fetch": "^2.6.0",
     "nsqjs": "^0.12.1",
-    "parse-open-graph": "^0.3.2",
-    "pino": "^5.14.0",
-    "puppeteer-prerender": "^0.13.0",
+    "parse-open-graph": "^0.4.0",
+    "pino": "^5.16.0",
+    "puppeteer-prerender": "^0.13.1",
     "rest-api-error-factory": "^0.1.2",
     "schema-upgrade": "^0.3.0",
     "stoppable": "^1.1.0",
     "through": "^2.3.8",
-    "url-rewrite": "^0.4.0",
-    "yargs": "^15.0.2"
+    "url-rewrite": "^0.4.1",
+    "yargs": "^15.1.0"
   },
   "devDependencies": {
-    "eslint": "^6.7.2",
+    "eslint": "^6.8.0",
     "eslint-config-enough": "^0.3.8",
-    "mocha": "^6.2.2"
+    "mocha": "^7.1.0"
   },
   "eslintConfig": {
     "extends": "enough",

@@ -9,7 +9,6 @@ const options = {
     headless: global.argv.headless,
     executablePath: global.argv.chromiumPath || config.chromiumPath || undefined,
 
-    handleSIGINT: false,
     args: [
       // '--no-sandbox',
       // '--disable-setuid-sandbox',
@@ -57,7 +56,9 @@ const options = {
       '--password-store=basic',
       '--prerender-from-omnibox=disabled',
       '--use-gl=swiftshader',
-      '--use-mock-keychain'
+      '--use-mock-keychain',
+      '--memory-pressure-off',
+      '--single-process'
     ]
   },
 
