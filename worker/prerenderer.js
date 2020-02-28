@@ -57,8 +57,7 @@ const options = {
       '--prerender-from-omnibox=disabled',
       '--use-gl=swiftshader',
       '--use-mock-keychain',
-      '--memory-pressure-off',
-      '--single-process'
+      '--memory-pressure-off'
     ]
   },
 
