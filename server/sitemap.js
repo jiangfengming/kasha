@@ -221,13 +221,12 @@ function googleVideoTags(video) {
 }
 
 async function respond(ctx, data, { header, transform }) {
-  if (!await data.hasNext()) {
+  if (await data.count() === 0) {
     return
   }
 
   ctx.set('Content-Type', 'text/xml; charset=utf-8')
   ctx.set('Cache-Control', `max-age=${config.cache.sitemap}`)
-
   ctx.body = new PassThrough()
 
   ctx.body.on('error', async() => {
