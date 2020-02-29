@@ -11,7 +11,7 @@ const poll = require('../lib/poll')
 const normalizeDoc = require('../lib/normalizeDoc')
 const getLockError = require('../lib/getLockError')
 const validHTTPStatus = require('../lib/validHTTPStatus')
-const inArray = require('./inArray')
+const pathInList = require('./pathInList')
 const workerResponder = require('./workerResponder')
 const reply = require('./reply')
 const mergeSetting = require('./mergeSetting')
@@ -163,23 +163,12 @@ async function render(ctx) {
       }
     }
 
-    if (excludes) {
-      let excluded
-
-      if (includes && inArray(includes, url.pathname)) {
-        excluded = false
-      }
-
-      if (excluded === undefined) {
-        excluded = inArray(excludes, url.pathname)
-      }
-
-      if (excluded) {
-        try {
-          return await proxy(ctx, rewrited)
-        } catch (e) {
-          throw new RESTError('FETCH_ERROR', url.href, e.message)
-        }
+    // 'includes' has higher priority then 'excludes'
+    if (pathInList(excludes, url.pathname) && !pathInList(includes, url.pathname)) {
+      try {
+        return await proxy(ctx, rewrited)
+      } catch (e) {
+        throw new RESTError('FETCH_ERROR', url.href, e.message)
       }
     }
 

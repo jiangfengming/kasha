@@ -28,6 +28,7 @@
     "stoppable": "^1.1.0",
     "through": "^2.3.8",
     "url-rewrite": "^0.4.1",
+    "url-router": "^11.0.2",
     "yargs": "^15.1.0"
   },
   "devDependencies": {
