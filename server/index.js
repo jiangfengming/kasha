@@ -44,8 +44,8 @@ async function main() {
     if (site) {
       return site
     } else {
-      if (config.disallowUnknownHost) {
-        throw new RESTError('HOST_CONFIG_NOT_EXIST')
+      if (config.disallowUnknownSite) {
+        throw new RESTError('SITE_CONFIG_NOT_EXIST')
       } else {
         return {}
       }
@@ -149,6 +149,7 @@ async function main() {
   apiRouter
     .get('/render', async(ctx, next) => {
       let url
+
       try {
         url = new URL(ctx.query.url)
       } catch (e) {
@@ -221,11 +222,13 @@ async function main() {
 
     if (config.apiHost && config.apiHost.includes(host)) {
       const matchedOrigin = ctx.path.match(/^\/(https?:\/\/[^/]+)/)
+
       if (!matchedOrigin) {
         return apiRouter.middleware(ctx, next)
       }
 
       let url
+
       try {
         url = new URL(matchedOrigin[1])
       } catch (e) {
@@ -255,6 +258,7 @@ async function main() {
 
   // graceful exit
   let stopping = false
+
   async function exit() {
     if (stopping) {
       return
@@ -271,6 +275,5 @@ async function main() {
 
   process.on('SIGINT', exit)
   process.on('SIGTERM', exit)
-
   logger.warn(`Kasha http server started at port ${config.port}`)
 }
