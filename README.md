@@ -1,7 +1,9 @@
-<p align="center"><img src="static/kasha.png" width="256" height="256"></p>
+![logo](https://github.com/kasha-io/kasha/raw/master/static/kasha.png)
 
 # Kasha
-Prerender your Single-Page Application.
+Pre-render your Single-Page Application.
+
+![workflow](https://github.com/kasha-io/kasha/raw/master/static/workflow.png)
 
 ## Features
 * Prerender the Single-Page Application.
@@ -18,9 +20,24 @@ Prerender your Single-Page Application.
 * [MongoDB](https://www.mongodb.com/)
 * [nsq](http://nsq.io/)
 
+## SPA compatibility adjustments
+In order to make the pre-rendered SPA works correctly in the client-side browser, you need to do some works:
+* When pre-rendering, intercept the anonymous AJAX requests and store the responses into `<script>` tag,
+so AJAX requests would not send again on the client-side.
+Our AJAX library [teleman](https://github.com/kasha-io/teleman) and
+[teleman-ssr-cache](https://github.com/kasha-io/teleman-ssr-cache) may help you.
+* On the client-side, mount the SPA and replace the pre-rendered content.
+* Set `<meta>` tags, so search engine can know more about the page. You can use [set-meta](https://github.com/kasha-io/set-meta).
+
+
 ## Installation
 ```sh
-yarn global add kasha
+npm i -g kasha
+```
+
+Docker:
+```sh
+docker pull kasha/kasha
 ```
 
 ## Configuration
@@ -33,6 +50,11 @@ See [config.sample.js](config.sample.js)
 kasha server --config=/path/to/config.js
 ```
 
+Docker:
+```sh
+docker run -v /path/to/config.js:/dest/to/config.js kasha/kasha server --config=/dest/to/config.js
+```
+
 ### Start the worker:
 ```sh 
 kasha worker --config=/path/to/config.js
@@ -42,8 +64,106 @@ kasha worker --config=/path/to/config.js
 kasha worker --async --config=/path/to/config.js
 ```
 
-## Proxy mode
-**DOCS TO BE WRITTEN**
+Docker:
+```sh
+docker run -v /path/to/config.js:/dest/to/config.js kasha/kasha worker [--async] --config=/dest/to/config.js
+```
+
+## Site Config
+
+```js
+db.sites.insert({
+  // The hostname of your site.
+  host: 'www.example.com',
+
+  // In proxy mode, if the request doesn't contain 'X-Forwarded-Proto' or 'Forwarded:...proto=...' header,
+  // then use 'defaultProtocol'.
+  defaultProtocol: 'https',
+  
+  // If your site use REST-style URLs, like /article/123, the query string isn't necessary to the page,
+  // you can remove the query string to improve the cache hit rate:
+  // keepQuery: false,
+
+  // You can also keep the required query parameter of some URLs
+  keepQuery: [
+    [
+      '/search', // the first element is the pathname of URL.
+      'type', // starting from the second element, specifies the query names you need to keep.
+      'keyword'
+    ],
+
+    // another URL and its query names
+    ['/product', 'id']
+  ],
+
+  // You can use the '/render' API to crawl the hash-based Single-page application.
+  // For example, you can crawl https://www.example.com/app/#/home via
+  // /render?url=https%3A%2F%2Fwww.example.com%2Fapp%2F%23%2Fhome
+  
+  // But if this site is not hash-based, you can remove the hash:
+  keepHash: false,
+  
+  // Rewrites the request URL.
+  rewrites: [
+    // [from, to]
+    // If 'to' is an empty string, the request will be aborted.
+
+    // route all requests to the entry point HTML file
+    ['https://www.example.com/(.*)', 'https://cdn.example.com/index.html'],
+
+    // except robots.txt
+    ['https://www.example.com/robots.txt', 'https://cdn.example.com/robots.txt'],
+
+    // or block it if you do not have one
+    // ['https://www.example.com/robots.txt', ''],
+
+    // block google analytics requests
+    ['https://www.googletagmanager.com/(.*)', '']
+  ],
+
+  // Excludes the pages that don't need pre-rendering.
+  excludes: [
+    '/your-account/(.*)',
+    '/your-orders/(.*)'
+  ],
+
+  // But include these pages that matched the excludes pattern
+  includes: [
+    'your-account/signin'
+  ],
+  
+  // Specifies the User-Agent
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_4) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/73.0.3683.103 Safari/537.36',
+  
+  // You can create profiles for different device types.
+  // A profile can override keepQuery, keepHash, rewrites, excludes, includes, userAgent.
+
+  profiles: {
+    desktop: {
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_4) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/73.0.3683.103 Safari/537.36',
+      rewrites: [
+        [
+          'https://www.example.com/(.*)',
+          'https://cdn.example.com/desktop/index.html'
+        ]
+      ]
+    },
+
+    mobile: {
+      userAgent: 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/73.0.3683.103 Mobile Safari/537.36',
+      rewrites: [
+        [
+          'https://www.example.com/(.*)',
+          'https://cdn.example.com/mobile/index.html'
+        ]
+      ]
+    }
+  },
+
+  // If profile param of the request isn't set, use this profile
+  defaultProfile: 'desktop'
+})
+```
 
 ## APIs
 Please confirm `apiHost` has been set correctly.
@@ -52,7 +172,7 @@ For example, if set `apiHost: '127.0.0.1:3000'`, then only requests from `http(s
 All other domains are served in proxy mode.
 
 ### GET /render
-Prerenders the page.
+Renders the page.
 
 #### Query string params:  
 `url`: The encoded URL of the webpage to render.
@@ -67,13 +187,16 @@ Prerenders the page.
 `callbackURL`: Don't wait the result. Once the job is done, `POST` the result to the given URL with `json` format.
 If `callbackURL` is set, `type` is ignored.
 
-`metaOnly`: Only returns meta data without html content.
+`metaOnly`: If `type` is `json`, only returns meta data without html content.
 
 `followRedirect`: Follows the redirects if the page return `301`/`302`.
 
 `refresh`: Forces to refresh the cache.
 
 `noWait`: Don't wait for the response. It is useful for pre-caching the page.
+
+`fallback`: If no cache found or the cache is expired, the request is proxied to the origin directly.
+If `fallback` is set, `type` must be `html`, `callbackURL`, `metaOnly`, `followRedirect`, `refresh` and `noWait` can not be set.
 
 To the boolean parameters, if the param is absent or set to `0`, it means `false`.
 If set to `1` or empty value (e.g., `&refresh`, `&refresh=`, `&refresh=1`), it means `true`.   
@@ -130,11 +253,28 @@ Example: `http://localhost:3000/render?url=https%3A%2F%2Fdavidwalsh.name%2Ffaceb
 ```
 
 ### GET /:url
-Alias of `/render?url=ENCODED_URL&type=static`.
+Alias of `/render?url=ENCODED_URL&type=html`.
 
-For example, `http://localhost:3000/https://www.example.com/` is equivalent to `http://localhost:3000/render?url=https%3A%2F%2Fwww.example.com%2F`
+For example, `http://localhost:3000/https://www.example.com/` is equivalent to
+`http://localhost:3000/render?url=https%3A%2F%2Fwww.example.com%2F&type=html`
+
+And `profile` param can be set from `Kasha-Profile` header, `fallback` can be set from `Kasha-Fallback` header.
 
 Notice: the `hash` of the url won't be sent to server. If you need the `hash` to be sent to the server, use the `/render` API.
+
+### Proxy mode
+If `host` header of the request is not `apiHost`, or `X-Forwarded-Host` or `Forwarded:...host=...` header is set,
+Then the requested URL will be treated as `url` query param of `/render` API. And `type` is set to `html`.
+
+For example, the following request
+```
+GET /
+Host: www.example.com
+Kasha-Profile: mobile
+Kasha-Fallback: 1
+```
+
+is equivalent to `http://localhost:3000/render?url=https%3A%2F%2Fwww.example.com%2F&type=html&profile=mobile&fallback=1`
 
 ### GET /cache?url=URL
 Alias of `/render?url=ENCODED_URL&noWait`
@@ -154,46 +294,46 @@ Disallow: /cgi-bin/
 Disallow: /tmp/
 Disallow: /private/
 
-Sitemap: https://www.example.com/sitemaps/index/1.xml
-Sitemap: https://www.example.com/sitemaps/index/google/1.xml
-Sitemap: https://www.example.com/sitemaps/index/google/news/1.xml
-Sitemap: https://www.example.com/sitemaps/index/google/image/1.xml
-Sitemap: https://www.example.com/sitemaps/index/google/video/1.xml
+Sitemap: https://www.example.com/sitemaps.index.1.xml
+Sitemap: https://www.example.com/sitemaps.index.google.1.xml
+Sitemap: https://www.example.com/sitemaps.index.google.news.1.xml
+Sitemap: https://www.example.com/sitemaps.index.google.image.1.xml
+Sitemap: https://www.example.com/sitemaps.index.google.video.1.xml
 ```
 
-### GET /:site/sitemaps/:page.xml
+### GET /:site/sitemaps.:page.xml
 Get [sitemap](https://www.sitemaps.org/protocol.html) of page N.
 
 For example:
 ```
-http://localhost:3000/https://www.example.com/sitemaps/1.xml
+http://localhost:3000/https://www.example.com/sitemaps.1.xml
 ```
 
-### GET /:site/sitemaps/google/:page.xml
+### GET /:site/sitemaps.google.:page.xml
 Get [Google sitemap](https://support.google.com/webmasters/answer/183668) of page N.
 
-### GET /:site/sitemaps/google/news/:page.xml
+### GET /:site/sitemaps.google.news.:page.xml
 Get [Google news sitemap](https://support.google.com/webmasters/answer/74288) of page N.
 
-### GET /:site/sitemaps/google/image/:page.xml
+### GET /:site/sitemaps.google.image.:page.xml
 Get [Google image sitemap](https://support.google.com/webmasters/answer/178636) of page N.
 
-### GET /:site/sitemaps/google/video/:page.xml
+### GET /:site/sitemaps.google.video.:page.xml
 Get [Google video sitemap](https://support.google.com/webmasters/answer/80471) of page N.
 
-### GET /:site/sitemaps/index/:page.xml
+### GET /:site/sitemaps.index.:page.xml
 Get [sitemap index file](https://www.sitemaps.org/protocol.html#index) of page N.
 
-### GET /:site/sitemaps/index/google/:page.xml
+### GET /:site/sitemaps.index.google.:page.xml
 Get Google sitemap index file of page N.
 
-### GET /:site/sitemaps/index/google/news/:page.xml
+### GET /:site/sitemaps.index.google.news.:page.xml
 Get Google news sitemap index file of Page N.
 
-### GET /:site/sitemaps/index/google/image/:page.xml
+### GET /:site/sitemaps.index.google.image.:page.xml
 Get Google image sitemap index file of Page N.
 
-### GET /:site/sitemaps/index/google/video/:page.xml
+### GET /:site/sitemaps.index.google.video.:page.xml
 Get Google video sitemap index file of page N.
 
 
