@@ -107,6 +107,7 @@ db.sites.insert({
   rewrites: [
     // [from, to]
     // If 'to' is an empty string, the request will be aborted.
+    // pattern syntax see https://github.com/jiangfengming/url-router#pattern
 
     // route all requests to the entry point HTML file
     ['https://www.example.com/(.*)', 'https://cdn.example.com/index.html'],
