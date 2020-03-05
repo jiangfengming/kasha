@@ -6,4 +6,4 @@ RUN npm link
 
 RUN kasha --version
 
-ENTRYPOINT ["kasha"]
+ENTRYPOINT ["dumb-init", "--", "kasha"]

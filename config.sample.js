@@ -7,11 +7,11 @@ module.exports = {
   apiHost: '127.0.0.1:3000',
   // apiHost: ['127.0.0.1:3000', 'kasha.example.com']
 
-  // enable debug page of API service
-  // for example: http://127.0.0.1:3000/
+  // enable debug page (home page) of the API service
   enableDebugPage: true,
 
-  disallowUnknownHost: false,
+  // If set to true, Kasha will only pre-render the pages of site which is configured in MongoDB.
+  disallowUnknownSite: false,
 
   nsq: {
     // Options: https://github.com/dudleycarr/nsqjs#new-readertopic-channel-options
@@ -68,6 +68,7 @@ module.exports = {
     removeAfter: 24 * 60 * 60 // 1 day
   },
 
+  // Custom chromium path
   chromiumPath: '',
 
   logLevel: 'info' // fatal, error, warn, info, debug, trace, silent
