@@ -110,10 +110,10 @@ db.sites.insert({
     // pattern syntax see https://github.com/jiangfengming/url-router#pattern
 
     // route all requests to the entry point HTML file
-    ['https://www.example.com/(.*)', 'https://cdn.example.com/index.html'],
+    ['https://www.example.com/(.*)', 'https://static.example.com/index.html'],
 
     // except robots.txt
-    ['https://www.example.com/robots.txt', 'https://cdn.example.com/robots.txt'],
+    ['https://www.example.com/robots.txt', 'https://static.example.com/robots.txt'],
 
     // or block it if you do not have one
     // ['https://www.example.com/robots.txt', ''],
@@ -145,7 +145,7 @@ db.sites.insert({
       rewrites: [
         [
           'https://www.example.com/(.*)',
-          'https://cdn.example.com/desktop/index.html'
+          'https://static.example.com/desktop/index.html'
         ]
       ]
     },
@@ -155,7 +155,7 @@ db.sites.insert({
       rewrites: [
         [
           'https://www.example.com/(.*)',
-          'https://cdn.example.com/mobile/index.html'
+          'https://static.example.com/mobile/index.html'
         ]
       ]
     }
