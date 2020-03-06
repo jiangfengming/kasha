@@ -1,0 +1,24 @@
+name: Docker base image CI
+
+on:
+  push:
+    branches:
+      - docker-base
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+      
+    - name: Build the Docker image
+      run: docker build . --file base.Dockerfile --tag kasha/kasha:base
+      
+    - name: Push the Docker image
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      run: |
+        docker login -u $DOCKER_USERNAME -p DOCKER_PASSWORD
+        docker push kasha/kasha:base
