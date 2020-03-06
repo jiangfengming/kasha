@@ -15,7 +15,7 @@ jobs:
     - name: Build the Docker image
       env:
         TAG: ${{ github.ref }}
-      run: docker build . --file Dockerfile --tag kasha/kasha:${TAG:1}
+      run: docker build . --file Dockerfile --tag kasha/kasha:${TAG##*/}
 
     - name: Push the Docker image
       env:
@@ -24,4 +24,4 @@ jobs:
         TAG: ${{ github.ref }}
       run: |
         docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-        docker push kasha/kasha:${TAG:1}
+        docker push kasha/kasha:${TAG##*/}
