@@ -2,7 +2,6 @@
   "name": "kasha",
   "version": "0.14.5",
   "description": "Pre-render your Single-Page Application.",
-  "main": "index.js",
   "bin": {
     "kasha": "bin/kasha"
   },
@@ -33,22 +32,7 @@
   },
   "devDependencies": {
     "eslint": "^6.8.0",
-    "eslint-config-enough": "^0.3.8",
-    "mocha": "^7.1.0"
-  },
-  "eslintConfig": {
-    "extends": "enough",
-    "env": {
-      "node": true,
-      "browser": true,
-      "mocha": true
-    },
-    "rules": {
-      "require-atomic-updates": "off"
-    }
-  },
-  "scripts": {
-    "test": "mocha test --config=config.sample.js"
+    "eslint-config-enough": "^0.3.8"
   },
   "repository": {
     "type": "git",
@@ -65,7 +49,14 @@
     "url": "https://github.com/kasha-io/kasha/issues"
   },
   "homepage": "https://github.com/kasha-io/kasha#readme",
-  "directories": {
-    "test": "tests"
+  "eslintConfig": {
+    "extends": "enough",
+    "env": {
+      "node": true,
+      "browser": true
+    },
+    "rules": {
+      "require-atomic-updates": "off"
+    }
   }
 }
