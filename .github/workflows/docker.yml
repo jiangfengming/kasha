@@ -1,9 +1,9 @@
-name: Docker test image CI
+name: Docker image CI
 
 on:
   push:
     tags:
-      - v[0-9]+.[0-9]+.[0-9]+-*
+      - v[0-9]+.[0-9]+.[0-9]+
 
 jobs:
   build:
@@ -15,7 +15,7 @@ jobs:
     - name: Build the Docker image
       env:
         TAG: ${{ github.ref }}
-      run: docker build -t kasha/kasha:${TAG##*/v} -t kasha/kasha:next .
+      run: docker build -t kasha/kasha:${TAG##*/v} -t kasha/kasha:next -t kasha/kasha:latest .
 
     - name: Push the Docker image
       env:
@@ -26,3 +26,4 @@ jobs:
         docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
         docker push kasha/kasha:${TAG##*/v}
         docker push kasha/kasha:next
+        docker push kasha/kasha:latest
