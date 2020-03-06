@@ -1,0 +1,27 @@
+name: Docker test image CI
+
+on:
+  push:
+    tags:
+      - v[0-9]+.[0-9]+.[0-9]+-*
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Build the Docker image
+      env:
+        TAG: ${{ github.ref }}
+      run: docker build . --file Dockerfile --tag kasha/kasha:${TAG:1}
+
+    - name: Push the Docker image
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        TAG: ${{ github.ref }}
+      run: |
+        docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+        docker push kasha/kasha:${TAG:1}
