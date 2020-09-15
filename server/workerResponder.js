@@ -18,6 +18,7 @@ function connect() {
 
     const data = msg.json()
     const req = queue.find(req => req.correlationId === data.correlationId)
+
     if (!req) {
       return
     }
@@ -76,6 +77,5 @@ const cleanUpInterval = setInterval(() => {
     }
   }
 }, 1000)
-
 
 module.exports = { connect, close, topic, addToQueue }

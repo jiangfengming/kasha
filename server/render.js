@@ -221,6 +221,7 @@ async function render(ctx) {
 
     if (doc.lock) {
       const status = doc.status
+
       try {
         doc = await poll(site, path, profile, doc.lock)
         return handleResult(doc, refresh ? 'BYPASS' : status ? 'EXPIRED' : 'MISS')

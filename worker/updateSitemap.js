@@ -35,7 +35,9 @@ module.exports = (site, path, doc) => {
     let sitemap = {}
 
     if (doc.openGraph) {
-      if (doc.openGraph.sitemap) sitemap = doc.openGraph.sitemap
+      if (doc.openGraph.sitemap) {
+        sitemap = doc.openGraph.sitemap
+      }
 
       if (sitemap.news) {
         const date = new Date(sitemap.news.publication_date)

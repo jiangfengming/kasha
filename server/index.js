@@ -15,9 +15,9 @@ const nsqWriter = require('../lib/nsqWriter')
 const workerResponder = require('./workerResponder')
 const RESTError = require('../lib/RESTError')
 const render = require('./render')
-const sitemap = require('./sitemap')
+const sitemap = require('./sitemap');
 
-;(async() => {
+(async() => {
   try {
     await require('../install').install()
     await mongo.connect(config.mongodb.url, config.mongodb.database, config.mongodb.serverOptions)
@@ -192,6 +192,7 @@ async function main() {
     if (ctx.headers.forwarded) {
       try {
         const forwarded = parseForwardedHeader(ctx.headers.forwarded)[0]
+
         if (forwarded.host) {
           host = forwarded.host
         }
